@@ -1,4 +1,4 @@
-package org.example.sever;
+package org.example.server;
 
 public class ServerApp {
 }
