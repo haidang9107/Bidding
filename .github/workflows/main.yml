@@ -1,0 +1,33 @@
+name: Java CI with Maven
+
+on:
+  push:
+    branches: [ "main" ]  # Chạy khi có push vào nhánh main
+  pull_request:
+    branches: [ "main" ]  # Chạy khi có yêu cầu gộp code vào main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # Chạy trên máy ảo Ubuntu
+
+    steps:
+      - uses: actions/checkout@v4  # Lấy code từ repo về máy ảo
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml
+
+      - name: Run Tests
+        run: mvn test
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v4
+        if: always() # Luôn chạy kể cả khi test thất bại
+        with:
+          report_paths: '**/target/surefire-reports/TEST-*.xml'
