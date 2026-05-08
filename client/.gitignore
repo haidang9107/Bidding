@@ -37,3 +37,8 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+# Các thư viện frontend
+node_modules/
+.npm
+dist/

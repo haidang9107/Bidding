@@ -15,3 +15,24 @@ buildNumber.properties
 .project
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
+
+# Thư mục chứa file đã biên dịch
+build/
+out/
+
+# Các file log
+*.log
+
+# File cấu hình đóng gói
+*.jar
+*.war
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+
+# macOS rác (Rất quan trọng trên MacBook)
+.DS_Store
+.AppleDouble
+.LSOverride
