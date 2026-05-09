@@ -1,6 +1,7 @@
 package org.example.model.user;
 
 public abstract class User {
+    //id la index trong db
     private Long id;
     private String name;
     private String email;

@@ -12,12 +12,16 @@
 	<name>server</name>
 	<description>server</description>
 
+	<properties>
+		<java.version>25</java.version>
+	</properties>
+
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-dependencies</artifactId>
-				<version>3.2.5</version> <!-- Using a stable 3.x version as 4.x doesn't exist yet -->
+				<version>4.0.6</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
@@ -69,7 +73,7 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-				<version>3.2.5</version>
+				<version>4.0.6</version>
 				<configuration>
 					<mainClass>org.example.server.ServerApp</mainClass>
 				</configuration>

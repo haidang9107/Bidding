@@ -1,7 +1,7 @@
 package org.example.model.user;
 
 /**
- * Admin la duy nhat va chi tao duy nhat 1 lan khi db duoc khoi tao, Admin la user dau tien duoc them vao db, ID=1
+ * Admin la duy nhat, la user dau tien duoc them vao db, ID=1
  */
 public class Admin extends User {
     private static Admin instance;
