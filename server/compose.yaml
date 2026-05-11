@@ -1,10 +1,12 @@
 services:
   postgres:
     image: 'postgres:latest'
-    environment:
-      - 'POSTGRES_DATABASE=mydatabase'
-      - 'POSTGRES_PASSWORD=secret'
-      - 'POSTGRES_ROOT_PASSWORD=verysecret'
-      - 'POSTGRES_USER=myuser'
+    container_name: "PostgresDB"
     ports:
       - '7108:5432'
+    environment:
+      - 'POSTGRES_DB=PostgresDB'
+      - 'POSTGRES_USER=HaiDang91'
+      - 'POSTGRES_PASSWORD=9107'
+    volumes:
+      - ./src/main/resources/postgresSQL/schema.sql:/docker-entrypoint-initdb.d/schema.sql
