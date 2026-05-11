@@ -1,10 +1,10 @@
 services:
-  mysql:
-    image: 'mysql:latest'
+  postgres:
+    image: 'postgres:latest'
     environment:
-      - 'MYSQL_DATABASE=mydatabase'
-      - 'MYSQL_PASSWORD=secret'
-      - 'MYSQL_ROOT_PASSWORD=verysecret'
-      - 'MYSQL_USER=myuser'
+      - 'POSTGRES_DATABASE=mydatabase'
+      - 'POSTGRES_PASSWORD=secret'
+      - 'POSTGRES_ROOT_PASSWORD=verysecret'
+      - 'POSTGRES_USER=myuser'
     ports:
-      - '3306'
+      - '7108:5432'

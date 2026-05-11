@@ -11,8 +11,8 @@ import java.util.concurrent.Executors;
 @Component
 public class SocketServer implements CommandLineRunner {
     private static final int PORT = 8888;
-    private final ExecutorService threadPool = Executors.newCachedThreadPool();
-    private boolean running = true;
+    private static final ExecutorService threadPool = Executors.newCachedThreadPool();
+    private static boolean running = true;
 
     @Override
     public void run(String... args) {
@@ -36,6 +36,6 @@ public class SocketServer implements CommandLineRunner {
     }
 
     public void stop() {
-        this.running = false;
+        running = false;
     }
 }
