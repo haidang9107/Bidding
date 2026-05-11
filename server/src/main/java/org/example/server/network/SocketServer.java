@@ -1,20 +1,16 @@
 package org.example.server.network;
 
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Component
-public class SocketServer implements CommandLineRunner {
+public class SocketServer {
     private static final int PORT = 8888;
     private static final ExecutorService threadPool = Executors.newCachedThreadPool();
     private static boolean running = true;
 
-    @Override
     public void run(String... args) {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println(">>> Auction Socket Server is LIVE on port: " + PORT);
