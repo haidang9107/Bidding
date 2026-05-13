@@ -27,6 +27,9 @@ public class ClientHandler implements Runnable {
             out = new PrintWriter(socket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
+            // Register client for broadcasting
+            Broadcaster.addClient(this);
+
             String inputLine;
             // Keep listening for messages from this specific client
             while ((inputLine = in.readLine()) != null) {
@@ -44,7 +47,14 @@ public class ClientHandler implements Runnable {
         } catch (IOException e) {
             System.out.println(">>> Client disconnected: " + socket.getInetAddress());
         } finally {
+            Broadcaster.removeClient(this);
             closeConnection();
+        }
+    }
+
+    public void sendMessage(String message) {
+        if (out != null) {
+            out.println(message);
         }
     }
 
