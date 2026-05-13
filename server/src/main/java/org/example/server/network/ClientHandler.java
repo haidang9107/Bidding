@@ -23,12 +23,13 @@ public class ClientHandler implements Runnable {
     @Override
     public void run() {
         try {
+            // Register client for broadcasting
+            Broadcaster.addClient(this);
+
             // Set up communication streams
             out = new PrintWriter(socket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-            // Register client for broadcasting
-            Broadcaster.addClient(this);
 
             String inputLine;
             // Keep listening for messages from this specific client

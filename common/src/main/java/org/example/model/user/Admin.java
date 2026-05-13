@@ -1,24 +1,39 @@
 package org.example.model.user;
 
-/**
- * Admin la duy nhat, la user dau tien duoc them vao db, ID=1
- */
-public class Admin extends User {
-    private static Admin instance;
+import java.sql.Timestamp;
 
-    // Default constructor for JSON
+public class Admin extends User {
+
+    // =========================
+    // Constructor rỗng
+    // =========================
     public Admin() {
         super();
     }
 
-    private Admin(Long id, String name, String nameAccount, String email, String password) {
-        super(id, name, nameAccount, email, password);
-    }
+    // =========================
+    // Constructor đầy đủ
+    // =========================
+    public Admin(String userId,
+                 String username,
+                 String password,
+                 String email,
+                 String phoneNumber,
+                 String gender,
+                 String avt,
+                 double balance,
+                 Timestamp createdAt) {
 
-    public static Admin getInstance(Long id, String name, String nameAccount, String email, String password) {
-        if (instance == null) {
-            instance = new Admin(id, name, nameAccount, email, password);
-        }
-        return instance;
+        super(
+                userId,
+                username,
+                password,
+                email,
+                phoneNumber,
+                gender,
+                avt,
+                balance,
+                createdAt
+        );
     }
 }

@@ -8,7 +8,7 @@ import java.util.concurrent.Executors;
 
 public class SocketServer {
     private static final int PORT = 8888;
-    private static final ExecutorService threadPool = Executors.newCachedThreadPool();
+    private static final ExecutorService threadPool = Executors.newVirtualThreadPerTaskExecutor();
     private static boolean running = true;
 
     public void run(String... args) {

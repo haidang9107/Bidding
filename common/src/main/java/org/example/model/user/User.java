@@ -1,49 +1,83 @@
 package org.example.model.user;
 
-public abstract class User {
-    //id la index trong db
-    private Long id;
-    private String name;
-    private String email;
-    private String password;
-    private String nameAccount;
+import java.sql.Timestamp;
 
-    // Default constructor for JSON deserialization
+public class User {
+
+    // =========================
+    // Fields
+    // =========================
+    private String userId;
+
+    private String username;
+
+    private String password;
+
+    private String email;
+
+    private String phoneNumber;
+
+    private String gender;
+
+    private String avt;
+
+    private double balance;
+
+    private Timestamp createdAt;
+
+    // =========================
+    // Constructor rỗng
+    // =========================
     public User() {
     }
 
-    public User(Long id, String name, String nameAccount, String email, String password) {
-        this.id = id;
-        this.name = name;
-        this.email = email;
+    // =========================
+    // Constructor đầy đủ
+    // =========================
+    public User(String userId,
+                String username,
+                String password,
+                String email,
+                String phoneNumber,
+                String gender,
+                String avt,
+                double balance,
+                Timestamp createdAt) {
+
+        this.userId = userId;
+        this.username = username;
         this.password = password;
-        this.nameAccount = nameAccount;
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.gender = gender;
+        this.avt = avt;
+        this.balance = balance;
+        this.createdAt = createdAt;
     }
 
-    // Getters and Setters
-    public Long getId() {
-        return id;
+    // =========================
+    // Getter & Setter
+    // =========================
+
+    public String getUserId() {
+        return userId;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
-    public String getName() {
-        return name;
+    // -------------------------
+
+    public String getUsername() {
+        return username;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setUsername(String username) {
+        this.username = username;
     }
 
-    public String getNameAccount() {
-        return nameAccount;
-    }
-
-    public void setNameAccount(String nameAccount) {
-        this.nameAccount = nameAccount;
-    }
+    // -------------------------
 
     public String getPassword() {
         return password;
@@ -53,11 +87,63 @@ public abstract class User {
         this.password = password;
     }
 
+    // -------------------------
+
     public String getEmail() {
         return email;
     }
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    // -------------------------
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    // -------------------------
+
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    // -------------------------
+
+    public String getAvt() {
+        return avt;
+    }
+
+    public void setAvt(String avt) {
+        this.avt = avt;
+    }
+
+    // -------------------------
+
+    public double getBalance() {
+        return balance;
+    }
+
+    public void setBalance(double balance) {
+        this.balance = balance;
+    }
+
+    // -------------------------
+
+    public Timestamp getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Timestamp createdAt) {
+        this.createdAt = createdAt;
     }
 }
