@@ -11,12 +11,10 @@ public class Broadcaster {
 
     public static void addClient(ClientHandler client) {
         clients.add(client);
-        System.out.println(">>> Client registered for broadcast. Total: " + clients.size());
     }
 
     public static void removeClient(ClientHandler client) {
         clients.remove(client);
-        System.out.println(">>> Client removed from broadcast. Total: " + clients.size());
     }
 
     public static void broadcast(Response response) {

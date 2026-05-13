@@ -4,18 +4,23 @@ import org.example.payload.Request;
 import org.example.payload.Response;
 import org.example.util.JsonConverter;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.Socket;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
+import java.util.Iterator;
+import java.util.Set;
 
 public class SocketClient {
     private static SocketClient instance;
-    private Socket socket;
-    private PrintWriter out;
-    private BufferedReader in;
-    private boolean connected = false;
+    private SocketChannel socketChannel;
+    private Selector selector;
+    private volatile boolean connected = false;
+    private final ByteBuffer readBuffer = ByteBuffer.allocate(8192);
+    private final StringBuilder inputBuffer = new StringBuilder();
 
     private SocketClient() {}
 
@@ -26,69 +31,109 @@ public class SocketClient {
         return instance;
     }
 
-    /**
-     * Connects to the server.
-     */
     public void connect(String host, int port) throws IOException {
         if (connected) return;
 
-        this.socket = new Socket(host, port);
-        this.out = new PrintWriter(socket.getOutputStream(), true);
-        this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        this.connected = true;
+        selector = Selector.open();
+        socketChannel = SocketChannel.open();
+        socketChannel.configureBlocking(false);
+        socketChannel.connect(new InetSocketAddress(host, port));
+        socketChannel.register(selector, SelectionKey.OP_CONNECT);
 
-        System.out.println(">>> Connected to server at " + host + ":" + port);
+        new Thread(this::runSelector).start();
 
-        // Start a thread to listen for messages from server
-        startListening();
+        System.out.println(">>> Connecting to server at " + host + ":" + port);
     }
 
-    /**
-     * Sends a request to the server.
-     */
+    private void runSelector() {
+        try {
+            while (selector.isOpen()) {
+                if (selector.select() == 0) continue;
+
+                Set<SelectionKey> keys = selector.selectedKeys();
+                Iterator<SelectionKey> iter = keys.iterator();
+
+                while (iter.hasNext()) {
+                    SelectionKey key = iter.next();
+                    iter.remove();
+
+                    if (key.isConnectable()) {
+                        handleConnect(key);
+                    } else if (key.isReadable()) {
+                        handleRead(key);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.err.println(">>> Selector error: " + e.getMessage());
+            disconnect();
+        }
+    }
+
+    private void handleConnect(SelectionKey key) throws IOException {
+        SocketChannel channel = (SocketChannel) key.channel();
+        if (channel.isConnectionPending()) {
+            channel.finishConnect();
+        }
+        channel.configureBlocking(false);
+        channel.register(selector, SelectionKey.OP_READ);
+        connected = true;
+        System.out.println(">>> Connected to server.");
+    }
+
+    private void handleRead(SelectionKey key) throws IOException {
+        int bytesRead = socketChannel.read(readBuffer);
+        if (bytesRead == -1) {
+            throw new IOException("Server closed connection");
+        }
+
+        readBuffer.flip();
+        String received = StandardCharsets.UTF_8.decode(readBuffer).toString();
+        inputBuffer.append(received);
+        readBuffer.clear();
+
+        processInput();
+    }
+
+    private void processInput() {
+        int newlineIndex;
+        while ((newlineIndex = inputBuffer.indexOf("\n")) != -1) {
+            String message = inputBuffer.substring(0, newlineIndex).trim();
+            inputBuffer.delete(0, newlineIndex + 1);
+
+            if (!message.isEmpty()) {
+                Response response = JsonConverter.fromJson(message, Response.class);
+                handleResponse(response);
+            }
+        }
+    }
+
     public void sendRequest(Request request) {
         if (!connected) {
             System.err.println(">>> Not connected to server!");
             return;
         }
-        String json = JsonConverter.toJson(request);
-        out.println(json);
-    }
-
-    /**
-     * Continuously listens for responses from the server in a separate thread.
-     */
-    private void startListening() {
-        new Thread(() -> {
-            try {
-                String responseLine;
-                while (connected && (responseLine = in.readLine()) != null) {
-                    System.out.println(">>> Received from server: " + responseLine);
-                    
-                    // Convert JSON back to Response object
-                    Response response = JsonConverter.fromJson(responseLine, Response.class);
-                    
-                    // Handle response (this is where you'd update your UI controllers later)
-                    handleResponse(response);
-                }
-            } catch (IOException e) {
-                System.err.println(">>> Disconnected from server: " + e.getMessage());
-                connected = false;
+        try {
+            String json = JsonConverter.toJson(request) + "\n";
+            ByteBuffer buffer = ByteBuffer.wrap(json.getBytes(StandardCharsets.UTF_8));
+            while (buffer.hasRemaining()) {
+                socketChannel.write(buffer);
             }
-        }).start();
+        } catch (IOException e) {
+            System.err.println(">>> Error sending request: " + e.getMessage());
+            disconnect();
+        }
     }
 
     private void handleResponse(Response response) {
-        // Placeholder: later we will use a callback or event system to notify JavaFX
-        System.out.println(">>> Processed response: " + response.getMessage());
+        System.out.println(">>> Received from server: " + response.getMessage());
     }
 
     public void disconnect() {
         try {
             connected = false;
-            if (in != null) in.close();
-            if (out != null) out.close();
-            if (socket != null) socket.close();
+            if (selector != null) selector.close();
+            if (socketChannel != null) socketChannel.close();
         } catch (IOException e) {
             e.printStackTrace();
         }

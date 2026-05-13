@@ -1,82 +1,131 @@
 package org.example.server.network;
 
+import org.example.model.user.User;
 import org.example.payload.Request;
 import org.example.payload.Response;
 import org.example.payload.MessageType;
+import org.example.server.repository.DatabaseManager;
+import org.example.server.repository.UserDao;
+import org.example.server.service.user.auth.LogIn;
+import org.example.server.service.user.auth.SignUp;
 import org.example.util.JsonConverter;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.Socket;
+import java.net.SocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class ClientHandler implements Runnable {
-    private final Socket socket;
-    private PrintWriter out;
-    private BufferedReader in;
+public class ClientHandler {
+    private final SocketChannel socketChannel;
+    private final NioWorker worker;
+    private final ByteBuffer readBuffer = ByteBuffer.allocate(8192);
+    private final StringBuilder inputBuffer = new StringBuilder();
 
-    public ClientHandler(Socket socket) {
-        this.socket = socket;
+    // Logic Thread Pool (Business Pool)
+    private static final ExecutorService logicPool = Executors.newVirtualThreadPerTaskExecutor();
+
+    public ClientHandler(SocketChannel socketChannel, NioWorker worker) {
+        this.socketChannel = socketChannel;
+        this.worker = worker;
     }
 
-    @Override
-    public void run() {
-        try {
-            // Register client for broadcasting
-            Broadcaster.addClient(this);
+    public void read() throws IOException {
+        int bytesRead = socketChannel.read(readBuffer);
+        if (bytesRead == -1) {
+            throw new IOException("Client closed connection");
+        }
 
-            // Set up communication streams
-            out = new PrintWriter(socket.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        readBuffer.flip();
+        String received = StandardCharsets.UTF_8.decode(readBuffer).toString();
+        inputBuffer.append(received);
+        readBuffer.clear();
 
+        processInput();
+    }
 
-            String inputLine;
-            // Keep listening for messages from this specific client
-            while ((inputLine = in.readLine()) != null) {
-                System.out.println(">>> Received from client: " + inputLine);
+    private void processInput() {
+        int newlineIndex;
+        while ((newlineIndex = inputBuffer.indexOf("\n")) != -1) {
+            String message = inputBuffer.substring(0, newlineIndex).trim();
+            inputBuffer.delete(0, newlineIndex + 1);
 
-                // 1. Convert JSON string to Request object
-                Request request = JsonConverter.fromJson(inputLine, Request.class);
-
-                // 2. Handle the request based on its type
-                Response response = handleRequest(request);
-
-                // 3. Send response back to client as JSON
-                out.println(JsonConverter.toJson(response));
+            if (!message.isEmpty()) {
+                logicPool.submit(() -> handleMessage(message));
             }
-        } catch (IOException e) {
-            System.out.println(">>> Client disconnected: " + socket.getInetAddress());
-        } finally {
-            Broadcaster.removeClient(this);
-            closeConnection();
         }
     }
 
-    public void sendMessage(String message) {
-        if (out != null) {
-            out.println(message);
+    private void handleMessage(String message) {
+        System.out.println("[" + Thread.currentThread().getName() + "] >>> Handling message: " + message);
+        try {
+            Request request = JsonConverter.fromJson(message, Request.class);
+            Response response = handleRequest(request);
+            sendMessage(JsonConverter.toJson(response));
+        } catch (Exception e) {
+            System.err.println(">>> Error handling message: " + e.getMessage());
+            sendMessage(JsonConverter.toJson(new Response(MessageType.ERROR, false, "Internal Server Error", null)));
         }
     }
 
     private Response handleRequest(Request request) {
-        // This is a simple placeholder logic. 
-        // Later, this will call AuctionService to process bids.
-        switch (request.getType()) {
-            case LOGIN:
-                return new Response(MessageType.SUCCESS, true, "Login successful!", null);
-            case BID_PLACE:
-                return new Response(MessageType.SUCCESS, true, "Bid placed successfully!", request.getPayload());
-            default:
-                return new Response(MessageType.ERROR, false, "Unknown request type", null);
+        try {
+            // Khởi tạo DAO và Service ngay trong luồng Logic
+            Connection conn = DatabaseManager.getConnection();
+            UserDao userDao = new UserDao(conn);
+
+            switch (request.getType()) {
+                case LOGIN:
+                    // Giả sử payload là "username:password" cho demo nhanh
+                    String[] loginData = request.getPayload().toString().split(":");
+                    if (loginData.length < 2) return new Response(MessageType.ERROR, false, "Invalid payload format", null);
+                    
+                    LogIn loginService = new LogIn(userDao);
+                    User user = loginService.authenticate(loginData[0], loginData[1]);
+                    
+                    if (user != null) {
+                        return new Response(MessageType.SUCCESS, true, "Chào mừng " + user.getUsername(), user);
+                    } else {
+                        return new Response(MessageType.ERROR, false, "Sai tài khoản hoặc mật khẩu", null);
+                    }
+
+                case BID_PLACE:
+                    // Sẽ xử lý logic đấu giá ở đây
+                    return new Response(MessageType.SUCCESS, true, "Đã nhận lệnh đặt thầu!", null);
+
+                default:
+                    return new Response(MessageType.ERROR, false, "Yêu cầu không hợp lệ", null);
+            }
+        } catch (SQLException e) {
+            return new Response(MessageType.ERROR, false, "Database Error: " + e.getMessage(), null);
         }
     }
 
-    private void closeConnection() {
+    public void sendMessage(String message) {
         try {
-            if (in != null) in.close();
-            if (out != null) out.close();
-            if (socket != null) socket.close();
+            String framedMessage = message + "\n";
+            ByteBuffer buffer = ByteBuffer.wrap(framedMessage.getBytes(StandardCharsets.UTF_8));
+            synchronized (socketChannel) {
+                while (buffer.hasRemaining()) {
+                    socketChannel.write(buffer);
+                }
+            }
+        } catch (IOException e) {
+            System.err.println(">>> Error sending message: " + e.getMessage());
+        }
+    }
+
+    public SocketAddress getRemoteAddress() throws IOException {
+        return socketChannel.getRemoteAddress();
+    }
+
+    public void close() {
+        try {
+            socketChannel.close();
         } catch (IOException e) {
             e.printStackTrace();
         }

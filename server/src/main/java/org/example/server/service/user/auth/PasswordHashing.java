@@ -1,4 +1,4 @@
-package org.example.server.service;
+package org.example.server.service.user.auth;
 
 import org.mindrot.jbcrypt.BCrypt;
 
