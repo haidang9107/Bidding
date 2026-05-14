@@ -7,29 +7,20 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.List;
 
 public class Broadcaster {
-    private static final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
+    private static final List<NotificationHandler> clients = new CopyOnWriteArrayList<>();
 
-    public static void addClient(ClientHandler client) {
+    public static void addClient(NotificationHandler client) {
         clients.add(client);
     }
 
-    public static void removeClient(ClientHandler client) {
+    public static void removeClient(NotificationHandler client) {
         clients.remove(client);
     }
 
     public static void broadcast(Response response) {
         String jsonMessage = JsonConverter.toJson(response);
-        for (ClientHandler client : clients) {
+        for (NotificationHandler client : clients) {
             client.sendMessage(jsonMessage);
-        }
-    }
-
-    public static void broadcastExcept(Response response, ClientHandler exceptClient) {
-        String jsonMessage = JsonConverter.toJson(response);
-        for (ClientHandler client : clients) {
-            if (client != exceptClient) {
-                client.sendMessage(jsonMessage);
-            }
         }
     }
 }

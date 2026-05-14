@@ -1,23 +1,27 @@
 services:
-  postgres:
-    image: 'postgres:latest'
-    container_name: "PostgresDB"
-    ports:
-      - '7108:5432'
-    environment:
-      - 'POSTGRES_DB=PostgresDB'
-      - 'POSTGRES_USER=HaiDang91'
-      - 'POSTGRES_PASSWORD=9107'
-    volumes:
-      - ./src/main/resources/PostgreSQL/schema.sql:/docker-entrypoint-initdb.d/schema.sql
-
-#  mysql:
-#    image: 'mysql:latest'
-#    container_name: "MySQL-DB"
+#  postgres:
+#    image: 'postgres:latest'
+#    container_name: "PostgresDB"
 #    ports:
-#      - '3306:3306'
+#      - '7108:5432'
 #    environment:
-#      - 'MYSQL_DB=MySQL-DB'
-#      - 'MYSQL_USER=HaiDang91'
+#      - 'POSTGRES_DB=PostgresDB'
+#      - 'POSTGRES_USER=HaiDang91'
+#      - 'POSTGRES_PASSWORD=9107'
 #    volumes:
-#      - ./src/main/resources/MySQL/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+#      - ./src/main/resources/PostgreSQL/1schema.sql:/docker-entrypoint-initdb.d/1schema.sql
+#      - ./src/main/resources/PostgreSQL/2data.sql:/docker-entrypoint-initdb.d/2data.sql
+
+  mysql:
+    image: 'mysql:latest'
+    container_name: "MySQL-DB"
+    ports:
+      - '3306:3306'
+    environment:
+      - 'MYSQL_DATABASE=MySQL-DB'
+      - 'MYSQL_USER=HaiDang91'
+      - 'MYSQL_PASSWORD=9107'
+      - 'MYSQL_ROOT_PASSWORD=root'
+    volumes:
+      - ./src/main/resources/MySQL/1schema.sql:/docker-entrypoint-initdb.d/1schema.sql
+      - ./src/main/resources/MySQL/2data.sql:/docker-entrypoint-initdb.d/2data.sql

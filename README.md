@@ -3,7 +3,6 @@
 ![Java](https://img.shields.io/badge/Java-25-ED8B00?style=for-the-badge&logo=java&logoColor=white)
 ![JavaFX](https://img.shields.io/badge/JavaFX-21.0.6-FF0000?style=for-the-badge&logo=java&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
 
 ## 📖 Tổng quan dự án (Overview)
 
@@ -22,7 +21,7 @@ Mục tiêu của dự án là tạo ra một nền tảng minh bạch, an toàn
 *   **Maven 3.13.0:** Công cụ quản lý dự án, build và quản lý dependencies.
 *   **Socket (TCP/IP):** Giao thức kết nối thời gian thực giữa Client và Server (Sử dụng ServerSocket và Socket của Java Core).
 *   **GSON 2.11.0:** Thư viện chuyển đổi đối tượng Java sang chuỗi JSON và ngược lại.
-*   **Database:** MySQL / PostgreSQL / SQLite qua JDBC.
+*   **Database:** MySQL qua JDBC.
 
 ---
 
@@ -76,7 +75,7 @@ Mọi dữ liệu trao đổi giữa Client và Server đều được chuẩn h
 ### Yêu cầu hệ thống:
 *   **JDK 25** trở lên.
 *   **Maven 3.9+**.
-*   **PostgreSQL / MySQL** (hoặc dùng SQLite cấu hình sẵn).
+*   **MySQL** (hoặc dùng Docker Compose đi kèm).
 
 ### Các bước thực hiện:
 
@@ -85,13 +84,19 @@ Mọi dữ liệu trao đổi giữa Client và Server đều được chuẩn h
     mvn clean install
     ```
 
-2.  **Chạy Server:**
+2.  **Khởi tạo Database:**
+    Sử dụng Docker Compose để khởi động MySQL:
+    ```bash
+    docker-compose up -d
+    ```
+
+3.  **Chạy Server:**
     Chạy class main `ServerApp.java` trong module `server`. Hoặc dùng lệnh:
     ```bash
     mvn -pl server exec:java -Dexec.mainClass="org.example.server.ServerApp"
     ```
 
-3.  **Chạy Client:**
+4.  **Chạy Client:**
     Chạy class main `ClientApp.java` trong module `client`. Hoặc dùng lệnh:
     ```bash
     mvn -pl client javafx:run
