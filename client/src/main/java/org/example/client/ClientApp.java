@@ -4,7 +4,16 @@ import org.example.client.network.SocketClient;
 import org.example.payload.MessageType;
 import org.example.payload.Request;
 
+/**
+ * Entry point for the Bidding Client application.
+ * This class handles initial connection and test requests to the server.
+ */
 public class ClientApp {
+
+    /**
+     * Main method to start the client application.
+     * @param args Command line arguments (not used).
+     */
     public static void main(String[] args) {
         try {
             // 1. Get the singleton instance
@@ -13,13 +22,11 @@ public class ClientApp {
             // 2. Connect to server
             client.connect("localhost", 8888);
 
-            // 3. Send a test Login request (Sử dụng dữ liệu thật từ datademo.sql)
-            System.out.println(">>> Sending Login Request for: admin_minh");
+            // 3. Send a test Login request
             client.sendRequest(new Request(MessageType.LOGIN, "admin_minh:password123"));
 
-            // Thêm một test case sai mật khẩu để kiểm tra logic
+            // Add a test case with wrong password to verify logic
             Thread.sleep(2000);
-            System.out.println(">>> Sending Login Request with WRONG password...");
             client.sendRequest(new Request(MessageType.LOGIN, "admin_minh:wrong_pass"));
 
             // 4. Keep the main thread alive for a few seconds to see the response
@@ -27,10 +34,9 @@ public class ClientApp {
 
             // 5. Disconnect
             client.disconnect();
-            System.out.println(">>> Test Finished.");
 
         } catch (Exception e) {
-            System.err.println(">>> Client Error: " + e.getMessage());
+            // Error logged by SocketClient
         }
     }
 }

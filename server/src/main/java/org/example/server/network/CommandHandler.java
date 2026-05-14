@@ -7,6 +7,7 @@ import org.example.payload.Response;
 import org.example.server.repository.DatabaseManager;
 import org.example.server.repository.UserDao;
 import org.example.server.service.user.auth.LogIn;
+import org.example.util.FileLogger;
 import org.example.util.JsonConverter;
 
 import java.io.BufferedReader;
@@ -19,18 +20,30 @@ import java.sql.SQLException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * Handles command requests from a client socket.
+ */
 public class CommandHandler implements Runnable {
     private final Socket socket;
     private final BufferedReader in;
     private final PrintWriter out;
     private static final ExecutorService logicPool = Executors.newVirtualThreadPerTaskExecutor();
 
+    /**
+     * Constructor for CommandHandler.
+     *
+     * @param socket the client socket
+     * @throws IOException if an I/O error occurs when creating the streams
+     */
     public CommandHandler(Socket socket) throws IOException {
         this.socket = socket;
         this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         this.out = new PrintWriter(socket.getOutputStream(), true);
     }
 
+    /**
+     * Listens for messages from the client and handles them using a virtual thread pool.
+     */
     @Override
     public void run() {
         try {
@@ -42,23 +55,33 @@ public class CommandHandler implements Runnable {
                 }
             }
         } catch (IOException e) {
-            System.out.println(">>> Command Client disconnected: " + socket.getRemoteSocketAddress());
+            FileLogger.info("Command Client disconnected: " + socket.getRemoteSocketAddress());
         } finally {
             close();
         }
     }
 
+    /**
+     * Processes a single message from the client.
+     *
+     * @param message the JSON message string
+     */
     private void handleMessage(String message) {
         try {
             Request request = JsonConverter.fromJson(message, Request.class);
             Response response = handleRequest(request);
             sendMessage(JsonConverter.toJson(response));
         } catch (Exception e) {
-            System.err.println(">>> Error handling message: " + e.getMessage());
             sendMessage(JsonConverter.toJson(new Response(MessageType.ERROR, false, "Internal Server Error", null)));
         }
     }
 
+    /**
+     * Dispatches the request to the appropriate service.
+     *
+     * @param request the request object
+     * @return the response object
+     */
     private Response handleRequest(Request request) {
         try {
             Connection conn = DatabaseManager.getConnection();
@@ -89,15 +112,22 @@ public class CommandHandler implements Runnable {
         }
     }
 
+    /**
+     * Sends a JSON message to the client.
+     *
+     * @param json the JSON string to send
+     */
     private void sendMessage(String json) {
         out.println(json);
     }
 
+    /**
+     * Closes the client socket.
+     */
     private void close() {
         try {
             socket.close();
         } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 }

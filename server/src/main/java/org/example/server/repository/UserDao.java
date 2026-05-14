@@ -6,6 +6,9 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Data Access Object for managing user-related database operations.
+ */
 public class UserDao {
 
 	// =========================
@@ -13,16 +16,22 @@ public class UserDao {
 	// =========================
 	private Connection connection;
 
-	// =========================
-	// Constructor
-	// =========================
+	/**
+	 * Constructor for UserDao.
+	 *
+	 * @param connection the database connection to use
+	 */
 	public UserDao(Connection connection) {
 		this.connection = connection;
 	}
 
-	// =========================
-	// Lấy user theo username
-	// =========================
+	/**
+	 * Finds a user by their username.
+	 *
+	 * @param username the username to search for
+	 * @return the user if found, or null otherwise
+	 * @throws SQLException if a database access error occurs
+	 */
 	public User findByUsername(String username) throws SQLException {
 		String sql = "SELECT * FROM users WHERE username = ?";
 		try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
@@ -36,6 +45,13 @@ public class UserDao {
 		return null;
 	}
 
+	/**
+	 * Maps a result set row to a User object (Admin, Seller, or Bidder).
+	 *
+	 * @param rs the result set
+	 * @return the mapped User object
+	 * @throws SQLException if a database access error occurs
+	 */
 	private User mapResultSetToUser(ResultSet rs) throws SQLException {
 		String role = rs.getString("role");
 		if (role.equalsIgnoreCase("ADMIN")) {
@@ -77,9 +93,14 @@ public class UserDao {
 		}
 	}
 
-	// =========================
-	// Tạo user mới (cho Register)
-	// =========================
+	/**
+	 * Creates a new user in the database.
+	 *
+	 * @param user the user object to insert
+	 * @param role the role of the user (e.g., ADMIN, SELLER, BIDDER)
+	 * @return true if the user was created successfully, false otherwise
+	 * @throws SQLException if a database access error occurs
+	 */
 	public boolean createUser(User user, String role) throws SQLException {
 		String sql = "INSERT INTO users (user_id, username, password, email, phonenumber, gender, avt, balance, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 		try (PreparedStatement pstmt = connection.prepareStatement(sql)) {

@@ -1,20 +1,44 @@
 package org.example.payload;
 
+/**
+ * Message types for the bidding system.
+ */
 public enum MessageType {
-    // Auth
+    /** Authentication: Login request/response */
     LOGIN,
+    /** Authentication: Signup request/response */
+    SIGNUP,
+    /** Authentication: Logout request/response */
     LOGOUT,
     
-    // Auction Logic
-    BID_PLACE,      // Client sends a bid
-    BID_UPDATE,     // Server broadcasts new highest bid
-    PRODUCT_LIST,   // Server sends list of products
+    /** User Actions: Get user profile */
+    GET_PROFILE,
+    /** User Actions: Update user profile */
+    UPDATE_PROFILE,
     
-    // Status
-    TIMER_TICK,     // Server sends remaining time
-    AUCTION_END,    // Server announces winner
+    /** Auction/Product Management: Get list of products */
+    PRODUCT_LIST,
+    /** Auction/Product Management: Get product details */
+    PRODUCT_DETAIL,
+    /** Auction/Product Management: Add a new product */
+    PRODUCT_ADD,
     
-    // System
-    ERROR,
-    SUCCESS
+    /** Bidding Logic: Client sends a bid */
+    BID_PLACE,
+    /** Bidding Logic: Server broadcasts new highest bid to all clients */
+    BID_UPDATE,
+    
+    /** Real-time Notifications: Server sends remaining time for an auction */
+    TIMER_TICK,
+    /** Real-time Notifications: Server announces auction started */
+    AUCTION_START,
+    /** Real-time Notifications: Server announces auction finished (winner) */
+    AUCTION_END,
+    /** Real-time Notifications: Generic system notification */
+    NOTIFICATION,
+    
+    /** System Status: Success response */
+    SUCCESS,
+    /** System Status: Error response */
+    ERROR
 }

@@ -8,14 +8,28 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Data Access Object for managing auction-related database operations.
+ */
 public class AuctionDao {
 
 	private Connection connection;
 
+	/**
+	 * Constructor for AuctionDao.
+	 *
+	 * @param connection the database connection to use
+	 */
 	public AuctionDao(Connection connection) {
 		this.connection = connection;
 	}
 
+	/**
+	 * Retrieves all auctions from the database.
+	 *
+	 * @return a list of all bids (auctions)
+	 * @throws SQLException if a database access error occurs
+	 */
 	public List<Bid> getAllAuctions() throws SQLException {
 		List<Bid> bids = new ArrayList<>();
 		String sql = """
@@ -39,6 +53,13 @@ public class AuctionDao {
 		return bids;
 	}
 
+	/**
+	 * Maps a result set row to a Bid object.
+	 *
+	 * @param rs the result set
+	 * @return the mapped Bid object
+	 * @throws SQLException if a database access error occurs
+	 */
 	private Bid mapResultSetToBid(ResultSet rs) throws SQLException {
 		Seller seller = new Seller(
 				rs.getString("seller_id"),
@@ -94,6 +115,12 @@ public class AuctionDao {
 		);
 	}
 
+	/**
+	 * Inserts a new auction (bid) into the database.
+	 *
+	 * @param bid the bid to insert
+	 * @throws SQLException if a database access error occurs
+	 */
 	public void insertAuction(Bid bid) throws SQLException {
 		String sql = "INSERT INTO auctions(auction_id, product_id, bidder_id, bid_amount, bid_time) VALUES (?, ?, ?, ?, ?)";
 		try (PreparedStatement ps = connection.prepareStatement(sql)) {

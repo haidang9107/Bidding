@@ -7,14 +7,28 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Data Access Object for managing product-related database operations.
+ */
 public class ProductDao {
 
 	private Connection connection;
 
+	/**
+	 * Constructor for ProductDao.
+	 *
+	 * @param connection the database connection to use
+	 */
 	public ProductDao(Connection connection) {
 		this.connection = connection;
 	}
 
+	/**
+	 * Retrieves all products from the database.
+	 *
+	 * @return a list of all products
+	 * @throws SQLException if a database access error occurs
+	 */
 	public List<Item> getAllProducts() throws SQLException {
 		List<Item> products = new ArrayList<>();
 		String sql = """
@@ -33,6 +47,13 @@ public class ProductDao {
 		return products;
 	}
 
+	/**
+	 * Retrieves a product by its ID.
+	 *
+	 * @param productId the ID of the product to retrieve
+	 * @return the product if found, or null otherwise
+	 * @throws SQLException if a database access error occurs
+	 */
 	public Item getProductById(String productId) throws SQLException {
 		String sql = """
                 SELECT p.*,
@@ -53,6 +74,13 @@ public class ProductDao {
 		return null;
 	}
 
+	/**
+	 * Maps a result set row to an Item object.
+	 *
+	 * @param rs the result set
+	 * @return the mapped Item object
+	 * @throws SQLException if a database access error occurs
+	 */
 	private Item mapResultSetToItem(ResultSet rs) throws SQLException {
 		Seller seller = new Seller(
 				rs.getString("user_id"),
@@ -88,6 +116,12 @@ public class ProductDao {
 		return null;
 	}
 
+	/**
+	 * Inserts a new product into the database.
+	 *
+	 * @param item the product to insert
+	 * @throws SQLException if a database access error occurs
+	 */
 	public void insertProduct(Item item) throws SQLException {
 		String sql = """
                 INSERT INTO products(
