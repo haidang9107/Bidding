@@ -1,36 +1,40 @@
 package org.example.server.model;
 
 import java.sql.Timestamp;
-
+/**
+ * Lớp cơ sở (Base Class) cho tất cả các thực thể trong hệ thống.
+ * Chứa các thuộc tính dùng chung để đảm bảo tính nhất quán giữa Java và Database.
+ */
 public abstract class Entity {
-    protected String id;        // Khớp với user_id hoặc id trong database
-    protected String name;      // Tên hiển thị chung (username, product_name, ...)
-    protected Timestamp createdAt; // Khớp với cột created_at
+
+    // Tương ứng với trường created_at TIMESTAMP trong database
+    protected Timestamp createdAt;
 
     // Constructor mặc định
     public Entity() {
     }
 
-    // Constructor với ID và Name (Dùng cho User.java trước đó của bạn)
-    public Entity(String id, String name) {
-        this.id = id;
-        this.name = name;
-    }
-
-    // Constructor đầy đủ
-    public Entity(String id, String name, Timestamp createdAt) {
-        this.id = id;
-        this.name = name;
+    // Constructor có tham số để khởi tạo từ dữ liệu database
+    public Entity(Timestamp createdAt) {
         this.createdAt = createdAt;
     }
 
     // Getter và Setter
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public Timestamp getCreatedAt() {
+        return createdAt;
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public void setCreatedAt(Timestamp createdAt) {
+        this.createdAt = createdAt;
+    }
 
-    public Timestamp getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+    /**
+     * Ghi đè phương thức toString để hỗ trợ việc debug/in dữ liệu dễ dàng hơn
+     */
+    @Override
+    public String toString() {
+        return "Entity{" +
+                "createdAt=" + createdAt +
+                '}';
+    }
 }

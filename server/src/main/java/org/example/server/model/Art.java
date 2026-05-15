@@ -1,130 +1,48 @@
 package org.example.server.model;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 
+/**
+ * Thực thể đại diện cho sản phẩm Nghệ thuật.
+ * Kế thừa từ Item, và gián tiếp kế thừa từ Entity.
+ */
 public class Art extends Item {
 
-    // =========================
-    // Thuộc tính riêng
-    // =========================
-    private String artist;
-
-    private String artType;
-
-    // =========================
-    // Constructor rỗng
-    // =========================
     public Art() {
         super();
+        this.setCategory("ART"); // Gán mặc định category là ART
     }
 
-    // =========================
-    // Constructor cơ bản
-    // =========================
-    public Art(String productId,
-               String productName,
-               String description,
-               double startingPrice,
-               double stepPrice,
-               Seller seller,
-               String status,
-               Timestamp createdAt) {
+    /**
+     * Constructor đầy đủ để lấy dữ liệu từ database
+     */
+    public Art(String productId, String productName, String description, BigDecimal startingPrice,
+               BigDecimal stepPrice, String sellerId, String status, String brand,
+               int warrantyMonths, String artist, String artType, String model,
+               int manufactureYear, Timestamp createdAt) {
 
-        super(
-                productId,
-                productName,
-                description,
-                startingPrice,
-                stepPrice,
-                seller,
-                status,
-                createdAt
-        );
+        // Gọi constructor của lớp cha (Item)
+        super(productId, productName, description, startingPrice, stepPrice, sellerId,
+                "ART", status, brand, warrantyMonths, artist, artType, model,
+                manufactureYear, createdAt);
     }
 
-    // =========================
-    // Constructor đầy đủ
-    // =========================
-    public Art(String productId,
-               String productName,
-               String description,
-               double startingPrice,
-               double stepPrice,
-               Seller seller,
-               String status,
-               Timestamp createdAt,
-               String artist,
-               String artType) {
-
-        super(
-                productId,
-                productName,
-                description,
-                startingPrice,
-                stepPrice,
-                seller,
-                status,
-                createdAt
-        );
-
-        this.artist = artist;
-        this.artType = artType;
+    // Các phương thức bổ sung riêng cho Art nếu cần (ví dụ: kiểm tra chứng nhận thật giả)
+    public void displayArtInfo() {
+        System.out.println("Tác phẩm: " + getProductName());
+        System.out.println("Họa sĩ: " + getArtist());
+        System.out.println("Thể loại: " + getArtType());
     }
 
-    // =========================
-    // Getter & Setter
-    // =========================
-
-    public String getArtist() {
-        return artist;
-    }
-
-    public void setArtist(String artist) {
-        this.artist = artist;
-    }
-
-    // -------------------------
-
-    public String getArtType() {
-        return artType;
-    }
-
-    public void setArtType(String artType) {
-        this.artType = artType;
-    }
-
-    // =========================
-    // Business Methods
-    // =========================
-
-    public void displayArtist() {
-
-        System.out.println(
-                "Artist: " + artist
-        );
-    }
-
-    public void displayArtType() {
-
-        System.out.println(
-                "Art Type: " + artType
-        );
-    }
-
-    // =========================
-    // toString()
-    // =========================
     @Override
     public String toString() {
-
         return "Art{" +
-                "productId='" + getProductId() + '\'' +
-                ", productName='" + getProductName() + '\'' +
-                ", artist='" + artist + '\'' +
-                ", artType='" + artType + '\'' +
-                ", startingPrice=" + getStartingPrice() +
-                ", stepPrice=" + getStepPrice() +
-                ", status='" + getStatus() + '\'' +
+                "id='" + getProductId() + '\'' +
+                ", name='" + getProductName() + '\'' +
+                ", artist='" + getArtist() + '\'' +
+                ", type='" + getArtType() + '\'' +
+                ", price=" + getStartingPrice() +
                 '}';
     }
 }

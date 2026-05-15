@@ -1,146 +1,71 @@
 package org.example.server.model;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
+/**
+ * Thực thể đại diện cho Người bán (Seller).
+ * Kế thừa từ User, do đó kế thừa luôn cả Entity.
+ */
 public class Seller extends User {
 
-    // =========================
-    // Constructor rỗng
-    // =========================
+    // Thuộc tính riêng cho Seller (ví dụ: điểm uy tín từ 1-5 sao)
+    private double rating;
+
+    // Danh sách các mặt hàng mà người này đang bán
+    private List<Item> itemsOffered;
+
     public Seller() {
         super();
+        this.setRole("SELLER");
+        this.itemsOffered = new ArrayList<>();
     }
 
-    // =========================
-    // Constructor đầy đủ
-    // =========================
-    public Seller(String userId,
-                  String username,
-                  String password,
-                  String email,
-                  String phoneNumber,
-                  String gender,
-                  String avt,
-                  double balance,
-                  Timestamp createdAt) {
+    /**
+     * Constructor đầy đủ để lấy dữ liệu từ database
+     */
+    public Seller(String userId, String username, String password, String email,
+                  String phoneNumber, String gender, String avt,
+                  BigDecimal balance, Timestamp createdAt, double rating) {
 
-        super(
-                userId,
-                username,
-                password,
-                email,
-                phoneNumber,
-                gender,
-                avt,
-                balance,
-                createdAt
-        );
+        // Gọi constructor của User và ép role về SELLER
+        super(userId, username, password, email, phoneNumber, gender, avt, balance, "SELLER", createdAt);
+        this.rating = rating;
+        this.itemsOffered = new ArrayList<>();
     }
 
-    // =========================
-    // Tạo sản phẩm đấu giá
-    // =========================
-    public void createProduct(String productName) {
+    // --- Getter và Setter ---
 
-        System.out.println(
-                getUsername() +
-                        " created product: " +
-                        productName
-        );
+    public double getRating() {
+        return rating;
     }
 
-    // =========================
-    // Xóa sản phẩm
-    // =========================
-    public void removeProduct(String productName) {
-
-        System.out.println(
-                getUsername() +
-                        " removed product: " +
-                        productName
-        );
+    public void setRating(double rating) {
+        this.rating = rating;
     }
 
-    // =========================
-    // Cập nhật sản phẩm
-    // =========================
-    public void updateProduct(String productName) {
-
-        System.out.println(
-                getUsername() +
-                        " updated product: " +
-                        productName
-        );
+    public List<Item> getItemsOffered() {
+        return itemsOffered;
     }
 
-    // =========================
-    // Xem danh sách sản phẩm
-    // =========================
-    public void viewProducts() {
-
-        System.out.println(
-                getUsername() +
-                        " is viewing all owned products"
-        );
+    public void setItemsOffered(List<Item> itemsOffered) {
+        this.itemsOffered = itemsOffered;
     }
 
-    // =========================
-    // Kiểm tra số dư
-    // =========================
-    public void checkBalance() {
-
-        System.out.println(
-                "Current balance: $" +
-                        getBalance()
-        );
+    // Phương thức hỗ trợ thêm nhanh sản phẩm vào danh sách của Seller
+    public void addItem(Item item) {
+        this.itemsOffered.add(item);
     }
 
-    // =========================
-    // Rút tiền
-    // =========================
-    public void withdraw(double amount) {
-
-        if (amount <= 0) {
-
-            System.out.println(
-                    "Withdraw amount must be greater than 0"
-            );
-
-            return;
-        }
-
-        if (amount > getBalance()) {
-
-            System.out.println(
-                    "Insufficient balance"
-            );
-
-            return;
-        }
-
-        setBalance(
-                getBalance() - amount
-        );
-
-        System.out.println(
-                getUsername() +
-                        " withdrew $" +
-                        amount
-        );
-    }
-
-    // =========================
-    // Hiển thị thông tin seller
-    // =========================
     @Override
     public String toString() {
-
         return "Seller{" +
                 "userId='" + getUserId() + '\'' +
                 ", username='" + getUsername() + '\'' +
-                ", email='" + getEmail() + '\'' +
-                ", balance=" + getBalance() +
-                ", createdAt=" + getCreatedAt() +
+                ", rating=" + rating +
+                ", itemsCount=" + itemsOffered.size() +
                 '}';
     }
 }

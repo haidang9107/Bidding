@@ -1,344 +1,118 @@
 package org.example.server.repository;
 
-import org.example.server.model.Art;
-import org.example.server.model.Electronics;
 import org.example.server.model.Item;
-import org.example.server.model.Seller;
-import org.example.server.model.Vehicle;
-
+import org.example.server.config.DatabaseConfig;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ProductDao {
 
-    // =========================
-    // Connection
-    // =========================
-    private Connection connection;
+    /**
+     * Thêm một sản phẩm mới vào hệ thống (Đăng bán)
+     */
+    public void insertProduct(Item item) throws SQLException {
+        String sql = "INSERT INTO products (product_id, product_name, description, starting_price, " +
+                "step_price, seller_id, category, status, brand, warranty_months, " +
+                "artist, art_type, model, manufacture_year) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-    // =========================
-    // Constructor
-    // =========================
-    public ProductDao(Connection connection) {
-        this.connection = connection;
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, item.getProductId());
+            pstmt.setString(2, item.getProductName());
+            pstmt.setString(3, item.getDescription());
+            pstmt.setBigDecimal(4, item.getStartingPrice());
+            pstmt.setBigDecimal(5, item.getStepPrice());
+            pstmt.setString(6, item.getSellerId());
+            pstmt.setString(7, item.getCategory());
+            pstmt.setString(8, item.getStatus());
+            pstmt.setString(9, item.getBrand());
+            pstmt.setInt(10, item.getWarrantyMonths());
+            pstmt.setString(11, item.getArtist());
+            pstmt.setString(12, item.getArtType());
+            pstmt.setString(13, item.getModel());
+            pstmt.setInt(14, item.getManufactureYear());
+
+            pstmt.executeUpdate();
+        }
     }
 
-    // =========================
-    // Lấy toàn bộ products
-    // =========================
-    public List<Item> getAllProducts() throws SQLException {
+    /**
+     * Lấy danh sách sản phẩm theo Category (VD: Chỉ lấy ART hoặc ELECTRONICS)
+     */
+    public List<Item> getProductsByCategory(String category) throws SQLException {
+        List<Item> items = new ArrayList<>();
+        String sql = "SELECT * FROM products WHERE category = ?";
 
-        List<Item> products = new ArrayList<>();
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-        String sql = """
-                SELECT p.*,
-                       u.user_id,
-                       u.username,
-                       u.password,
-                       u.email,
-                       u.phonenumber,
-                       u.gender,
-                       u.avt,
-                       u.balance,
-                       u.created_at AS user_created_at
-                       
-                FROM products p
-                JOIN users u
-                ON p.seller_id = u.user_id
-                """;
-
-        try (
-                Statement stmt = connection.createStatement();
-
-                ResultSet rs = stmt.executeQuery(sql)
-        ) {
-
-            while (rs.next()) {
-
-                // =========================
-                // Tạo Seller object
-                // =========================
-                Seller seller = new Seller(
-                        rs.getString("user_id"),
-                        rs.getString("username"),
-                        rs.getString("password"),
-                        rs.getString("email"),
-                        rs.getString("phonenumber"),
-                        rs.getString("gender"),
-                        rs.getString("avt"),
-                        rs.getDouble("balance"),
-                        rs.getTimestamp("user_created_at")
-                );
-
-                // =========================
-                // Đọc category
-                // =========================
-                String category =
-                        rs.getString("category");
-
-                Item item;
-
-                // =========================
-                // Mapping category -> object
-                // =========================
-                if (category.equalsIgnoreCase(
-                        "Electronics")) {
-
-                    item = new Electronics(
-                            rs.getString("product_id"),
-                            rs.getString("product_name"),
-                            rs.getString("description"),
-                            rs.getDouble("starting_price"),
-                            rs.getDouble("step_price"),
-                            seller,
-                            rs.getString("status"),
-                            rs.getTimestamp("created_at")
-                    );
-
-                } else if (category.equalsIgnoreCase(
-                        "Art")) {
-
-                    item = new Art(
-                            rs.getString("product_id"),
-                            rs.getString("product_name"),
-                            rs.getString("description"),
-                            rs.getDouble("starting_price"),
-                            rs.getDouble("step_price"),
-                            seller,
-                            rs.getString("status"),
-                            rs.getTimestamp("created_at")
-                    );
-
-                } else {
-
-                    item = new Vehicle(
-                            rs.getString("product_id"),
-                            rs.getString("product_name"),
-                            rs.getString("description"),
-                            rs.getDouble("starting_price"),
-                            rs.getDouble("step_price"),
-                            seller,
-                            rs.getString("status"),
-                            rs.getTimestamp("created_at")
-                    );
+            pstmt.setString(1, category);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    items.add(mapResultSetToItem(rs));
                 }
-
-                products.add(item);
             }
         }
-
-        return products;
+        return items;
     }
 
-    // =========================
-    // Tìm product theo ID
-    // =========================
-    public Item getProductById(String productId)
-            throws SQLException {
+    /**
+     * Lấy thông tin chi tiết một sản phẩm theo ID
+     */
+    public Item getProductById(String id) throws SQLException {
+        String sql = "SELECT * FROM products WHERE product_id = ?";
 
-        String sql = """
-                SELECT p.*,
-                       u.user_id,
-                       u.username,
-                       u.password,
-                       u.email,
-                       u.phonenumber,
-                       u.gender,
-                       u.avt,
-                       u.balance,
-                       u.created_at AS user_created_at
-                       
-                FROM products p
-                JOIN users u
-                ON p.seller_id = u.user_id
-                
-                WHERE p.product_id = ?
-                """;
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-        try (
-                PreparedStatement ps =
-                        connection.prepareStatement(sql)
-        ) {
-
-            ps.setString(1, productId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-
+            pstmt.setString(1, id);
+            try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-
-                    Seller seller = new Seller(
-                            rs.getString("user_id"),
-                            rs.getString("username"),
-                            rs.getString("password"),
-                            rs.getString("email"),
-                            rs.getString("phonenumber"),
-                            rs.getString("gender"),
-                            rs.getString("avt"),
-                            rs.getDouble("balance"),
-                            rs.getTimestamp("user_created_at")
-                    );
-
-                    String category =
-                            rs.getString("category");
-
-                    if (category.equalsIgnoreCase(
-                            "Electronics")) {
-
-                        return new Electronics(
-                                rs.getString("product_id"),
-                                rs.getString("product_name"),
-                                rs.getString("description"),
-                                rs.getDouble("starting_price"),
-                                rs.getDouble("step_price"),
-                                seller,
-                                rs.getString("status"),
-                                rs.getTimestamp("created_at")
-                        );
-
-                    } else if (category.equalsIgnoreCase(
-                            "Art")) {
-
-                        return new Art(
-                                rs.getString("product_id"),
-                                rs.getString("product_name"),
-                                rs.getString("description"),
-                                rs.getDouble("starting_price"),
-                                rs.getDouble("step_price"),
-                                seller,
-                                rs.getString("status"),
-                                rs.getTimestamp("created_at")
-                        );
-
-                    } else {
-
-                        return new Vehicle(
-                                rs.getString("product_id"),
-                                rs.getString("product_name"),
-                                rs.getString("description"),
-                                rs.getDouble("starting_price"),
-                                rs.getDouble("step_price"),
-                                seller,
-                                rs.getString("status"),
-                                rs.getTimestamp("created_at")
-                        );
-                    }
+                    return mapResultSetToItem(rs);
                 }
             }
         }
-
         return null;
     }
 
-    // =========================
-    // Insert product
-    // =========================
-    public void insertProduct(Item item)
-            throws SQLException {
+    /**
+     * Cập nhật trạng thái sản phẩm (VD: Từ 'ACTIVE' sang 'SOLD')
+     */
+    public void updateProductStatus(String productId, String newStatus) throws SQLException {
+        String sql = "UPDATE products SET status = ? WHERE product_id = ?";
 
-        String sql = """
-                INSERT INTO products(
-                    product_id,
-                    product_name,
-                    description,
-                    starting_price,
-                    step_price,
-                    seller_id,
-                    category,
-                    status,
-                    created_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """;
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-        try (
-                PreparedStatement ps =
-                        connection.prepareStatement(sql)
-        ) {
-
-            ps.setString(1, item.getProductId());
-
-            ps.setString(2, item.getProductName());
-
-            ps.setString(3, item.getDescription());
-
-            ps.setDouble(4, item.getStartingPrice());
-
-            ps.setDouble(5, item.getStepPrice());
-
-            ps.setString(
-                    6,
-                    item.getSeller().getUserId()
-            );
-
-            // =========================
-            // Xác định category
-            // =========================
-            if (item instanceof Electronics) {
-
-                ps.setString(7, "Electronics");
-
-            } else if (item instanceof Art) {
-
-                ps.setString(7, "Art");
-
-            } else {
-
-                ps.setString(7, "Vehicle");
-            }
-
-            ps.setString(8, item.getStatus());
-
-            ps.setTimestamp(9, item.getCreatedAt());
-
-            ps.executeUpdate();
+            pstmt.setString(1, newStatus);
+            pstmt.setString(2, productId);
+            pstmt.executeUpdate();
         }
     }
 
-    // =========================
-    // Xóa product
-    // =========================
-    public void deleteProduct(String productId)
-            throws SQLException {
-
-        String sql =
-                "DELETE FROM products WHERE product_id = ?";
-
-        try (
-                PreparedStatement ps =
-                        connection.prepareStatement(sql)
-        ) {
-
-            ps.setString(1, productId);
-
-            ps.executeUpdate();
-        }
-    }
-
-    // =========================
-    // Update status
-    // =========================
-    public void updateStatus(
-            String productId,
-            String status
-    ) throws SQLException {
-
-        String sql = """
-                UPDATE products
-                SET status = ?
-                WHERE product_id = ?
-                """;
-
-        try (
-                PreparedStatement ps =
-                        connection.prepareStatement(sql)
-        ) {
-
-            ps.setString(1, status);
-
-            ps.setString(2, productId);
-
-            ps.executeUpdate();
-        }
+    /**
+     * Hàm phụ trợ ánh xạ dữ liệu từ ResultSet sang Object Item
+     */
+    private Item mapResultSetToItem(ResultSet rs) throws SQLException {
+        Item item = new Item();
+        item.setProductId(rs.getString("product_id"));
+        item.setProductName(rs.getString("product_name"));
+        item.setDescription(rs.getString("description"));
+        item.setStartingPrice(rs.getBigDecimal("starting_price"));
+        item.setStepPrice(rs.getBigDecimal("step_price"));
+        item.setSellerId(rs.getString("seller_id"));
+        item.setCategory(rs.getString("category"));
+        item.setStatus(rs.getString("status"));
+        item.setBrand(rs.getString("brand"));
+        item.setWarrantyMonths(rs.getInt("warranty_months"));
+        item.setArtist(rs.getString("artist"));
+        item.setArtType(rs.getString("art_type"));
+        item.setModel(rs.getString("model"));
+        item.setManufactureYear(rs.getInt("manufacture_year"));
+        item.setCreatedAt(rs.getTimestamp("created_at"));
+        return item;
     }
 }

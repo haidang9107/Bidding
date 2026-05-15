@@ -1,177 +1,106 @@
 package org.example.server.model;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 
-public class Item {
-
-    // =========================
-    // Fields (mapping với bảng products)
-    // =========================
+/**
+ * Thực thể đại diện cho Sản phẩm (Item/Product) trong hệ thống đấu giá.
+ * Kế thừa từ Entity để lấy thuộc tính createdAt.
+ */
+public class Item extends Entity {
     private String productId;
-
     private String productName;
-
     private String description;
-
-    private double startingPrice;
-
-    private double stepPrice;
-
-    // seller_id -> object Seller
-    private Seller seller;
-
-    // ACTIVE / SOLD / CLOSED
+    private BigDecimal startingPrice;
+    private BigDecimal stepPrice;
+    private String sellerId; // Liên kết tới User (Seller)
+    private String category;
     private String status;
+    private String brand;
+    private int warrantyMonths;
+    private String artist;
+    private String artType;
+    private String model;
+    private int manufactureYear;
 
-    private Timestamp createdAt;
-
-    // =========================
-    // Constructor rỗng
-    // =========================
     public Item() {
+        super();
     }
 
-    // =========================
-    // Constructor đầy đủ
-    // =========================
-    public Item(String productId,
-                String productName,
-                String description,
-                double startingPrice,
-                double stepPrice,
-                Seller seller,
-                String status,
-                Timestamp createdAt) {
-
+    // Constructor đầy đủ để lấy dữ liệu từ database
+    public Item(String productId, String productName, String description, BigDecimal startingPrice,
+                BigDecimal stepPrice, String sellerId, String category, String status,
+                String brand, int warrantyMonths, String artist, String artType,
+                String model, int manufactureYear, Timestamp createdAt) {
+        super(createdAt);
         this.productId = productId;
         this.productName = productName;
         this.description = description;
         this.startingPrice = startingPrice;
         this.stepPrice = stepPrice;
-        this.seller = seller;
+        this.sellerId = sellerId;
+        this.category = category;
         this.status = status;
-        this.createdAt = createdAt;
+        this.brand = brand;
+        this.warrantyMonths = warrantyMonths;
+        this.artist = artist;
+        this.artType = artType;
+        this.model = model;
+        this.manufactureYear = manufactureYear;
     }
 
-    // =========================
-    // Getter & Setter
-    // =========================
+    // --- Getter và Setter ---
 
-    public String getProductId() {
-        return productId;
-    }
+    public String getProductId() { return productId; }
+    public void setProductId(String productId) { this.productId = productId; }
 
-    public void setProductId(String productId) {
-        this.productId = productId;
-    }
+    public String getProductName() { return productName; }
+    public void setProductName(String productName) { this.productName = productName; }
 
-    // -------------------------
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
-    public String getProductName() {
-        return productName;
-    }
+    public BigDecimal getStartingPrice() { return startingPrice; }
+    public void setStartingPrice(BigDecimal startingPrice) { this.startingPrice = startingPrice; }
 
-    public void setProductName(String productName) {
-        this.productName = productName;
-    }
+    public BigDecimal getStepPrice() { return stepPrice; }
+    public void setStepPrice(BigDecimal stepPrice) { this.stepPrice = stepPrice; }
 
-    // -------------------------
+    public String getSellerId() { return sellerId; }
+    public void setSellerId(String sellerId) { this.sellerId = sellerId; }
 
-    public String getDescription() {
-        return description;
-    }
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
-    // -------------------------
+    public String getBrand() { return brand; }
+    public void setBrand(String brand) { this.brand = brand; }
 
-    public double getStartingPrice() {
-        return startingPrice;
-    }
+    public int getWarrantyMonths() { return warrantyMonths; }
+    public void setWarrantyMonths(int warrantyMonths) { this.warrantyMonths = warrantyMonths; }
 
-    public void setStartingPrice(double startingPrice) {
-        this.startingPrice = startingPrice;
-    }
+    public String getArtist() { return artist; }
+    public void setArtist(String artist) { this.artist = artist; }
 
-    // -------------------------
+    public String getArtType() { return artType; }
+    public void setArtType(String artType) { this.artType = artType; }
 
-    public double getStepPrice() {
-        return stepPrice;
-    }
+    public String getModel() { return model; }
+    public void setModel(String model) { this.model = model; }
 
-    public void setStepPrice(double stepPrice) {
-        this.stepPrice = stepPrice;
-    }
+    public int getManufactureYear() { return manufactureYear; }
+    public void setManufactureYear(int manufactureYear) { this.manufactureYear = manufactureYear; }
 
-    // -------------------------
-
-    public Seller getSeller() {
-        return seller;
-    }
-
-    public void setSeller(Seller seller) {
-        this.seller = seller;
-    }
-
-    // -------------------------
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    // -------------------------
-
-    public Timestamp getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Timestamp createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    // =========================
-    // Business Methods
-    // =========================
-
-    // Kiểm tra sản phẩm còn hoạt động không
-    public boolean isActive() {
-
-        return status.equalsIgnoreCase("ACTIVE");
-    }
-
-    // Đóng đấu giá
-    public void closeAuction() {
-
-        this.status = "CLOSED";
-    }
-
-    // Đánh dấu đã bán
-    public void soldItem() {
-
-        this.status = "SOLD";
-    }
-
-    // =========================
-    // toString()
-    // =========================
     @Override
     public String toString() {
-
         return "Item{" +
                 "productId='" + productId + '\'' +
                 ", productName='" + productName + '\'' +
-                ", description='" + description + '\'' +
                 ", startingPrice=" + startingPrice +
-                ", stepPrice=" + stepPrice +
-                ", seller=" +
-                (seller != null ? seller.getUsername() : "null") +
                 ", status='" + status + '\'' +
+                ", sellerId='" + sellerId + '\'' +
                 ", createdAt=" + createdAt +
                 '}';
     }

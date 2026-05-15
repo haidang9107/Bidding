@@ -1,51 +1,36 @@
 package org.example.server.model;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 
-public class Auction {
-
-    // =========================
-    // Fields (mapping với bảng auctions)
-    // =========================
+/**
+ * Thực thể đại diện cho một lượt trả giá (Auction/Bid) trong hệ thống.
+ * Kế thừa từ Entity để quản lý thời gian đặt giá (bid_time).
+ */
+public class Auction extends Entity {
     private String auctionId;
+    private String productId;
+    private String bidderId;
+    private BigDecimal bidAmount;
 
-    // Product được đấu giá
-    private Item item;
-
-    // Người đấu giá
-    private Bidder bidder;
-
-    // Giá bid
-    private double bidAmount;
-
-    // Thời gian bid
-    private Timestamp bidTime;
-
-    // =========================
-    // Constructor rỗng
-    // =========================
     public Auction() {
+        super();
     }
 
-    // =========================
-    // Constructor đầy đủ
-    // =========================
-    public Auction(String auctionId,
-                   Item item,
-                   Bidder bidder,
-                   double bidAmount,
-                   Timestamp bidTime) {
-
+    /**
+     * Constructor đầy đủ để ánh xạ dữ liệu từ bảng auctions trong MySQL
+     * @param bidTime tương ứng với trường bid_time trong database
+     */
+    public Auction(String auctionId, String productId, String bidderId,
+                   BigDecimal bidAmount, Timestamp bidTime) {
+        super(bidTime); // bid_time đóng vai trò là thời gian khởi tạo thực thể
         this.auctionId = auctionId;
-        this.item = item;
-        this.bidder = bidder;
+        this.productId = productId;
+        this.bidderId = bidderId;
         this.bidAmount = bidAmount;
-        this.bidTime = bidTime;
     }
 
-    // =========================
-    // Getter & Setter
-    // =========================
+    // --- Getter và Setter ---
 
     public String getAuctionId() {
         return auctionId;
@@ -55,87 +40,49 @@ public class Auction {
         this.auctionId = auctionId;
     }
 
-    // -------------------------
-
-    public Item getItem() {
-        return item;
+    public String getProductId() {
+        return productId;
     }
 
-    public void setItem(Item item) {
-        this.item = item;
+    public void setProductId(String productId) {
+        this.productId = productId;
     }
 
-    // -------------------------
-
-    public Bidder getBidder() {
-        return bidder;
+    public String getBidderId() {
+        return bidderId;
     }
 
-    public void setBidder(Bidder bidder) {
-        this.bidder = bidder;
+    public void setBidderId(String bidderId) {
+        this.bidderId = bidderId;
     }
 
-    // -------------------------
-
-    public double getBidAmount() {
+    public BigDecimal getBidAmount() {
         return bidAmount;
     }
 
-    public void setBidAmount(double bidAmount) {
+    public void setBidAmount(BigDecimal bidAmount) {
         this.bidAmount = bidAmount;
     }
 
-    // -------------------------
-
+    /**
+     * Alias cho getCreatedAt() để code đọc thuận miệng hơn trong logic đấu giá
+     */
     public Timestamp getBidTime() {
-        return bidTime;
+        return getCreatedAt();
     }
 
     public void setBidTime(Timestamp bidTime) {
-        this.bidTime = bidTime;
+        setCreatedAt(bidTime);
     }
 
-    // =========================
-    // Business Methods
-    // =========================
-
-    // Kiểm tra bid hợp lệ
-    public boolean isValidBid() {
-
-        return bidAmount >
-                item.getStartingPrice();
-    }
-
-    // Hiển thị thông tin bid
-    public void displayBidInfo() {
-
-        System.out.println(
-                bidder.getUsername() +
-                        " bid $" +
-                        bidAmount +
-                        " on " +
-                        item.getProductName()
-        );
-    }
-
-    // =========================
-    // toString()
-    // =========================
     @Override
     public String toString() {
-
         return "Auction{" +
                 "auctionId='" + auctionId + '\'' +
-                ", item=" +
-                (item != null
-                        ? item.getProductName()
-                        : "null") +
-                ", bidder=" +
-                (bidder != null
-                        ? bidder.getUsername()
-                        : "null") +
+                ", productId='" + productId + '\'' +
+                ", bidderId='" + bidderId + '\'' +
                 ", bidAmount=" + bidAmount +
-                ", bidTime=" + bidTime +
+                ", bidTime=" + getCreatedAt() +
                 '}';
     }
 }
