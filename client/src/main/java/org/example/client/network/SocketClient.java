@@ -2,34 +2,35 @@ package org.example.client.network;
 
 import org.example.payload.Request;
 import org.example.payload.Response;
+import org.example.util.Config;
 import org.example.util.FileLogger;
 import org.example.util.JsonConverter;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.Socket;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Singleton class managing the socket connection between the client and the server.
- * It handles both command-based requests and real-time notifications.
+ * Singleton class managing NIO socket connections to the server.
  */
 public class SocketClient {
     private static volatile SocketClient instance;
-    private Socket commandSocket;
-    private Socket notifySocket;
-    private PrintWriter commandOut;
-    private BufferedReader commandIn;
-    private BufferedReader notifyIn;
+    private Selector selector;
+    private SocketChannel cmdChannel;
+    private SocketChannel notifyChannel;
     private volatile boolean connected = false;
+
+    private final Map<SocketChannel, StringBuilder> channelBuffers = new ConcurrentHashMap<>();
 
     private SocketClient() {}
 
-    /**
-     * Returns the singleton instance of SocketClient.
-     * @return The SocketClient instance.
-     */
     public static SocketClient getInstance() {
         if (instance == null) {
             synchronized (SocketClient.class) {
@@ -42,117 +43,139 @@ public class SocketClient {
     }
 
     /**
-     * Establishes a connection to the server's command and notification ports.
-     * @param host The server hostname or IP address.
-     * @param port The base port (command port). The notification port is assumed to be port + 1.
-     * @throws IOException If a connection error occurs.
+     * Connects to the server using NIO.
      */
-    public void connect(String host, int port) throws IOException {
+    public void connect() throws IOException {
         if (connected) return;
 
-        try {
-            // Connect to Command Server
-            commandSocket = new Socket(host, port);
-            commandOut = new PrintWriter(commandSocket.getOutputStream(), true);
-            commandIn = new BufferedReader(new InputStreamReader(commandSocket.getInputStream()));
+        String host = Config.get("SERVER_HOST");
+        int port = Config.getInt("SERVER_PORT");
+        int notifyPort = Config.getInt("NOTIFY_PORT");
 
-            // Connect to Notification Server (port + 1)
-            notifySocket = new Socket(host, port + 1);
-            notifyIn = new BufferedReader(new InputStreamReader(notifySocket.getInputStream()));
+        try {
+            selector = Selector.open();
+
+            // Connect Command Channel
+            cmdChannel = SocketChannel.open();
+            cmdChannel.configureBlocking(false);
+            cmdChannel.connect(new InetSocketAddress(host, port));
+
+            // Connect Notification Channel
+            notifyChannel = SocketChannel.open();
+            notifyChannel.configureBlocking(false);
+            notifyChannel.connect(new InetSocketAddress(host, notifyPort));
+
+            // Wait for connections to finish
+            while (!cmdChannel.finishConnect() || !notifyChannel.finishConnect()) {
+                // In a real app, you might want a timeout here
+            }
+
+            cmdChannel.register(selector, SelectionKey.OP_READ, "Command");
+            notifyChannel.register(selector, SelectionKey.OP_READ, "Notification");
+
+            channelBuffers.put(cmdChannel, new StringBuilder());
+            channelBuffers.put(notifyChannel, new StringBuilder());
 
             connected = true;
-            FileLogger.info("Connected to server at " + host + " (Ports: " + port + ", " + (port + 1) + ")");
-            
-            // Thread for Command Responses
-            new Thread(this::listenCommands, "CommandListener").start();
-            
-            // Thread for Notifications
-            new Thread(this::listenNotifications, "NotificationListener").start();
+            FileLogger.info("Connected to NIO Server at " + host + " (Ports: " + port + ", " + notifyPort + ")");
+
+            // Start background listener thread
+            new Thread(this::listenLoop, "NIOClientListener").start();
+
         } catch (IOException e) {
-            FileLogger.error("Failed to connect to server: " + host, e);
+            FileLogger.error("Failed to connect to NIO Server", e);
+            disconnect();
             throw e;
         }
     }
 
-    /**
-     * Listens for incoming responses from the command server in a background thread.
-     */
-    private void listenCommands() {
+    private void listenLoop() {
         try {
-            String line;
-            while (connected && (line = commandIn.readLine()) != null) {
-                Response response = JsonConverter.fromJson(line, Response.class);
-                FileLogger.info("[Command] Received: " + response.getMessage());
-                handleResponse(response, "Command");
+            while (connected) {
+                if (selector.select(1000) == 0) continue;
+
+                Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
+                while (keys.hasNext()) {
+                    SelectionKey key = keys.next();
+                    keys.remove();
+
+                    if (key.isReadable()) {
+                        handleRead(key);
+                    }
+                }
             }
         } catch (IOException e) {
             if (connected) {
-                FileLogger.error("Command connection lost", e);
+                FileLogger.error("NIO Client Selector Error", e);
                 disconnect();
             }
         }
     }
 
-    /**
-     * Listens for incoming real-time notifications from the server in a background thread.
-     */
-    private void listenNotifications() {
+    private void handleRead(SelectionKey key) {
+        SocketChannel channel = (SocketChannel) key.channel();
+        StringBuilder buffer = channelBuffers.get(channel);
+        ByteBuffer readBuffer = ByteBuffer.allocate(1024);
+
         try {
-            String line;
-            while (connected && (line = notifyIn.readLine()) != null) {
-                Response response = JsonConverter.fromJson(line, Response.class);
-                FileLogger.info("[Notification] Received: " + response.getMessage());
-                handleResponse(response, "Notification");
+            int bytesRead = channel.read(readBuffer);
+            if (bytesRead == -1) {
+                disconnect();
+                return;
+            }
+
+            readBuffer.flip();
+            buffer.append(StandardCharsets.UTF_8.decode(readBuffer));
+
+            int newlineIndex;
+            while ((newlineIndex = buffer.indexOf("\n")) != -1) {
+                String message = buffer.substring(0, newlineIndex).trim();
+                buffer.delete(0, newlineIndex + 1);
+
+                if (!message.isEmpty()) {
+                    Response<?> response = JsonConverter.fromJson(message, Response.class);
+                    handleResponse(response, (String) key.attachment());
+                }
             }
         } catch (IOException e) {
-            if (connected) {
-                FileLogger.error("Notification connection lost", e);
-                disconnect();
-            }
+            FileLogger.error("Error reading from server", e);
+            disconnect();
         }
     }
 
-    /**
-     * Sends a request to the server via the command socket.
-     * @param request The request object to send.
-     */
     public void sendRequest(Request request) {
         if (!connected) {
-            FileLogger.error("Cannot send request: Not connected to server");
+            FileLogger.error("Cannot send request: Not connected");
             return;
         }
-        String json = JsonConverter.toJson(request);
-        commandOut.println(json);
+        try {
+            String json = JsonConverter.toJson(request) + "\n";
+            ByteBuffer buffer = ByteBuffer.wrap(json.getBytes(StandardCharsets.UTF_8));
+            while (buffer.hasRemaining()) {
+                cmdChannel.write(buffer);
+            }
+        } catch (IOException e) {
+            FileLogger.error("Failed to send request", e);
+            disconnect();
+        }
     }
 
-    /**
-     * Handles responses received from the server.
-     * @param response The response object.
-     * @param source The source of the response ("Command" or "Notification").
-     */
-    private void handleResponse(Response response, String source) {
-        // Implementation for UI updates or event handling goes here
+    private void handleResponse(Response<?> response, String source) {
+        FileLogger.info("[" + source + "] Received: " + response.getMessage());
     }
 
-    /**
-     * Disconnects the client from the server and closes all sockets.
-     */
     public void disconnect() {
-        if (!connected) return;
         connected = false;
         try {
-            if (commandSocket != null) commandSocket.close();
-            if (notifySocket != null) notifySocket.close();
-            FileLogger.info("Disconnected from server.");
+            if (selector != null) selector.close();
+            if (cmdChannel != null) cmdChannel.close();
+            if (notifyChannel != null) notifyChannel.close();
+            FileLogger.info("Disconnected from NIO Server.");
         } catch (IOException e) {
             FileLogger.error("Error during disconnect", e);
         }
     }
 
-    /**
-     * Checks if the client is currently connected to the server.
-     * @return true if connected, false otherwise.
-     */
     public boolean isConnected() {
         return connected;
     }

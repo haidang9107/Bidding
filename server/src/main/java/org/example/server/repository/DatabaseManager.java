@@ -1,56 +1,51 @@
 package org.example.server.repository;
 
+import org.example.util.Config;
 import org.example.util.FileLogger;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
 /**
- * Manages database connections for the application.
+ * Manages database connections for the application using centralized Config.
  */
 public class DatabaseManager {
-    // Connection information from application.yml (or hardcoded for demo)
-    private static final String URL = "jdbc:mysql://localhost:3306/MySQL-DB?createDatabaseIfNotExist=true";
-    private static final String USER = "HaiDang91";
-    private static final String PASSWORD = "9107";
-
     private static Connection connection;
 
     /**
      * Gets a singleton connection to the database.
-     *
      * @return the database connection
      * @throws SQLException if a database access error occurs
      */
     public static synchronized Connection getConnection() throws SQLException {
         if (connection == null || connection.isClosed()) {
+            String url = Config.get("DB_URL");
+            String user = Config.get("DB_USER");
+            String password = Config.get("DB_PASSWORD");
+
             try {
-                // Ensure driver is loaded
                 Class.forName("com.mysql.cj.jdbc.Driver");
-                connection = DriverManager.getConnection(URL, USER, PASSWORD);
-                FileLogger.info("Kết nối Database MySQL thành công!");
+                connection = DriverManager.getConnection(url, user, password);
+                FileLogger.info("Database connection established successfully!");
             } catch (ClassNotFoundException e) {
-                FileLogger.error("Không tìm thấy Driver MySQL", e);
-                throw new SQLException(">>> Không tìm thấy Driver MySQL: " + e.getMessage());
+                FileLogger.error("MySQL Driver not found", e);
+                throw new SQLException("MySQL Driver not found: " + e.getMessage());
             } catch (SQLException e) {
-                FileLogger.error("Lỗi kết nối Database", e);
+                FileLogger.error("Database connection failed", e);
                 throw e;
             }
         }
         return connection;
     }
 
-    /**
-     * Closes the database connection if it is open.
-     */
     public static void closeConnection() {
         try {
             if (connection != null && !connection.isClosed()) {
                 connection.close();
-                FileLogger.info("Đã đóng kết nối Database.");
+                FileLogger.info("Database connection closed.");
             }
         } catch (SQLException e) {
-            FileLogger.error("Lỗi khi đóng kết nối Database", e);
+            FileLogger.error("Error closing database connection", e);
         }
     }
 }

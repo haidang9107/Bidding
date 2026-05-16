@@ -1,6 +1,7 @@
 package org.example.util;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -8,49 +9,52 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Utility class for logging messages to a file.
+ * Enhanced Utility class for logging, splitting Audit and Error logs into separate files.
  */
 public class FileLogger {
-    private static final String LOG_FILE = "common/logs/app.log";
+    private static final String LOG_DIR = "common/logs/";
+    private static final String AUDIT_LOG = LOG_DIR + "audit.log";
+    private static final String ERROR_LOG = LOG_DIR + "error.log";
+    
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    static {
+        File dir = new File(LOG_DIR);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+    }
+
     /**
-     * Logs an info message.
-     *
+     * Logs business events and connections (Audit trail).
      * @param message the message to log
      */
     public static synchronized void info(String message) {
-        log("INFO", message, null);
+        log(AUDIT_LOG, "INFO", message, null);
     }
 
     /**
-     * Logs an error message.
-     *
-     * @param message the message to log
+     * Logs critical system errors.
+     * @param message the error message
      */
     public static synchronized void error(String message) {
-        log("ERROR", message, null);
+        log(ERROR_LOG, "ERROR", message, null);
     }
 
     /**
-     * Logs an error message with a stack trace.
-     *
-     * @param message the message to log
-     * @param throwable the exception to log
+     * Logs critical system errors with stack trace.
+     * @param message the error message
+     * @param throwable the exception
      */
     public static synchronized void error(String message, Throwable throwable) {
-        log("ERROR", message, throwable);
+        log(ERROR_LOG, "ERROR", message, throwable);
     }
 
     /**
-     * Internal method to write logs to the file.
-     *
-     * @param level the log level (e.g., INFO, ERROR)
-     * @param message the log message
-     * @param throwable optional exception
+     * Core logging method with file separation logic.
      */
-    private static void log(String level, String message, Throwable throwable) {
-        try (FileWriter fw = new FileWriter(LOG_FILE, true);
+    private static void log(String fileName, String level, String message, Throwable throwable) {
+        try (FileWriter fw = new FileWriter(fileName, true);
              BufferedWriter bw = new BufferedWriter(fw);
              PrintWriter out = new PrintWriter(bw)) {
             
@@ -60,8 +64,12 @@ public class FileLogger {
             if (throwable != null) {
                 throwable.printStackTrace(out);
             }
+            
+            // Also print to console for real-time visibility during development
+            System.out.printf("[%s] [%s] %s%n", timestamp, level, message);
+            
         } catch (IOException e) {
-            // Fallback if file logging fails
+            System.err.println("Failed to write to log file: " + fileName);
         }
     }
 }
