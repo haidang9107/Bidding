@@ -6,7 +6,7 @@ import org.example.payload.Request;
 import org.example.payload.Response;
 import org.example.server.repository.DatabaseManager;
 import org.example.server.repository.UserDao;
-import org.example.server.service.user.auth.LogIn;
+import org.example.server.service.user.auth.AuthService;
 import org.example.util.FileLogger;
 import org.example.util.JsonConverter;
 
@@ -44,23 +44,34 @@ public class CommandHandler implements Runnable {
     private Response<?> handleRequest(Request request) {
         try (Connection conn = DatabaseManager.getConnection()) {
             UserDao userDao = new UserDao(conn);
+            AuthService authService = new AuthService(userDao);
 
             switch (request.getType()) {
                 case LOGIN:
-                    // Assuming payload is "username:password" for simplicity in this demo
-                    String payloadStr = request.getPayload().toString();
-                    String[] loginData = payloadStr.split(":");
+                    String[] loginData = request.getPayload().toString().split(":");
                     if (loginData.length < 2) {
                         return new Response<>(MessageType.ERROR, false, "Invalid login format. Use 'username:password'", null);
                     }
                     
-                    LogIn loginService = new LogIn(userDao);
-                    User user = loginService.authenticate(loginData[0], loginData[1]);
-                    
+                    User user = authService.authenticate(loginData[0], loginData[1]);
                     if (user != null) {
                         return new Response<>(MessageType.SUCCESS, true, "Login successful", user);
                     } else {
                         return new Response<>(MessageType.ERROR, false, "Invalid username or password", null);
+                    }
+
+                case SIGNUP:
+                    // format: "username:password:email:role"
+                    String[] signupData = request.getPayload().toString().split(":");
+                    if (signupData.length < 4) {
+                        return new Response<>(MessageType.ERROR, false, "Invalid signup format. Use 'username:password:email:role'", null);
+                    }
+
+                    boolean success = authService.register(signupData[0], signupData[1], signupData[2], signupData[3]);
+                    if (success) {
+                        return new Response<>(MessageType.SUCCESS, true, "Registration successful", null);
+                    } else {
+                        return new Response<>(MessageType.ERROR, false, "Registration failed (User might already exist)", null);
                     }
 
                 default:
