@@ -1,12 +1,15 @@
 package org.example.server.service.user.auth;
 
+import org.example.model.enums.Gender;
+import org.example.model.enums.UserRole;
+import org.example.model.user.Admin;
+import org.example.model.user.Member;
 import org.example.model.user.User;
 import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
 
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.UUID;
 
 /**
  * Unified service for handling authentication-related tasks (Login, Signup).
@@ -42,10 +45,10 @@ public class AuthService {
      * @param username The desired username.
      * @param plainPassword The plain text password to be hashed.
      * @param email The user's email address.
-     * @param role The role assigned to the user.
+     * @param roleString The role assigned (ADMIN or MEMBER).
      * @return true if registration was successful, false otherwise.
      */
-    public boolean register(String username, String plainPassword, String email, String role) {
+    public boolean register(String username, String plainPassword, String email, String roleString) {
         try {
             if (userDao.findByUsername(username) != null) {
                 FileLogger.info("Registration failed: Username '" + username + "' already exists.");
@@ -53,19 +56,21 @@ public class AuthService {
             }
 
             String hashedPassword = PasswordHashing.hashPassword(plainPassword);
-            User newUser = new User(
-                UUID.randomUUID().toString(),
-                username,
-                hashedPassword,
-                email,
-                "", // phonenumber
-                "", // gender
-                "", // avt
-                0.0, // balance
-                new Timestamp(System.currentTimeMillis())
-            );
+            UserRole role = UserRole.MEMBER;
+            if ("ADMIN".equalsIgnoreCase(roleString)) {
+                role = UserRole.ADMIN;
+            }
 
-            boolean success = userDao.createUser(newUser, role);
+            User newUser;
+            Timestamp now = new Timestamp(System.currentTimeMillis());
+            
+            if (role == UserRole.ADMIN) {
+                newUser = new Admin(0, username, hashedPassword, email, "", Gender.MALE, "", 0, 0, now);
+            } else {
+                newUser = new Member(0, username, hashedPassword, email, "", Gender.MALE, "", 0, 0, now);
+            }
+
+            boolean success = userDao.createUser(newUser);
             if (success) {
                 FileLogger.info("User registered successfully: " + username);
             }

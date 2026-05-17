@@ -1,7 +1,8 @@
 package org.example.server.repository;
 
+import org.example.model.enums.AuctionStatus;
+import org.example.model.enums.ItemCategory;
 import org.example.model.product.*;
-import org.example.model.user.Seller;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -12,162 +13,156 @@ import java.util.List;
  */
 public class ProductDao {
 
-	private Connection connection;
+    private Connection connection;
 
-	/**
-	 * Constructor for ProductDao.
-	 *
-	 * @param connection the database connection to use
-	 */
-	public ProductDao(Connection connection) {
-		this.connection = connection;
-	}
+    public ProductDao(Connection connection) {
+        this.connection = connection;
+    }
 
-	/**
-	 * Retrieves all products from the database.
-	 *
-	 * @return a list of all products
-	 * @throws SQLException if a database access error occurs
-	 */
-	public List<Item> getAllProducts() throws SQLException {
-		List<Item> products = new ArrayList<>();
-		String sql = """
-                SELECT p.*,
-                       u.user_id, u.username, u.password, u.email, u.phonenumber, u.gender, u.avt, u.balance, u.created_at AS user_created_at
-                FROM products p
-                JOIN users u ON p.seller_id = u.user_id
-                """;
+    /**
+     * Retrieves all products from the database.
+     */
+    public List<Item> getAllProducts() throws SQLException {
+        List<Item> products = new ArrayList<>();
+        String sql = "SELECT * FROM products";
 
-		try (Statement stmt = connection.createStatement();
-			 ResultSet rs = stmt.executeQuery(sql)) {
-			while (rs.next()) {
-				products.add(mapResultSetToItem(rs));
-			}
-		}
-		return products;
-	}
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                products.add(mapResultSetToItem(rs));
+            }
+        }
+        return products;
+    }
 
-	/**
-	 * Retrieves a product by its ID.
-	 *
-	 * @param productId the ID of the product to retrieve
-	 * @return the product if found, or null otherwise
-	 * @throws SQLException if a database access error occurs
-	 */
-	public Item getProductById(String productId) throws SQLException {
-		String sql = """
-                SELECT p.*,
-                       u.user_id, u.username, u.password, u.email, u.phonenumber, u.gender, u.avt, u.balance, u.created_at AS user_created_at
-                FROM products p
-                JOIN users u ON p.seller_id = u.user_id
-                WHERE p.product_id = ?
-                """;
+    /**
+     * Retrieves a product by its ID.
+     */
+    public Item getProductById(int productId) throws SQLException {
+        String sql = "SELECT * FROM products WHERE product_id = ?";
 
-		try (PreparedStatement ps = connection.prepareStatement(sql)) {
-			ps.setString(1, productId);
-			try (ResultSet rs = ps.executeQuery()) {
-				if (rs.next()) {
-					return mapResultSetToItem(rs);
-				}
-			}
-		}
-		return null;
-	}
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, productId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapResultSetToItem(rs);
+                }
+            }
+        }
+        return null;
+    }
 
-	/**
-	 * Maps a result set row to an Item object.
-	 *
-	 * @param rs the result set
-	 * @return the mapped Item object
-	 * @throws SQLException if a database access error occurs
-	 */
-	private Item mapResultSetToItem(ResultSet rs) throws SQLException {
-		Seller seller = new Seller(
-				rs.getString("user_id"),
-				rs.getString("username"),
-				rs.getString("password"),
-				rs.getString("email"),
-				rs.getString("phonenumber"),
-				rs.getString("gender"),
-				rs.getString("avt"),
-				rs.getDouble("balance"),
-				rs.getTimestamp("user_created_at")
-		);
+    /**
+     * Maps a result set row to an Item object.
+     */
+    private Item mapResultSetToItem(ResultSet rs) throws SQLException {
+        int productId = rs.getInt("product_id");
+        String productName = rs.getString("product_name");
+        String description = rs.getString("description");
+        long startingPrice = rs.getLong("starting_price");
+        long currentPrice = rs.getLong("current_price");
+        long stepPrice = rs.getLong("step_price");
+        int sellerId = rs.getInt("seller_id");
+        
+        Integer winnerId = rs.getInt("winner_id");
+        if (rs.wasNull()) {
+            winnerId = null;
+        }
 
-		String category = rs.getString("category");
-		String productId = rs.getString("product_id");
-		String productName = rs.getString("product_name");
-		String description = rs.getString("description");
-		double startingPrice = rs.getDouble("starting_price");
-		double stepPrice = rs.getDouble("step_price");
-		String status = rs.getString("status");
-		Timestamp createdAt = rs.getTimestamp("created_at");
+        ItemCategory category = ItemCategory.fromInt(rs.getInt("category"));
+        AuctionStatus status = AuctionStatus.fromInt(rs.getInt("status"));
+        
+        Timestamp startTime = rs.getTimestamp("start_time");
+        Timestamp endTime = rs.getTimestamp("end_time");
+        int version = rs.getInt("version");
+        Timestamp createdAt = rs.getTimestamp("created_at");
 
-		if (category.equalsIgnoreCase("Electronics")) {
-			return new Electronics(productId, productName, description, startingPrice, stepPrice, seller, status, createdAt,
-					rs.getString("brand"), rs.getInt("warranty_months"));
-		} else if (category.equalsIgnoreCase("Art")) {
-			return new Art(productId, productName, description, startingPrice, stepPrice, seller, status, createdAt,
-					rs.getString("artist"), rs.getString("art_type"));
-		} else if (category.equalsIgnoreCase("Vehicle")) {
-			return new Vehicle(productId, productName, description, startingPrice, stepPrice, seller, status, createdAt,
-					rs.getString("brand"), rs.getString("model"), rs.getInt("manufacture_year"));
-		}
-		return null;
-	}
+        if (category == ItemCategory.ELECTRONICS) {
+            return new Electronics(productId, productName, description, startingPrice, currentPrice, stepPrice, 
+                    sellerId, winnerId, status, startTime, endTime, version, createdAt,
+                    rs.getString("brand"), rs.getInt("warranty_months"));
+        } else if (category == ItemCategory.ART) {
+            return new Art(productId, productName, description, startingPrice, currentPrice, stepPrice, 
+                    sellerId, winnerId, status, startTime, endTime, version, createdAt,
+                    rs.getString("artist"), rs.getString("art_type"));
+        } else {
+            return new Vehicle(productId, productName, description, startingPrice, currentPrice, stepPrice, 
+                    sellerId, winnerId, status, startTime, endTime, version, createdAt,
+                    rs.getString("brand"), rs.getString("model"), rs.getInt("manufacture_year"));
+        }
+    }
 
-	/**
-	 * Inserts a new product into the database.
-	 *
-	 * @param item the product to insert
-	 * @throws SQLException if a database access error occurs
-	 */
-	public void insertProduct(Item item) throws SQLException {
-		String sql = """
+    /**
+     * Inserts a new product into the database.
+     */
+    public boolean insertProduct(Item item) throws SQLException {
+        String sql = """
                 INSERT INTO products(
-                    product_id, product_name, description, starting_price, step_price, seller_id, category, status,
-                    brand, warranty_months, artist, art_type, model, manufacture_year, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    product_name, description, starting_price, current_price, step_price, 
+                    seller_id, category, status, start_time, end_time, brand, 
+                    warranty_months, artist, art_type, model, manufacture_year
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
-		try (PreparedStatement ps = connection.prepareStatement(sql)) {
-			ps.setString(1, item.getProductId());
-			ps.setString(2, item.getProductName());
-			ps.setString(3, item.getDescription());
-			ps.setDouble(4, item.getStartingPrice());
-			ps.setDouble(5, item.getStepPrice());
-			ps.setString(6, item.getSeller().getUserId());
+        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, item.getProductName());
+            ps.setString(2, item.getDescription());
+            ps.setLong(3, item.getStartingPrice());
+            ps.setLong(4, item.getCurrentPrice());
+            ps.setLong(5, item.getStepPrice());
+            ps.setInt(6, item.getSellerId());
+            ps.setInt(7, item.getCategory().getValue());
+            ps.setInt(8, item.getStatus().getValue());
+            ps.setTimestamp(9, item.getStartTime());
+            ps.setTimestamp(10, item.getEndTime());
 
-			if (item instanceof Electronics e) {
-				ps.setString(7, "Electronics");
-				ps.setString(8, item.getStatus());
-				ps.setString(9, e.getBrand());
-				ps.setInt(10, e.getWarrantyMonths());
-				ps.setNull(11, Types.VARCHAR);
-				ps.setNull(12, Types.VARCHAR);
-				ps.setNull(13, Types.VARCHAR);
-				ps.setNull(14, Types.INTEGER);
-			} else if (item instanceof Art a) {
-				ps.setString(7, "Art");
-				ps.setString(8, item.getStatus());
-				ps.setNull(9, Types.VARCHAR);
-				ps.setNull(10, Types.INTEGER);
-				ps.setString(11, a.getArtist());
-				ps.setString(12, a.getArtType());
-				ps.setNull(13, Types.VARCHAR);
-				ps.setNull(14, Types.INTEGER);
-			} else if (item instanceof Vehicle v) {
-				ps.setString(7, "Vehicle");
-				ps.setString(8, item.getStatus());
-				ps.setString(9, v.getBrand());
-				ps.setNull(10, Types.INTEGER);
-				ps.setNull(11, Types.VARCHAR);
-				ps.setNull(12, Types.VARCHAR);
-				ps.setString(13, v.getModel());
-				ps.setInt(14, v.getManufactureYear());
-			}
-			ps.setTimestamp(15, item.getCreatedAt());
-			ps.executeUpdate();
-		}
-	}
+            if (item instanceof Electronics e) {
+                ps.setString(11, e.getBrand());
+                ps.setInt(12, e.getWarrantyMonths());
+                ps.setNull(13, Types.VARCHAR);
+                ps.setNull(14, Types.VARCHAR);
+                ps.setNull(15, Types.VARCHAR);
+                ps.setNull(16, Types.INTEGER);
+            } else if (item instanceof Art a) {
+                ps.setNull(11, Types.VARCHAR);
+                ps.setNull(12, Types.INTEGER);
+                ps.setString(13, a.getArtist());
+                ps.setString(14, a.getArtType());
+                ps.setNull(15, Types.VARCHAR);
+                ps.setNull(16, Types.INTEGER);
+            } else if (item instanceof Vehicle v) {
+                ps.setString(11, v.getBrand());
+                ps.setNull(12, Types.INTEGER);
+                ps.setNull(13, Types.VARCHAR);
+                ps.setNull(14, Types.VARCHAR);
+                ps.setString(15, v.getModel());
+                ps.setInt(16, v.getManufactureYear());
+            }
+
+            int affectedRows = ps.executeUpdate();
+            if (affectedRows > 0) {
+                try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        item.setProductId(generatedKeys.getInt(1));
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Updates the current price and winner of a product using Optimistic Locking.
+     */
+    public boolean updateBid(int productId, long newPrice, int bidderId, int oldVersion) throws SQLException {
+        String sql = "UPDATE products SET current_price = ?, winner_id = ?, version = version + 1 WHERE product_id = ? AND version = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setLong(1, newPrice);
+            ps.setInt(2, bidderId);
+            ps.setInt(3, productId);
+            ps.setInt(4, oldVersion);
+            return ps.executeUpdate() > 0;
+        }
+    }
 }

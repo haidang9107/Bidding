@@ -1,147 +1,43 @@
 package org.example.model;
 
-import org.example.model.product.Item;
-import org.example.model.user.Bidder;
-
 import java.sql.Timestamp;
 
 /**
  * Represents a bid placed by a bidder on an item.
+ * This can be used as a DTO for real-time bidding messages.
  */
 public class Bid {
 
-	// =========================
-	// Fields
-	// =========================
-	private String bidId;
+    private int productId;
+    private int bidderId;
+    private String bidderName; // Optional: for display purposes
+    private long bidAmount;
+    private Timestamp bidTime;
 
-	// Người đấu giá
-	private Bidder bidder;
+    public Bid() {
+    }
 
-	// Sản phẩm được bid
-	private Item item;
+    public Bid(int productId, int bidderId, String bidderName, long bidAmount, Timestamp bidTime) {
+        this.productId = productId;
+        this.bidderId = bidderId;
+        this.bidderName = bidderName;
+        this.bidAmount = bidAmount;
+        this.bidTime = bidTime;
+    }
 
-	// Giá bid
-	private double bidAmount;
+    // Getters and Setters
+    public int getProductId() { return productId; }
+    public void setProductId(int productId) { this.productId = productId; }
 
-	// Thời gian bid
-	private Timestamp bidTime;
+    public int getBidderId() { return bidderId; }
+    public void setBidderId(int bidderId) { this.bidderId = bidderId; }
 
-	/**
-	 * Default constructor for Bid.
-	 */
-	public Bid() {
-	}
+    public String getBidderName() { return bidderName; }
+    public void setBidderName(String bidderName) { this.bidderName = bidderName; }
 
-	/**
-	 * Full constructor for Bid.
-	 *
-	 * @param bidId the unique identifier for the bid
-	 * @param bidder the bidder who placed the bid
-	 * @param item the item being bid on
-	 * @param bidAmount the amount of the bid
-	 * @param bidTime the time the bid was placed
-	 */
-	public Bid(String bidId,
-	           Bidder bidder,
-	           Item item,
-	           double bidAmount,
-	           Timestamp bidTime) {
+    public long getBidAmount() { return bidAmount; }
+    public void setBidAmount(long bidAmount) { this.bidAmount = bidAmount; }
 
-		this.bidId = bidId;
-		this.bidder = bidder;
-		this.item = item;
-		this.bidAmount = bidAmount;
-		this.bidTime = bidTime;
-	}
-
-	/**
-	 * Gets the bid ID.
-	 *
-	 * @return the bid ID
-	 */
-	public String getBidId() {
-		return bidId;
-	}
-
-	/**
-	 * Sets the bid ID.
-	 *
-	 * @param bidId the bid ID to set
-	 */
-	public void setBidId(String bidId) {
-		this.bidId = bidId;
-	}
-
-	/**
-	 * Gets the bidder who placed the bid.
-	 *
-	 * @return the bidder
-	 */
-	public Bidder getBidder() {
-		return bidder;
-	}
-
-	/**
-	 * Sets the bidder who placed the bid.
-	 *
-	 * @param bidder the bidder to set
-	 */
-	public void setBidder(Bidder bidder) {
-		this.bidder = bidder;
-	}
-
-	/**
-	 * Gets the item being bid on.
-	 *
-	 * @return the item
-	 */
-	public Item getItem() {
-		return item;
-	}
-
-	/**
-	 * Sets the item being bid on.
-	 *
-	 * @param item the item to set
-	 */
-	public void setItem(Item item) {
-		this.item = item;
-	}
-
-	/**
-	 * Gets the bid amount.
-	 *
-	 * @return the bid amount
-	 */
-	public double getBidAmount() {
-		return bidAmount;
-	}
-
-	/**
-	 * Sets the bid amount.
-	 *
-	 * @param bidAmount the bid amount to set
-	 */
-	public void setBidAmount(double bidAmount) {
-		this.bidAmount = bidAmount;
-	}
-
-	/**
-	 * Gets the time the bid was placed.
-	 *
-	 * @return the bid time
-	 */
-	public Timestamp getBidTime() {
-		return bidTime;
-	}
-
-	/**
-	 * Sets the time the bid was placed.
-	 *
-	 * @param bidTime the bid time to set
-	 */
-	public void setBidTime(Timestamp bidTime) {
-		this.bidTime = bidTime;
-	}
+    public Timestamp getBidTime() { return bidTime; }
+    public void setBidTime(Timestamp bidTime) { this.bidTime = bidTime; }
 }

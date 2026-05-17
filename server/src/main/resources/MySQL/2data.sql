@@ -1,26 +1,22 @@
--- 1. Xóa dữ liệu cũ nếu có
+-- 1. Xóa dữ liệu cũ
 SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE auto_bids;
 TRUNCATE TABLE auctions;
 TRUNCATE TABLE products;
 TRUNCATE TABLE users;
 SET FOREIGN_KEY_CHECKS = 1;
 
--- 2. Chèn 10 Người dùng mẫu
--- Mật khẩu cho tất cả: password123 (Đã băm BCrypt với Work Factor 12)
-INSERT INTO users (user_id, username, password, email, phonenumber, gender, role, balance) VALUES
-('u1', 'admin_minh', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'admin@bidding.vn', '0912345678', 'MALE', 'ADMIN', 0.00),
-('u2', 'seller_nam', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'nam.seller@gmail.com', '0988887777', 'MALE', 'SELLER', 500.00),
-('u3', 'apple_store', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'contact@apple.com', '0123456789', 'OTHER', 'SELLER', 10000.00),
-('u4', 'bidder_huong', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'huong.bui@yahoo.com', '0977665544', 'FEMALE', 'BIDDER', 2000.00),
-('u5', 'bidder_tuan', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'tuan.tran@gmail.com', '0900112233', 'MALE', 'BIDDER', 150.50),
-('u6', 'gallery_art', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'art@gallery.vn', '0888999000', 'FEMALE', 'SELLER', 0.00),
-('u7', 'bidder_long', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'long.nguyen@outlook.com', '0933445566', 'MALE', 'BIDDER', 5000.00),
-('u8', 'bidder_an', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'an.thanh@gmail.com', '0944556677', 'FEMALE', 'BIDDER', 300.00),
-('u9', 'auto_world', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'sales@autoworld.com', '0243123456', 'OTHER', 'SELLER', 50000.00),
-('u10', 'bidder_linh', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'linh.kieu@gmail.com', '0911223344', 'FEMALE', 'BIDDER', 1200.00);
+-- 2. Chèn Người dùng mẫu
+-- balance: Tổng tiền, blocked_balance: Tiền tạm khóa
+INSERT INTO users (username, password, email, phonenumber, gender, role, balance, blocked_balance) VALUES
+('admin_minh', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'admin@bidding.vn', '0912345678', 0, 0, 0, 0),
+('nam_member', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'nam.member@gmail.com', '0988887777', 0, 1, 50000000, 0),
+('apple_store', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'contact@apple.com', '0123456789', 2, 1, 100000000, 0),
+('huong_member', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'huong.bui@yahoo.com', '0977665544', 1, 1, 20000000, 0);
 
 -- 3. Chèn Sản phẩm mẫu
-INSERT INTO products (product_id, product_name, description, starting_price, step_price, seller_id, category, status, brand, model) VALUES
-('p1', 'iPhone 15 Pro Max', 'Hàng mới 99%', 25000000, 500000, 'u3', 'ELECTRONICS', 'ACTIVE', 'Apple', '15 Pro Max'),
-('p2', 'Tranh Sơn Dầu Phố Cổ', 'Tác phẩm của họa sĩ Bùi Xuân Phái', 50000000, 2000000, 'u6', 'ART', 'ACTIVE', NULL, NULL),
-('p3', 'Tesla Model 3 2023', 'Xe điện nhập khẩu Mỹ', 1500000000, 10000000, 'u9', 'VEHICLE', 'ACTIVE', 'Tesla', 'Model 3');
+INSERT INTO products (product_name, description, starting_price, current_price, step_price, seller_id, category, status, start_time, end_time, brand, model) VALUES
+('iPhone 15 Pro Max', 'Hàng mới 99%', 25000000, 25000000, 500000, 3, 1, 1, 
+ CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 7 DAY), 'Apple', '15 Pro Max'),
+('Tesla Model 3 2023', 'Xe điện nhập khẩu Mỹ', 1500000000, 1500000000, 10000000, 2, 3, 0, 
+ DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 DAY), DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 DAY), 'Tesla', 'Model 3');

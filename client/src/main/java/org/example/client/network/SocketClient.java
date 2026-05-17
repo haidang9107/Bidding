@@ -13,12 +13,16 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 /**
  * Singleton class managing NIO socket connections to the server.
+ * Implements a simple Observer pattern to notify UI of responses.
  */
 public class SocketClient {
     private static volatile SocketClient instance;
@@ -28,6 +32,7 @@ public class SocketClient {
     private volatile boolean connected = false;
 
     private final Map<SocketChannel, StringBuilder> channelBuffers = new ConcurrentHashMap<>();
+    private final List<Consumer<Response<?>>> observers = new ArrayList<>();
 
     private SocketClient() {}
 
@@ -40,6 +45,26 @@ public class SocketClient {
             }
         }
         return instance;
+    }
+
+    /**
+     * Adds an observer to listen for server responses.
+     */
+    public synchronized void addObserver(Consumer<Response<?>> observer) {
+        observers.add(observer);
+    }
+
+    /**
+     * Removes an observer.
+     */
+    public synchronized void removeObserver(Consumer<Response<?>> observer) {
+        observers.remove(observer);
+    }
+
+    private synchronized void notifyObservers(Response<?> response) {
+        for (Consumer<Response<?>> observer : observers) {
+            observer.accept(response);
+        }
     }
 
     /**
@@ -67,7 +92,7 @@ public class SocketClient {
 
             // Wait for connections to finish
             while (!cmdChannel.finishConnect() || !notifyChannel.finishConnect()) {
-                // In a real app, you might want a timeout here
+                Thread.onSpinWait();
             }
 
             cmdChannel.register(selector, SelectionKey.OP_READ, "Command");
@@ -80,7 +105,9 @@ public class SocketClient {
             FileLogger.info("Connected to NIO Server at " + host + " (Ports: " + port + ", " + notifyPort + ")");
 
             // Start background listener thread
-            new Thread(this::listenLoop, "NIOClientListener").start();
+            Thread listenerThread = new Thread(this::listenLoop, "NIOClientListener");
+            listenerThread.setDaemon(true);
+            listenerThread.start();
 
         } catch (IOException e) {
             FileLogger.error("Failed to connect to NIO Server", e);
@@ -99,7 +126,7 @@ public class SocketClient {
                     SelectionKey key = keys.next();
                     keys.remove();
 
-                    if (key.isReadable()) {
+                    if (key.isValid() && key.isReadable()) {
                         handleRead(key);
                     }
                 }
@@ -115,11 +142,12 @@ public class SocketClient {
     private void handleRead(SelectionKey key) {
         SocketChannel channel = (SocketChannel) key.channel();
         StringBuilder buffer = channelBuffers.get(channel);
-        ByteBuffer readBuffer = ByteBuffer.allocate(1024);
+        ByteBuffer readBuffer = ByteBuffer.allocate(8192); // Increased size
 
         try {
             int bytesRead = channel.read(readBuffer);
             if (bytesRead == -1) {
+                FileLogger.warn("Server closed connection: " + channel);
                 disconnect();
                 return;
             }
@@ -134,7 +162,10 @@ public class SocketClient {
 
                 if (!message.isEmpty()) {
                     Response<?> response = JsonConverter.fromJson(message, Response.class);
-                    handleResponse(response, (String) key.attachment());
+                    if (response != null) {
+                        notifyObservers(response);
+                        FileLogger.info("[" + key.attachment() + "] Response received: " + response.getType());
+                    }
                 }
             }
         } catch (IOException e) {
@@ -158,10 +189,6 @@ public class SocketClient {
             FileLogger.error("Failed to send request", e);
             disconnect();
         }
-    }
-
-    private void handleResponse(Response<?> response, String source) {
-        FileLogger.info("[" + source + "] Received: " + response.getMessage());
     }
 
     public void disconnect() {

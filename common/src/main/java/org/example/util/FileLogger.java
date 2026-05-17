@@ -34,6 +34,14 @@ public class FileLogger {
     }
 
     /**
+     * Logs warnings.
+     * @param message the warning message
+     */
+    public static synchronized void warn(String message) {
+        log(AUDIT_LOG, "WARN", message, null);
+    }
+
+    /**
      * Logs critical system errors.
      * @param message the error message
      */
