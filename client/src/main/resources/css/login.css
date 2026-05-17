@@ -1,0 +1,66 @@
+/* ==================================================
+   Login screen styles
+   ================================================== */
+
+.login-root {
+    -fx-background-color: linear-gradient(to bottom right, #1a1a2e, #16213e);
+}
+
+.title-label {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.subtitle-label {
+    -fx-font-size: 16px;
+    -fx-text-fill: #c0c0d0;
+}
+
+.input-field {
+    -fx-background-color: #2a2a3e;
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #7a7a90;
+    -fx-padding: 10;
+    -fx-background-radius: 6;
+    -fx-border-color: transparent;
+    -fx-border-radius: 6;
+    -fx-font-size: 13px;
+}
+
+.input-field:focused {
+    -fx-border-color: #5a8dee;
+    -fx-border-width: 1.5;
+}
+
+.primary-btn {
+    -fx-background-color: #5a8dee;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 10 20;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.primary-btn:hover {
+    -fx-background-color: #4a7dde;
+}
+
+.link-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #5a8dee;
+    -fx-underline: true;
+    -fx-cursor: hand;
+    -fx-padding: 0 0 0 4;
+}
+
+.status-label {
+    -fx-text-fill: #ff8080;
+    -fx-font-size: 12px;
+}
+
+Label {
+    -fx-text-fill: #c0c0d0;
+    -fx-font-size: 12px;
+}

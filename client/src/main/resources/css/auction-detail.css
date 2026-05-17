@@ -1,0 +1,195 @@
+/* ==================================================
+   Auction detail screen
+   ================================================== */
+
+.detail-root {
+    -fx-background-color: linear-gradient(to bottom right, #1a1a2e, #16213e);
+}
+
+.topbar {
+    -fx-background-color: #14142b;
+    -fx-border-color: transparent transparent #2a2a3e transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.title-label {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.muted-label {
+    -fx-text-fill: #8a8aa0;
+    -fx-font-size: 12px;
+}
+
+.badge-label {
+    -fx-background-color: #5a8dee;
+    -fx-text-fill: white;
+    -fx-padding: 3 10;
+    -fx-background-radius: 12;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.countdown-label {
+    -fx-text-fill: #ffd166;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-font-family: "Consolas", "Monaco", monospace;
+}
+
+.info-panel {
+    -fx-background-color: #1f1f33;
+    -fx-background-radius: 8;
+}
+
+.price-label {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #67e8b1;
+}
+
+.leader-label {
+    -fx-font-size: 16px;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.message-label {
+    -fx-text-fill: #ffd166;
+    -fx-font-size: 12px;
+    -fx-wrap-text: true;
+}
+
+/* Chart */
+.price-chart {
+    -fx-background-color: #1f1f33;
+    -fx-background-radius: 8;
+    -fx-padding: 10;
+}
+
+.price-chart .chart-plot-background {
+    -fx-background-color: #1f1f33;
+}
+
+.price-chart .axis {
+    -fx-tick-label-fill: #8a8aa0;
+}
+
+.price-chart .axis-label {
+    -fx-text-fill: #c0c0d0;
+}
+
+.price-chart .chart-series-line {
+    -fx-stroke: #5a8dee;
+    -fx-stroke-width: 2px;
+}
+
+.price-chart .default-color0.chart-line-symbol {
+    -fx-background-color: #67e8b1, #1f1f33;
+}
+
+.price-chart .chart-legend {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+}
+
+/* Right panel cards */
+.right-panel {
+    -fx-background-color: #1a1a2e;
+}
+
+.card {
+    -fx-background-color: #1f1f33;
+    -fx-background-radius: 8;
+}
+
+.section-title {
+    -fx-text-fill: #c0c0d0;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.input-field {
+    -fx-background-color: #2a2a3e;
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #7a7a90;
+    -fx-padding: 8 10;
+    -fx-background-radius: 6;
+    -fx-font-size: 13px;
+}
+
+.input-field:focused {
+    -fx-border-color: #5a8dee;
+    -fx-border-radius: 6;
+    -fx-border-width: 1.5;
+}
+
+.primary-btn {
+    -fx-background-color: #5a8dee;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 10 18;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.primary-btn:hover {
+    -fx-background-color: #4a7dde;
+}
+
+.primary-btn:disabled {
+    -fx-background-color: #3a3a4e;
+    -fx-text-fill: #6a6a80;
+    -fx-opacity: 1;
+}
+
+.secondary-btn {
+    -fx-background-color: #2a2a3e;
+    -fx-text-fill: white;
+    -fx-padding: 8 16;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.secondary-btn:hover {
+    -fx-background-color: #3a3a4e;
+}
+
+.ghost-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #c0c0d0;
+    -fx-border-color: #3a3a4e;
+    -fx-border-radius: 6;
+    -fx-padding: 5 12;
+    -fx-cursor: hand;
+}
+
+.ghost-btn:hover {
+    -fx-background-color: #2a2a3e;
+}
+
+/* History list */
+.history-list {
+    -fx-background-color: #18182a;
+    -fx-control-inner-background: #18182a;
+    -fx-background-radius: 6;
+}
+
+.history-list .list-cell {
+    -fx-background-color: #18182a;
+    -fx-text-fill: #d0d0e0;
+    -fx-padding: 5 8;
+    -fx-font-family: "Consolas", "Monaco", monospace;
+    -fx-font-size: 11px;
+}
+
+.history-list .list-cell:filled:selected {
+    -fx-background-color: #5a8dee;
+    -fx-text-fill: white;
+}
+
+.history-list .list-cell:filled:hover {
+    -fx-background-color: #24243a;
+}

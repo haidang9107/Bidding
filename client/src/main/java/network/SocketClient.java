@@ -1,3 +1,4 @@
+package network;
 
 import org.example.payload.Request;
 import org.example.payload.Response;
