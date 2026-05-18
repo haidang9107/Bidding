@@ -21,14 +21,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 /**
- * Singleton class managing NIO socket connections to the server.
- * Implements a simple Observer pattern to notify UI of responses.
+ * Singleton class managing unified NIO socket connection to the server.
+ * Uses a single port for both commands and notifications.
  */
 public class SocketClient {
     private static volatile SocketClient instance;
     private Selector selector;
-    private SocketChannel cmdChannel;
-    private SocketChannel notifyChannel;
+    private SocketChannel clientChannel;
     private volatile boolean connected = false;
 
     private final Map<SocketChannel, StringBuilder> channelBuffers = new ConcurrentHashMap<>();
@@ -47,16 +46,10 @@ public class SocketClient {
         return instance;
     }
 
-    /**
-     * Adds an observer to listen for server responses.
-     */
     public synchronized void addObserver(Consumer<Response<?>> observer) {
         observers.add(observer);
     }
 
-    /**
-     * Removes an observer.
-     */
     public synchronized void removeObserver(Consumer<Response<?>> observer) {
         observers.remove(observer);
     }
@@ -68,43 +61,31 @@ public class SocketClient {
     }
 
     /**
-     * Connects to the server using NIO.
+     * Connects to the server using a single port.
      */
     public void connect() throws IOException {
         if (connected) return;
 
         String host = Config.get("SERVER_HOST");
         int port = Config.getInt("SERVER_PORT");
-        int notifyPort = Config.getInt("NOTIFY_PORT");
 
         try {
             selector = Selector.open();
 
-            // Connect Command Channel
-            cmdChannel = SocketChannel.open();
-            cmdChannel.configureBlocking(false);
-            cmdChannel.connect(new InetSocketAddress(host, port));
+            clientChannel = SocketChannel.open();
+            clientChannel.configureBlocking(false);
+            clientChannel.connect(new InetSocketAddress(host, port));
 
-            // Connect Notification Channel
-            notifyChannel = SocketChannel.open();
-            notifyChannel.configureBlocking(false);
-            notifyChannel.connect(new InetSocketAddress(host, notifyPort));
-
-            // Wait for connections to finish
-            while (!cmdChannel.finishConnect() || !notifyChannel.finishConnect()) {
+            while (!clientChannel.finishConnect()) {
                 Thread.onSpinWait();
             }
 
-            cmdChannel.register(selector, SelectionKey.OP_READ, "Command");
-            notifyChannel.register(selector, SelectionKey.OP_READ, "Notification");
-
-            channelBuffers.put(cmdChannel, new StringBuilder());
-            channelBuffers.put(notifyChannel, new StringBuilder());
+            clientChannel.register(selector, SelectionKey.OP_READ);
+            channelBuffers.put(clientChannel, new StringBuilder());
 
             connected = true;
-            FileLogger.info("Connected to NIO Server at " + host + " (Ports: " + port + ", " + notifyPort + ")");
+            FileLogger.info("Connected to NIO Server at " + host + ":" + port);
 
-            // Start background listener thread
             Thread listenerThread = new Thread(this::listenLoop, "NIOClientListener");
             listenerThread.setDaemon(true);
             listenerThread.start();
@@ -142,12 +123,12 @@ public class SocketClient {
     private void handleRead(SelectionKey key) {
         SocketChannel channel = (SocketChannel) key.channel();
         StringBuilder buffer = channelBuffers.get(channel);
-        ByteBuffer readBuffer = ByteBuffer.allocate(8192); // Increased size
+        ByteBuffer readBuffer = ByteBuffer.allocate(8192);
 
         try {
             int bytesRead = channel.read(readBuffer);
             if (bytesRead == -1) {
-                FileLogger.warn("Server closed connection: " + channel);
+                FileLogger.warn("Server closed connection.");
                 disconnect();
                 return;
             }
@@ -164,7 +145,6 @@ public class SocketClient {
                     Response<?> response = JsonConverter.fromJson(message, Response.class);
                     if (response != null) {
                         notifyObservers(response);
-                        FileLogger.info("[" + key.attachment() + "] Response received: " + response.getType());
                     }
                 }
             }
@@ -183,7 +163,7 @@ public class SocketClient {
             String json = JsonConverter.toJson(request) + "\n";
             ByteBuffer buffer = ByteBuffer.wrap(json.getBytes(StandardCharsets.UTF_8));
             while (buffer.hasRemaining()) {
-                int written = cmdChannel.write(buffer);
+                int written = clientChannel.write(buffer);
                 if (written == 0) {
                     Thread.onSpinWait();
                 }
@@ -198,8 +178,7 @@ public class SocketClient {
         connected = false;
         try {
             if (selector != null) selector.close();
-            if (cmdChannel != null) cmdChannel.close();
-            if (notifyChannel != null) notifyChannel.close();
+            if (clientChannel != null) clientChannel.close();
             FileLogger.info("Disconnected from NIO Server.");
         } catch (IOException e) {
             FileLogger.error("Error during disconnect", e);

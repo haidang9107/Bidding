@@ -17,38 +17,31 @@ import java.util.concurrent.Executors;
 
 /**
  * High-performance Non-blocking Socket Server using Java NIO.
+ * Unified single-port version.
  */
 public class SocketServer {
-    private final int cmdPort;
-    private final int notifyPort;
+    private final int port;
     private Selector selector;
-    private ServerSocketChannel cmdChannel;
-    private ServerSocketChannel notifyChannel;
+    private ServerSocketChannel serverChannel;
     private volatile boolean running = true;
-    private final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);
+    private final ExecutorService executorService = Executors.newFixedThreadPool(3);
 
     private final Map<SocketChannel, StringBuilder> clientBuffers = new ConcurrentHashMap<>();
 
     public SocketServer() {
-        this.cmdPort = Config.getInt("SERVER_PORT");
-        this.notifyPort = Config.getInt("NOTIFY_PORT");
+        this.port = Config.getInt("SERVER_PORT");
     }
 
     public void run(String... args) {
         try {
             selector = Selector.open();
 
-            cmdChannel = ServerSocketChannel.open();
-            cmdChannel.bind(new InetSocketAddress(cmdPort));
-            cmdChannel.configureBlocking(false);
-            cmdChannel.register(selector, SelectionKey.OP_ACCEPT, "Command");
+            serverChannel = ServerSocketChannel.open();
+            serverChannel.bind(new InetSocketAddress(port));
+            serverChannel.configureBlocking(false);
+            serverChannel.register(selector, SelectionKey.OP_ACCEPT);
 
-            notifyChannel = ServerSocketChannel.open();
-            notifyChannel.bind(new InetSocketAddress(notifyPort));
-            notifyChannel.configureBlocking(false);
-            notifyChannel.register(selector, SelectionKey.OP_ACCEPT, "Notification");
-
-            FileLogger.info("NIO Server started. CMD Port: " + cmdPort + ", Notify Port: " + notifyPort);
+            FileLogger.info("NIO Server started on Port: " + port);
 
             while (running) {
                 if (selector.select() == 0) continue;
@@ -61,7 +54,7 @@ public class SocketServer {
                     if (!key.isValid()) continue;
 
                     if (key.isAcceptable()) {
-                        handleAccept(key);
+                        handleAccept();
                     } else if (key.isReadable()) {
                         handleRead(key);
                     }
@@ -74,22 +67,17 @@ public class SocketServer {
         }
     }
 
-    private void handleAccept(SelectionKey key) throws IOException {
-        ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
+    private void handleAccept() throws IOException {
         SocketChannel clientChannel = serverChannel.accept();
         clientChannel.configureBlocking(false);
+        clientChannel.register(selector, SelectionKey.OP_READ);
         
-        String type = (String) key.attachment();
-        SelectionKey clientKey = clientChannel.register(selector, SelectionKey.OP_READ, type);
         clientBuffers.put(clientChannel, new StringBuilder());
-
-        FileLogger.info("New " + type + " connection from: " + clientChannel.getRemoteAddress());
         
-        if ("Notification".equals(type)) {
-            NotificationHandler handler = new NotificationHandler(clientChannel);
-            Broadcaster.addClient(handler);
-            clientKey.attach(handler); // Store handler for cleanup
-        }
+        // Every connected client is added to Broadcaster to receive updates
+        Broadcaster.addClient(clientChannel);
+
+        FileLogger.info("New connection from: " + clientChannel.getRemoteAddress());
     }
 
     private void handleRead(SelectionKey key) {
@@ -114,13 +102,7 @@ public class SocketServer {
                 buffer.delete(0, newlineIndex + 1);
 
                 if (!message.isEmpty()) {
-                    Object attachment = key.attachment();
-                    // If it's a notification channel, we don't expect commands, 
-                    // but if it were, 'attachment' would be the NotificationHandler.
-                    // Only "Command" strings should trigger CommandHandler.
-                    if ("Command".equals(attachment)) {
-                        executorService.submit(new CommandHandler(clientChannel, message));
-                    }
+                    executorService.submit(new CommandHandler(clientChannel, message));
                 }
             }
         } catch (IOException e) {
@@ -134,12 +116,10 @@ public class SocketServer {
         try {
             FileLogger.info("Closing connection: " + (channel.isOpen() ? channel.getRemoteAddress() : "already closed"));
             
-            Object attachment = key.attachment();
-            if (attachment instanceof NotificationHandler handler) {
-                handler.close();
-            }
-            
+            Broadcaster.removeClient(channel);
+            SessionManager.logout(channel);
             clientBuffers.remove(channel);
+            
             key.cancel();
             channel.close();
         } catch (IOException e) {
@@ -151,8 +131,7 @@ public class SocketServer {
         running = false;
         try {
             if (selector != null) selector.close();
-            if (cmdChannel != null) cmdChannel.close();
-            if (notifyChannel != null) notifyChannel.close();
+            if (serverChannel != null) serverChannel.close();
         } catch (IOException e) {
             FileLogger.error("Error stopping server", e);
         } finally {

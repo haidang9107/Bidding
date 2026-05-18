@@ -1,6 +1,7 @@
 package org.example.server.network;
 
 import org.example.model.enums.MessageType;
+import org.example.model.user.User;
 import org.example.payload.Request;
 import org.example.payload.Response;
 import org.example.server.controller.AuthController;
@@ -57,6 +58,20 @@ public class CommandHandler implements Runnable {
     }
 
     private Response<?> handleRequest(Request request) {
+        User currentUser = SessionManager.getUser(clientChannel);
+
+        // 1. Authentication Check (Protects all routes except LOGIN and SIGNUP)
+        if (request.getType() != MessageType.LOGIN && request.getType() != MessageType.SIGNUP) {
+            if (currentUser == null) {
+                return new Response<>(MessageType.ERROR, false, "Unauthorized: Please login first", null);
+            }
+        }
+
+        // 2. Authorization Check (Role-based)
+        if (!hasPermission(request.getType(), currentUser)) {
+            return new Response<>(MessageType.ERROR, false, "Forbidden: You don't have permission to perform this action", null);
+        }
+
         try (Connection conn = DatabaseManager.getConnection()) {
             // Instantiate Repositories
             UserDao userDao = new UserDao(conn);
@@ -65,7 +80,7 @@ public class CommandHandler implements Runnable {
             // Instantiate Services
             AuthService authService = new AuthService(userDao);
             ProductService productService = new ProductService(productDao);
-            BidService bidService = new BidService(conn); // Manages its own transaction logic
+            BidService bidService = new BidService(conn);
 
             // Instantiate Controllers
             AuthController authController = new AuthController(authService);
@@ -74,10 +89,17 @@ public class CommandHandler implements Runnable {
 
             switch (request.getType()) {
                 case LOGIN:
-                    return authController.handleLogin(request.getPayload());
+                    Response<?> loginResponse = authController.handleLogin(request.getPayload());
+                    if (loginResponse.isSuccess() && loginResponse.getData() instanceof User user) {
+                        SessionManager.login(clientChannel, user);
+                    }
+                    return loginResponse;
+
                 case SIGNUP:
                     return authController.handleSignup(request.getPayload());
+                
                 case LOGOUT:
+                    SessionManager.logout(clientChannel);
                     return new Response<>(MessageType.SUCCESS, true, "Logout successful", null);
                 
                 case GET_PROFILE:
@@ -101,6 +123,26 @@ public class CommandHandler implements Runnable {
             FileLogger.error("Database error", e);
             return new Response<>(MessageType.ERROR, false, "Database Error", null);
         }
+    }
+
+    /**
+     * Helper to verify if a user has permission for a specific message type.
+     */
+    private boolean hasPermission(MessageType type, User user) {
+        // Public routes
+        if (type == MessageType.LOGIN || type == MessageType.SIGNUP) return true;
+        
+        // If user is null but it's not a public route, it would have been caught by Auth Check,
+        // but adding this for safety.
+        if (user == null) return false;
+
+        // RBAC Logic
+        return switch (type) {
+            case PRODUCT_ADD -> user.getRole() == org.example.model.enums.UserRole.ADMIN;
+            // Add more specific role checks here
+            // case DELETE_USER -> user.getRole() == UserRole.ADMIN;
+            default -> true; // By default, logged in users can access other routes
+        };
     }
 
     private void broadcastBidUpdate(int productId) {

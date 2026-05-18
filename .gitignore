@@ -38,3 +38,6 @@ out/
 .LSOverride
 
 a.md
+
+# private
+.env
