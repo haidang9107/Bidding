@@ -115,4 +115,16 @@ public class UserDao {
             return pstmt.executeUpdate() > 0;
         }
     }
+
+    /**
+     * Atomically adds or subtracts from the blocked balance.
+     */
+    public boolean addBlockedBalance(int userId, long amount) throws SQLException {
+        String sql = "UPDATE users SET blocked_balance = blocked_balance + ? WHERE user_id = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setLong(1, amount);
+            pstmt.setInt(2, userId);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
 }

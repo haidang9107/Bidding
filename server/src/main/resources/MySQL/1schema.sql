@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     blocked_balance BIGINT DEFAULT 0, -- Số tiền đang bị khóa do đang đặt giá cao nhất
     role INT NOT NULL, -- 0: ADMIN, 1: MEMBER
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+)   ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 2. Bảng sản phẩm (Đóng vai trò là Phiên đấu giá)
 CREATE TABLE IF NOT EXISTS products (
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS products (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (seller_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (winner_id) REFERENCES users(user_id) ON DELETE SET NULL
-);
+)   ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. Bảng lịch sử đấu giá
 CREATE TABLE IF NOT EXISTS auctions (
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS auctions (
     bid_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
     FOREIGN KEY (bidder_id) REFERENCES users(user_id) ON DELETE CASCADE
-);
+)   ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 4. Bảng cấu hình tự động đấu giá
 CREATE TABLE IF NOT EXISTS auto_bids (
@@ -67,4 +67,4 @@ CREATE TABLE IF NOT EXISTS auto_bids (
     UNIQUE KEY unique_user_product (user_id, product_id),
     FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -1,5 +1,6 @@
 package org.example.server.network;
 
+import org.example.server.repository.DatabaseManager;
 import org.example.util.Config;
 import org.example.util.FileLogger;
 
@@ -11,6 +12,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * High-performance Non-blocking Socket Server using Java NIO.
@@ -22,6 +25,7 @@ public class SocketServer {
     private ServerSocketChannel cmdChannel;
     private ServerSocketChannel notifyChannel;
     private volatile boolean running = true;
+    private final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);
 
     private final Map<SocketChannel, StringBuilder> clientBuffers = new ConcurrentHashMap<>();
 
@@ -76,13 +80,15 @@ public class SocketServer {
         clientChannel.configureBlocking(false);
         
         String type = (String) key.attachment();
-        clientChannel.register(selector, SelectionKey.OP_READ, type);
+        SelectionKey clientKey = clientChannel.register(selector, SelectionKey.OP_READ, type);
         clientBuffers.put(clientChannel, new StringBuilder());
 
         FileLogger.info("New " + type + " connection from: " + clientChannel.getRemoteAddress());
         
         if ("Notification".equals(type)) {
-            Broadcaster.addClient(new NotificationHandler(clientChannel));
+            NotificationHandler handler = new NotificationHandler(clientChannel);
+            Broadcaster.addClient(handler);
+            clientKey.attach(handler); // Store handler for cleanup
         }
     }
 
@@ -94,7 +100,7 @@ public class SocketServer {
         try {
             int bytesRead = clientChannel.read(readBuffer);
             if (bytesRead == -1) {
-                closeConnection(clientChannel);
+                closeConnection(key);
                 return;
             }
 
@@ -108,22 +114,33 @@ public class SocketServer {
                 buffer.delete(0, newlineIndex + 1);
 
                 if (!message.isEmpty()) {
-                    String type = (String) key.attachment();
-                    if ("Command".equals(type)) {
-                        new Thread(new CommandHandler(clientChannel, message)).start();
+                    Object attachment = key.attachment();
+                    // If it's a notification channel, we don't expect commands, 
+                    // but if it were, 'attachment' would be the NotificationHandler.
+                    // Only "Command" strings should trigger CommandHandler.
+                    if ("Command".equals(attachment)) {
+                        executorService.submit(new CommandHandler(clientChannel, message));
                     }
                 }
             }
         } catch (IOException e) {
             FileLogger.error("Error reading from client: " + clientChannel, e);
-            closeConnection(clientChannel);
+            closeConnection(key);
         }
     }
 
-    private void closeConnection(SocketChannel channel) {
+    private void closeConnection(SelectionKey key) {
+        SocketChannel channel = (SocketChannel) key.channel();
         try {
-            FileLogger.info("Closing connection: " + channel.getRemoteAddress());
+            FileLogger.info("Closing connection: " + (channel.isOpen() ? channel.getRemoteAddress() : "already closed"));
+            
+            Object attachment = key.attachment();
+            if (attachment instanceof NotificationHandler handler) {
+                handler.close();
+            }
+            
             clientBuffers.remove(channel);
+            key.cancel();
             channel.close();
         } catch (IOException e) {
             FileLogger.error("Error closing channel", e);
@@ -138,6 +155,11 @@ public class SocketServer {
             if (notifyChannel != null) notifyChannel.close();
         } catch (IOException e) {
             FileLogger.error("Error stopping server", e);
+        } finally {
+            if (executorService != null) {
+                executorService.shutdown();
+            }
+            DatabaseManager.closeConnection();
         }
     }
 }

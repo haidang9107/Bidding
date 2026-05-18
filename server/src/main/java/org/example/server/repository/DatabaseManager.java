@@ -1,51 +1,60 @@
 package org.example.server.repository;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import org.example.util.Config;
 import org.example.util.FileLogger;
+
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 
 /**
- * Manages database connections for the application using centralized Config.
+ * Manages database connections for the application using HikariCP Connection Pool.
  */
 public class DatabaseManager {
-    private static Connection connection;
+    private static HikariDataSource dataSource;
+
+    static {
+        try {
+            HikariConfig config = new HikariConfig();
+            config.setJdbcUrl(Config.get("DB_URL"));
+            config.setUsername(Config.get("DB_USER"));
+            config.setPassword(Config.get("DB_PASSWORD"));
+            config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+            
+            // Unicode and encoding properties
+            config.addDataSourceProperty("useUnicode", "true");
+            config.addDataSourceProperty("characterEncoding", "UTF-8");
+            config.addDataSourceProperty("connectionCollation", "utf8mb4_unicode_ci");
+            
+            // Pool configuration
+            config.setMaximumPoolSize(10);
+            config.setMinimumIdle(2);
+            config.setIdleTimeout(30000);
+            config.setConnectionTimeout(10000);
+            config.setMaxLifetime(1800000); // 30 minutes
+            
+            dataSource = new HikariDataSource(config);
+            FileLogger.info("HikariCP Database connection pool established successfully!");
+        } catch (Exception e) {
+            FileLogger.error("Failed to initialize HikariCP pool", e);
+            throw new RuntimeException("Database pool initialization failed", e);
+        }
+    }
 
     /**
-     * Gets a singleton connection to the database.
+     * Gets a connection from the connection pool.
      * @return the database connection
      * @throws SQLException if a database access error occurs
      */
-    public static synchronized Connection getConnection() throws SQLException {
-        if (connection == null || connection.isClosed()) {
-            String url = Config.get("DB_URL");
-            String user = Config.get("DB_USER");
-            String password = Config.get("DB_PASSWORD");
-
-            try {
-                Class.forName("com.mysql.cj.jdbc.Driver");
-                connection = DriverManager.getConnection(url, user, password);
-                FileLogger.info("Database connection established successfully!");
-            } catch (ClassNotFoundException e) {
-                FileLogger.error("MySQL Driver not found", e);
-                throw new SQLException("MySQL Driver not found: " + e.getMessage());
-            } catch (SQLException e) {
-                FileLogger.error("Database connection failed", e);
-                throw e;
-            }
-        }
-        return connection;
+    public static Connection getConnection() throws SQLException {
+        return dataSource.getConnection();
     }
 
     public static void closeConnection() {
-        try {
-            if (connection != null && !connection.isClosed()) {
-                connection.close();
-                FileLogger.info("Database connection closed.");
-            }
-        } catch (SQLException e) {
-            FileLogger.error("Error closing database connection", e);
+        if (dataSource != null && !dataSource.isClosed()) {
+            dataSource.close();
+            FileLogger.info("Database connection pool closed.");
         }
     }
 }

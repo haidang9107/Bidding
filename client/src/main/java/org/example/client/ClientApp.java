@@ -1,7 +1,7 @@
 package org.example.client;
 
 import org.example.client.network.SocketClient;
-import org.example.payload.MessageType;
+import org.example.model.enums.MessageType;
 import org.example.payload.Request;
 import org.example.util.FileLogger;
 

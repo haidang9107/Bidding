@@ -23,12 +23,15 @@ public class NotificationHandler {
      * @param json the JSON string to send
      * @return true if the message was sent successfully, false otherwise
      */
-    public boolean sendMessage(String json) {
+    public synchronized boolean sendMessage(String json) {
         try {
             String message = json + "\n";
             ByteBuffer buffer = ByteBuffer.wrap(message.getBytes(StandardCharsets.UTF_8));
             while (buffer.hasRemaining()) {
-                clientChannel.write(buffer);
+                int written = clientChannel.write(buffer);
+                if (written == 0) {
+                    Thread.onSpinWait(); // Avoid 100% CPU spin
+                }
             }
             return true;
         } catch (IOException e) {

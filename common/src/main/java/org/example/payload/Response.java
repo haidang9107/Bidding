@@ -1,5 +1,7 @@
 package org.example.payload;
 
+import org.example.model.enums.MessageType;
+
 /**
  * Represents a response from the server to a client.
  *

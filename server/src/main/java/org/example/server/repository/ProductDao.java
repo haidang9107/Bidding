@@ -53,6 +53,23 @@ public class ProductDao {
     }
 
     /**
+     * Retrieves a product by its ID and locks the row for the transaction.
+     */
+    public Item getProductForUpdate(int productId) throws SQLException {
+        String sql = "SELECT * FROM products WHERE product_id = ? FOR UPDATE";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, productId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapResultSetToItem(rs);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * Maps a result set row to an Item object.
      */
     private Item mapResultSetToItem(ResultSet rs) throws SQLException {

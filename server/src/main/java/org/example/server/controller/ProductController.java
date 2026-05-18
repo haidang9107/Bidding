@@ -1,7 +1,7 @@
 package org.example.server.controller;
 
 import org.example.model.product.Item;
-import org.example.payload.MessageType;
+import org.example.model.enums.MessageType;
 import org.example.payload.Response;
 import org.example.server.service.product.ProductService;
 import java.util.List;

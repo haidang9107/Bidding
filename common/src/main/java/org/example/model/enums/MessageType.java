@@ -1,4 +1,4 @@
-package org.example.payload;
+package org.example.model.enums;
 
 /**
  * Message types for the bidding system.

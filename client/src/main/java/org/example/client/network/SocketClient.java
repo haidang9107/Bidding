@@ -174,7 +174,7 @@ public class SocketClient {
         }
     }
 
-    public void sendRequest(Request request) {
+    public synchronized void sendRequest(Request request) {
         if (!connected) {
             FileLogger.error("Cannot send request: Not connected");
             return;
@@ -183,7 +183,10 @@ public class SocketClient {
             String json = JsonConverter.toJson(request) + "\n";
             ByteBuffer buffer = ByteBuffer.wrap(json.getBytes(StandardCharsets.UTF_8));
             while (buffer.hasRemaining()) {
-                cmdChannel.write(buffer);
+                int written = cmdChannel.write(buffer);
+                if (written == 0) {
+                    Thread.onSpinWait();
+                }
             }
         } catch (IOException e) {
             FileLogger.error("Failed to send request", e);

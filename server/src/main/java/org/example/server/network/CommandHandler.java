@@ -1,6 +1,6 @@
 package org.example.server.network;
 
-import org.example.payload.MessageType;
+import org.example.model.enums.MessageType;
 import org.example.payload.Request;
 import org.example.payload.Response;
 import org.example.server.controller.AuthController;
@@ -45,7 +45,9 @@ public class CommandHandler implements Runnable {
             
             // Special Broadcast Logic for Successful Bids
             if (request.getType() == MessageType.BID_PLACE && response.isSuccess()) {
-                broadcastBidUpdate(request.getPayload());
+                String[] data = request.getPayload().toString().split(":");
+                int productId = Integer.parseInt(data[0]);
+                broadcastBidUpdate(productId);
             }
             
         } catch (Exception e) {
@@ -75,14 +77,25 @@ public class CommandHandler implements Runnable {
                     return authController.handleLogin(request.getPayload());
                 case SIGNUP:
                     return authController.handleSignup(request.getPayload());
+                case LOGOUT:
+                    return new Response<>(MessageType.SUCCESS, true, "Logout successful", null);
+                
+                case GET_PROFILE:
+                case UPDATE_PROFILE:
+                    return new Response<>(MessageType.ERROR, false, "Profile features are coming soon!", null);
+                
                 case PRODUCT_LIST:
                     return productController.handleGetAllAuctions();
                 case PRODUCT_DETAIL:
                     return productController.handleGetAuctionDetail(request.getPayload());
+                case PRODUCT_ADD:
+                    return new Response<>(MessageType.ERROR, false, "Adding products via socket is not yet implemented", null);
+                
                 case BID_PLACE:
                     return bidController.handlePlaceBid(request.getPayload());
+                
                 default:
-                    return new Response<>(MessageType.ERROR, false, "Unknown Command", null);
+                    return new Response<>(MessageType.ERROR, false, "Unknown Command: " + request.getType(), null);
             }
         } catch (SQLException e) {
             FileLogger.error("Database error", e);
@@ -90,21 +103,31 @@ public class CommandHandler implements Runnable {
         }
     }
 
-    private void broadcastBidUpdate(Object payload) {
-        // Triggered on successful bid to notify ALL connected clients
-        Response<Object> update = new Response<>(MessageType.BID_UPDATE, true, "New highest bid!", payload);
-        Broadcaster.broadcast(update);
+    private void broadcastBidUpdate(int productId) {
+        try (Connection conn = DatabaseManager.getConnection()) {
+            ProductDao productDao = new ProductDao(conn);
+            Object product = productDao.getProductById(productId);
+            Response<Object> update = new Response<>(MessageType.BID_UPDATE, true, "New highest bid!", product);
+            Broadcaster.broadcast(update);
+        } catch (SQLException e) {
+            FileLogger.error("Failed to broadcast bid update", e);
+        }
     }
 
     private void sendResponse(Response<?> response) {
-        try {
-            String json = JsonConverter.toJson(response) + "\n";
-            ByteBuffer buffer = ByteBuffer.wrap(json.getBytes(StandardCharsets.UTF_8));
-            while (buffer.hasRemaining()) {
-                clientChannel.write(buffer);
+        synchronized (clientChannel) {
+            try {
+                String json = JsonConverter.toJson(response) + "\n";
+                ByteBuffer buffer = ByteBuffer.wrap(json.getBytes(StandardCharsets.UTF_8));
+                while (buffer.hasRemaining()) {
+                    int written = clientChannel.write(buffer);
+                    if (written == 0) {
+                        Thread.onSpinWait();
+                    }
+                }
+            } catch (IOException e) {
+                FileLogger.error("Failed to send response", e);
             }
-        } catch (IOException e) {
-            FileLogger.error("Failed to send response", e);
         }
     }
 }
