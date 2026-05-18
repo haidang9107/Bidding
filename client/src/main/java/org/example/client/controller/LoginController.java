@@ -26,5 +26,4 @@ public class LoginController {
     @FXML private Label statusLabel;
 
     private final SocketClient client = SocketClient.getInstance();
-    private
 }
