@@ -1,4 +1,4 @@
-package network;
+package org.example.client.network;
 
 import org.example.payload.Response;
 

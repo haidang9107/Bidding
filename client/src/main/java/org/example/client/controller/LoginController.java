@@ -1,8 +1,6 @@
-package controller;
+package org.example.client.controller;
 
-import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
@@ -12,12 +10,8 @@ import org.example.client.network.SocketClient;
 import org.example.client.session.Session;
 import org.example.client.util.SceneRouter;
 import org.example.model.user.Role;
-import org.example.model.user.User;
 import org.example.payload.MessageType;
-import org.example.payload.Request;
-import org.example.payload.Response;
 import org.example.payload.dto.LoginRequest;
-import org.example.util.JsonConverter;
 
 /**
  * Controller cho màn hình đăng nhập.
