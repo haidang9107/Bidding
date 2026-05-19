@@ -8,6 +8,8 @@ import org.example.client.network.SocketClient;
 import org.example.client.session.Session;
 import org.example.client.util.SceneRouter;
 import org.example.model.enums.UserRole;
+import org.example.model.user.Admin;
+import org.example.model.user.Member;
 import org.example.model.user.User;
 import org.example.model.enums.MessageType;
 import org.example.payload.Request;
@@ -42,7 +44,7 @@ public class LoginController {
             return;
         }
 
-        loginBtn.setDisable(true);
+        loginBtn.setDisable(true);// khóa nút bấm lại chỉ cho gửi yêu cầu đăng nhập một lần
         statusLabel.setText("Đang kết nối tới hệ thống...");
 
         // Đóng gói LoginRequest -> JSON -> Request
@@ -71,13 +73,13 @@ public class LoginController {
                 // do User là abstract class. Re-serialize rồi parse theo role.
                 String userJson = JsonConverter.toJson(resp.getData());
                 // Đọc trước để xác định role
-                org.example.model.user.User probe =
-                        JsonConverter.fromJson(userJson, org.example.model.user.Admin.class);
+                User probe =
+                        JsonConverter.fromJson(userJson, Admin.class);
                 User user;
                 if (probe != null && probe.getRole() == UserRole.ADMIN) {
                     user = probe;
                 } else {
-                    user = JsonConverter.fromJson(userJson, org.example.model.user.Member.class);
+                    user = JsonConverter.fromJson(userJson, Member.class);
                 }
 
                 // Lưu vào Session Singleton
