@@ -1,0 +1,186 @@
+/* ==================================================
+   User Dashboard screen
+   ================================================== */
+
+.user-root {
+    -fx-background-color: linear-gradient(to bottom right, #1a1a2e, #16213e);
+}
+
+.topbar {
+    -fx-background-color: #14142b;
+    -fx-border-color: transparent transparent #2a2a3e transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.title-label {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.user-label {
+    -fx-text-fill: #c0c0d0;
+    -fx-font-size: 13px;
+}
+
+.muted-label {
+    -fx-text-fill: #8a8aa0;
+    -fx-font-size: 12px;
+}
+
+.status-label {
+    -fx-text-fill: #ffd166;
+    -fx-font-size: 12px;
+    -fx-wrap-text: true;
+}
+
+/* Wallet card – left side big card */
+.wallet-card {
+    -fx-background-color: linear-gradient(to bottom right, #2c2c54, #474787);
+    -fx-background-radius: 12;
+    -fx-padding: 24;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0.0, 0, 4);
+}
+
+.wallet-title {
+    -fx-text-fill: #d0d0ff;
+    -fx-font-size: 13px;
+}
+
+.balance-label {
+    -fx-text-fill: #67e8b1;
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+}
+
+.blocked-label {
+    -fx-text-fill: #ffd166;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+.section-title {
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.card {
+    -fx-background-color: #1f1f33;
+    -fx-background-radius: 10;
+}
+
+.input-field {
+    -fx-background-color: #2a2a3e;
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #7a7a90;
+    -fx-padding: 8 10;
+    -fx-background-radius: 6;
+    -fx-font-size: 13px;
+}
+
+.input-field:focused {
+    -fx-border-color: #5a8dee;
+    -fx-border-radius: 6;
+    -fx-border-width: 1.5;
+}
+
+.primary-btn {
+    -fx-background-color: #5a8dee;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 10 18;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.primary-btn:hover {
+    -fx-background-color: #4a7dde;
+}
+
+.success-btn {
+    -fx-background-color: #2eb277;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 10 18;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.success-btn:hover {
+    -fx-background-color: #259567;
+}
+
+.warning-btn {
+    -fx-background-color: #e0a020;
+    -fx-text-fill: #1a1a2e;
+    -fx-font-weight: bold;
+    -fx-padding: 10 18;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.warning-btn:hover {
+    -fx-background-color: #c08c12;
+}
+
+.ghost-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #c0c0d0;
+    -fx-border-color: #3a3a4e;
+    -fx-border-radius: 6;
+    -fx-padding: 8 14;
+    -fx-cursor: hand;
+}
+
+.ghost-btn:hover {
+    -fx-background-color: #2a2a3e;
+    -fx-text-fill: white;
+}
+
+/* Navigation tiles */
+.nav-tile {
+    -fx-background-color: #1f1f33;
+    -fx-background-radius: 10;
+    -fx-cursor: hand;
+    -fx-padding: 22 18;
+    -fx-border-color: #2a2a3e;
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+}
+
+.nav-tile:hover {
+    -fx-background-color: #2a2a4e;
+    -fx-border-color: #5a8dee;
+}
+
+.nav-tile-title {
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.nav-tile-desc {
+    -fx-text-fill: #8a8aa0;
+    -fx-font-size: 11px;
+    -fx-wrap-text: true;
+}
+
+/* History */
+.history-list {
+    -fx-background-color: #18182a;
+    -fx-control-inner-background: #18182a;
+    -fx-background-radius: 6;
+}
+
+.history-list .list-cell {
+    -fx-background-color: #18182a;
+    -fx-text-fill: #d0d0e0;
+    -fx-padding: 6 10;
+    -fx-font-family: "Consolas", "Monaco", monospace;
+    -fx-font-size: 11px;
+}
+
+.history-list .list-cell:filled:hover {
+    -fx-background-color: #24243a;
+}

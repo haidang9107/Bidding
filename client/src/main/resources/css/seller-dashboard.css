@@ -1,0 +1,87 @@
+/* ==================================================
+   Seller dashboard screen
+   ================================================== */
+
+.seller-root {
+    -fx-background-color: linear-gradient(to bottom right, #1a1a2e, #16213e);
+}
+
+.topbar {
+    -fx-background-color: #14142b;
+    -fx-border-color: transparent transparent #2a2a3e transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.title-label {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.user-label {
+    -fx-text-fill: #c0c0d0;
+    -fx-font-size: 13px;
+}
+
+.card {
+    -fx-background-color: #1f1f33;
+    -fx-background-radius: 10;
+}
+
+.section-title {
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.muted-label {
+    -fx-text-fill: #8a8aa0;
+    -fx-font-size: 12px;
+}
+
+.input-field {
+    -fx-background-color: #2a2a3e;
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #7a7a90;
+    -fx-padding: 8 10;
+    -fx-background-radius: 6;
+    -fx-font-size: 13px;
+}
+
+.input-field:focused {
+    -fx-border-color: #5a8dee;
+    -fx-border-radius: 6;
+    -fx-border-width: 1.5;
+}
+
+.primary-btn {
+    -fx-background-color: #5a8dee;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 10 20;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.primary-btn:hover {
+    -fx-background-color: #4a7dde;
+}
+
+.ghost-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #c0c0d0;
+    -fx-border-color: #3a3a4e;
+    -fx-border-radius: 6;
+    -fx-padding: 6 14;
+    -fx-cursor: hand;
+}
+
+.ghost-btn:hover {
+    -fx-background-color: #2a2a3e;
+    -fx-text-fill: white;
+}
+
+.status-label {
+    -fx-text-fill: #ffd166;
+    -fx-font-size: 12px;
+}
