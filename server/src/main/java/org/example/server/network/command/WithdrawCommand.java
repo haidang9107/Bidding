@@ -29,7 +29,7 @@ public class WithdrawCommand implements Command {
                 amount = Long.parseLong(payload.toString());
             }
 
-            String result = withdrawService.withdraw(user.getUserId(), amount);
+            String result = withdrawService.withdraw(user.getAccountname(), amount);
             return new Response<>(MessageType.WITHDRAW, result.equals("SUCCESS"), result, null);
         } catch (Exception e) {
             FileLogger.error("Withdrawal parsing error", e);

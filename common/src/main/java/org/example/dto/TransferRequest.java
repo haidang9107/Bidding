@@ -1,15 +1,15 @@
 package org.example.dto;
 
 public class TransferRequest {
-    private int toUserId;
+    private String toAccountname;
     private long amount;
 
     public TransferRequest() {}
-    public TransferRequest(int toUserId, long amount) {
-        this.toUserId = toUserId;
+    public TransferRequest(String toAccountname, long amount) {
+        this.toAccountname = toAccountname;
         this.amount = amount;
     }
 
-    public int getToUserId() { return toUserId; }
+    public String getToAccountname() { return toAccountname; }
     public long getAmount() { return amount; }
 }

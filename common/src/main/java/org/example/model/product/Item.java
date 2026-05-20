@@ -6,18 +6,19 @@ import java.sql.Timestamp;
 
 /**
  * Represents a generic item in the auction system.
- * This class serves as a base for specific product types and handles auction timing.
+ * Simplified: Uses sellerAccountname and winnerAccountname (Strings).
  */
 public abstract class Item {
 
     private int productId;
-    private String productName;
+    private String name;
     private String description;
+    private String imageUrl;
     private long startingPrice;
     private long currentPrice;
     private long stepPrice;
-    private int sellerId;
-    private Integer winnerId; // Can be null
+    private String sellerAccountname;
+    private String winnerAccountname; // Can be null
     private ItemCategory category;
     private AuctionStatus status;
     
@@ -25,40 +26,43 @@ public abstract class Item {
     private Timestamp endTime;
     
     private int version; // For optimistic locking
-    private Timestamp createdAt;
 
     public Item() {
     }
 
-    public Item(int productId, String productName, String description, long startingPrice, 
-                long currentPrice, long stepPrice, int sellerId, Integer winnerId, 
+    public Item(int productId, String name, String description, String imageUrl, 
+                long startingPrice, long currentPrice, long stepPrice, 
+                String sellerAccountname, String winnerAccountname, 
                 ItemCategory category, AuctionStatus status, Timestamp startTime, 
-                Timestamp endTime, int version, Timestamp createdAt) {
+                Timestamp endTime, int version) {
         this.productId = productId;
-        this.productName = productName;
+        this.name = name;
         this.description = description;
+        this.imageUrl = imageUrl;
         this.startingPrice = startingPrice;
         this.currentPrice = currentPrice;
         this.stepPrice = stepPrice;
-        this.sellerId = sellerId;
-        this.winnerId = winnerId;
+        this.sellerAccountname = sellerAccountname;
+        this.winnerAccountname = winnerAccountname;
         this.category = category;
         this.status = status;
         this.startTime = startTime;
         this.endTime = endTime;
         this.version = version;
-        this.createdAt = createdAt;
     }
 
     // Getters and Setters
     public int getProductId() { return productId; }
     public void setProductId(int productId) { this.productId = productId; }
 
-    public String getProductName() { return productName; }
-    public void setProductName(String productName) { this.productName = productName; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
     public long getStartingPrice() { return startingPrice; }
     public void setStartingPrice(long startingPrice) { this.startingPrice = startingPrice; }
@@ -69,11 +73,11 @@ public abstract class Item {
     public long getStepPrice() { return stepPrice; }
     public void setStepPrice(long stepPrice) { this.stepPrice = stepPrice; }
 
-    public int getSellerId() { return sellerId; }
-    public void setSellerId(int sellerId) { this.sellerId = sellerId; }
+    public String getSellerAccountname() { return sellerAccountname; }
+    public void setSellerAccountname(String sellerAccountname) { this.sellerAccountname = sellerAccountname; }
 
-    public Integer getWinnerId() { return winnerId; }
-    public void setWinnerId(Integer winnerId) { this.winnerId = winnerId; }
+    public String getWinnerAccountname() { return winnerAccountname; }
+    public void setWinnerAccountname(String winnerAccountname) { this.winnerAccountname = winnerAccountname; }
 
     public ItemCategory getCategory() { return category; }
     public void setCategory(ItemCategory category) { this.category = category; }
@@ -89,7 +93,4 @@ public abstract class Item {
 
     public int getVersion() { return version; }
     public void setVersion(int version) { this.version = version; }
-
-    public Timestamp getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
 }

@@ -29,15 +29,15 @@ public class AuthService {
      * @param plainPassword The plain text password provided.
      * @return The User object if authenticated, null otherwise.
      */
-    public User authenticate(String username, String plainPassword) {
+    public User authenticate(String accountname, String plainPassword) {
         try (Connection conn = DatabaseManager.getConnection()) {
-            User user = userDao.findByUsername(conn, username);
+            User user = userDao.findByAccountname(conn, accountname);
             if (user != null && PasswordHashing.checkPassword(plainPassword, user.getPassword())) {
-                FileLogger.info("User authenticated: " + username);
+                FileLogger.info("User authenticated: " + accountname);
                 return user;
             }
         } catch (SQLException e) {
-            FileLogger.error("Authentication error for user: " + username, e);
+            FileLogger.error("Authentication error for user: " + accountname, e);
         }
         return null;
     }
@@ -46,34 +46,31 @@ public class AuthService {
      * Registers a new user in the system.
      * All new registrations are assigned the MEMBER role by default for security.
      * Admin roles must be assigned manually via database access.
-     * @param username The desired username.
+     * @param accountname The desired accountname (primary key).
      * @param plainPassword The plain text password to be hashed.
      * @param email The user's email address.
      * @return true if registration was successful, false otherwise.
      */
-    public boolean register(String username, String plainPassword, String email) {
+    public boolean register(String accountname, String plainPassword, String email) {
         try (Connection conn = DatabaseManager.getConnection()) {
-            if (userDao.findByUsername(conn, username) != null) {
-                FileLogger.info("Registration failed: Username '" + username + "' already exists.");
+            if (userDao.findByAccountname(conn, accountname) != null) {
+                FileLogger.info("Registration failed: Account name '" + accountname + "' already exists.");
                 return false;
             }
 
             String hashedPassword = PasswordHashing.hashPassword(plainPassword);
-            UserRole role = UserRole.MEMBER; // Secure default
 
             User newUser;
-            Timestamp now = new Timestamp(System.currentTimeMillis());
-            
-            // All new users are Members. Admin is assigned manually in DB.
-            newUser = new Member(0, username, hashedPassword, email, "", Gender.MALE, "", 0, 0, now);
+            // Simplified Member: accountname, password, email, avt(null), status(0), balance(0), blockedBalance(0)
+            newUser = new Member(accountname, hashedPassword, email, null, 0, 0, 0);
 
             boolean success = userDao.createUser(conn, newUser);
             if (success) {
-                FileLogger.info("User registered successfully as MEMBER: " + username);
+                FileLogger.info("User registered successfully as MEMBER: " + accountname);
             }
             return success;
         } catch (SQLException e) {
-            FileLogger.error("Registration error for user: " + username, e);
+            FileLogger.error("Registration error for user: " + accountname, e);
         }
         return false;
     }

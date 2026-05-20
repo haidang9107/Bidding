@@ -1,110 +1,114 @@
 package org.example.server.service.bid;
 
-import org.example.model.Auction;
 import org.example.model.product.Item;
 import org.example.model.user.User;
-import org.example.server.repository.AuctionDao;
-import org.example.server.repository.ProductDao;
-import org.example.server.repository.UserDao;
-import org.example.util.FileLogger;
-
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-
-/**
- * Service for handling bidding logic, including concurrency and balance checks.
- */
+import org.example.model.user.Member;
 import org.example.server.repository.DatabaseManager;
-import org.example.server.repository.AuctionDao;
 import org.example.server.repository.ProductDao;
 import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 
 /**
  * Service for handling bidding logic, including concurrency and balance checks.
+ * Refactored to use accountname (String).
  */
 public class BidService {
     private final ProductDao productDao;
     private final UserDao userDao;
-    private final AuctionDao auctionDao;
 
     public BidService() {
         this.productDao = new ProductDao();
         this.userDao = new UserDao();
-        this.auctionDao = new AuctionDao();
     }
 
     /**
      * Places a bid on a product.
      * Uses Pessimistic Locking and Ordered Balance Updates to prevent race conditions and deadlocks.
      */
-    public String placeBid(int productId, int bidderId, long bidAmount) {
+    public String placeBid(int productId, String bidderAccountname, long bidAmount) {
         try (Connection connection = DatabaseManager.getConnection()) {
             try {
                 connection.setAutoCommit(false);
 
-                // 1. Lock Product first (Pessimistic Locking)
+                // 1. Lock Product
                 Item item = productDao.getProductForUpdate(connection, productId);
-                User bidder = userDao.findById(connection, bidderId);
-
-                if (item == null || bidder == null) {
-                    return "Product or User not found.";
+                if (item == null) {
+                    connection.rollback();
+                    return "Product not found.";
                 }
 
-                if (item.getSellerId() == bidderId) {
+                // 2. Lock Users in CONSISTENT ORDER to prevent deadlocks
+                String oldWinnerAccount = item.getWinnerAccountname();
+                User bidder;
+                
+                if (oldWinnerAccount == null || oldWinnerAccount.equals(bidderAccountname)) {
+                    // Only one user involved
+                    bidder = userDao.findByAccountnameForUpdate(connection, bidderAccountname);
+                } else {
+                    // Two different users involved. Lock them in alphabetical order.
+                    if (bidderAccountname.compareTo(oldWinnerAccount) < 0) {
+                        bidder = userDao.findByAccountnameForUpdate(connection, bidderAccountname);
+                        userDao.findByAccountnameForUpdate(connection, oldWinnerAccount);
+                    } else {
+                        userDao.findByAccountnameForUpdate(connection, oldWinnerAccount);
+                        bidder = userDao.findByAccountnameForUpdate(connection, bidderAccountname);
+                    }
+                }
+
+                if (bidder == null) {
+                    connection.rollback();
+                    return "User not found.";
+                }
+
+                if (!(bidder instanceof Member member)) {
+                    connection.rollback();
+                    return "Only members can place bids.";
+                }
+
+                if (item.getSellerAccountname().equals(bidderAccountname)) {
+                    connection.rollback();
                     return "Seller cannot bid on their own item.";
                 }
 
-                // 2. Basic Validation
+                // 3. Basic Validation
                 if (bidAmount < item.getCurrentPrice() + item.getStepPrice()) {
+                    connection.rollback();
                     return "Bid amount is too low. Minimum required: " + (item.getCurrentPrice() + item.getStepPrice());
                 }
 
-                long availableBalance = bidder.getBalance() - bidder.getBlockedBalance();
+                long availableBalance = member.getBalance() - member.getBlockedBalance();
                 if (bidAmount > availableBalance) {
+                    connection.rollback();
                     return "Insufficient balance. Available: " + availableBalance;
                 }
 
-                // 3. Handle Balance Updates in CONSISTENT ORDER to prevent deadlocks
-                Integer oldWinnerId = item.getWinnerId();
-                if (oldWinnerId != null) {
-                    if (oldWinnerId < bidderId) {
-                        // Unlock old winner first
-                        userDao.addBlockedBalance(connection, oldWinnerId, -item.getCurrentPrice());
-                        // Then lock new winner
-                        userDao.addBlockedBalance(connection, bidderId, bidAmount);
-                    } else if (oldWinnerId > bidderId) {
-                        // Lock new winner first
-                        userDao.addBlockedBalance(connection, bidderId, bidAmount);
-                        // Then unlock old winner
-                        userDao.addBlockedBalance(connection, oldWinnerId, -item.getCurrentPrice());
+                // 4. Update Balances
+                if (oldWinnerAccount != null) {
+                    if (!oldWinnerAccount.equals(bidderAccountname)) {
+                        // Different person: Release old winner's money, lock new bidder's money
+                        userDao.addBlockedBalance(connection, oldWinnerAccount, -item.getCurrentPrice());
+                        userDao.addBlockedBalance(connection, bidderAccountname, bidAmount);
                     } else {
-                        // Same person bidding again
-                        userDao.addBlockedBalance(connection, bidderId, bidAmount - item.getCurrentPrice());
+                        // Same person bidding again: Adjust the difference
+                        userDao.addBlockedBalance(connection, bidderAccountname, bidAmount - item.getCurrentPrice());
                     }
                 } else {
                     // No old winner, just lock new winner
-                    userDao.addBlockedBalance(connection, bidderId, bidAmount);
+                    userDao.addBlockedBalance(connection, bidderAccountname, bidAmount);
                 }
 
-                // 4. Update Product
-                boolean success = productDao.updateBid(connection, productId, bidAmount, bidderId, item.getVersion());
+                // 5. Update Product using Optimistic Locking (with version check)
+                boolean success = productDao.updateBid(connection, productId, bidAmount, bidderAccountname, item.getVersion());
                 if (!success) {
                     connection.rollback();
                     return "Concurrency error: Someone placed a bid faster than you. Please try again.";
                 }
 
-                // 5. Record Auction History
-                Auction auction = new Auction(0, productId, bidderId, bidAmount, new Timestamp(System.currentTimeMillis()));
-                auctionDao.insertAuction(connection, auction);
-
                 connection.commit();
-                FileLogger.info("Bid placed successfully: User " + bidderId + " on Product " + productId);
+                FileLogger.info("Bid placed successfully: User " + bidderAccountname + " on Product " + productId);
                 return "SUCCESS";
 
             } catch (SQLException e) {

@@ -29,7 +29,7 @@ public class DepositCommand implements Command {
                 amount = Long.parseLong(payload.toString());
             }
             
-            String result = depositService.deposit(user.getUserId(), amount);
+            String result = depositService.deposit(user.getAccountname(), amount);
             return new Response<>(MessageType.DEPOSIT, result.equals("SUCCESS"), result, null);
         } catch (Exception e) {
             FileLogger.error("Deposit parsing error", e);

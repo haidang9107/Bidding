@@ -17,12 +17,14 @@ public class Electronics extends Item {
         this.setCategory(ItemCategory.ELECTRONICS);
     }
 
-    public Electronics(int productId, String productName, String description, long startingPrice, 
-                       long currentPrice, long stepPrice, int sellerId, Integer winnerId, 
+    public Electronics(int productId, String name, String description, String imageUrl, 
+                       long startingPrice, long currentPrice, long stepPrice, 
+                       String sellerAccountname, String winnerAccountname, 
                        AuctionStatus status, Timestamp startTime, Timestamp endTime, 
-                       int version, Timestamp createdAt, String brand, int warrantyMonths) {
-        super(productId, productName, description, startingPrice, currentPrice, stepPrice, 
-              sellerId, winnerId, ItemCategory.ELECTRONICS, status, startTime, endTime, version, createdAt);
+                       int version, String brand, int warrantyMonths) {
+        super(productId, name, description, imageUrl, startingPrice, currentPrice, stepPrice, 
+              sellerAccountname, winnerAccountname, ItemCategory.ELECTRONICS, status, 
+              startTime, endTime, version);
         this.brand = brand;
         this.warrantyMonths = warrantyMonths;
     }

@@ -26,7 +26,7 @@ public class TransferCommand implements Command {
             if (transferReq == null) {
                 return new Response<>(MessageType.ERROR, false, "Invalid transfer request", null);
             }
-            String result = transferService.transfer(user.getUserId(), transferReq.getToUserId(), transferReq.getAmount());
+            String result = transferService.transfer(user.getAccountname(), transferReq.getToAccountname(), transferReq.getAmount());
             return new Response<>(MessageType.TRANSFER, result.equals("SUCCESS"), result, null);
         } catch (Exception e) {
             return new Response<>(MessageType.ERROR, false, "Internal error in transfer", null);

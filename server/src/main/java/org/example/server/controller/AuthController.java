@@ -29,6 +29,12 @@ public class AuthController {
 
         User user = authService.authenticate(loginReq.getUsername(), loginReq.getPassword());
         if (user != null) {
+            if (user.getStatus() == 1) {
+                return new Response<>(MessageType.ERROR, false, "Your account has been BANNED.", null);
+            }
+            // Security: Remove sensitive password hash before sending to client
+            user.setPassword(null); 
+            
             return new Response<>(MessageType.SUCCESS, true, "Login successful", user);
         } else {
             return new Response<>(MessageType.ERROR, false, "Invalid username or password", null);

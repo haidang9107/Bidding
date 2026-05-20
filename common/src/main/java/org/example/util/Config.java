@@ -16,8 +16,10 @@ public class Config {
     static {
         // Define system defaults
         DEFAULTS.put("SERVER_PORT", "8888");
-        DEFAULTS.put("NOTIFY_PORT", "8889");
         DEFAULTS.put("SERVER_HOST", "localhost");
+        DEFAULTS.put("DB_HOST", "localhost");
+        DEFAULTS.put("DB_PORT", "3306");
+        DEFAULTS.put("DB_NAME", "bidding_db");
         DEFAULTS.put("DB_URL", "jdbc:mysql://localhost:3306/bidding_db?createDatabaseIfNotExist=true");
         DEFAULTS.put("DB_DRIVER", "com.mysql.cj.jdbc.Driver");
 

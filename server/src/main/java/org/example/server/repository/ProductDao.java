@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * Data Access Object for managing product-related database operations.
+ * Simplified: Uses accountname (String) for seller and winner.
  */
 public class ProductDao {
 
@@ -69,10 +70,10 @@ public class ProductDao {
     /**
      * Checks if a user is the current leader in any active (RUNNING) auction.
      */
-    public boolean isUserLeadingAnyAuction(Connection connection, int userId) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM products WHERE winner_id = ? AND status = 1"; // 1: RUNNING
+    public boolean isUserLeadingAnyAuction(Connection connection, String accountname) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM products WHERE winner_accountname = ? AND status = 1"; // 1: ACTIVE
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setInt(1, userId);
+            ps.setString(1, accountname);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return rs.getInt(1) > 0;
@@ -87,17 +88,14 @@ public class ProductDao {
      */
     private Item mapResultSetToItem(ResultSet rs) throws SQLException {
         int productId = rs.getInt("product_id");
-        String productName = rs.getString("product_name");
+        String name = rs.getString("name");
         String description = rs.getString("description");
-        long startingPrice = rs.getLong("starting_price");
+        String imageUrl = rs.getString("image_url");
+        long startingPrice = rs.getLong("start_price");
         long currentPrice = rs.getLong("current_price");
         long stepPrice = rs.getLong("step_price");
-        int sellerId = rs.getInt("seller_id");
-        
-        Integer winnerId = rs.getInt("winner_id");
-        if (rs.wasNull()) {
-            winnerId = null;
-        }
+        String sellerAccountname = rs.getString("seller_accountname");
+        String winnerAccountname = rs.getString("winner_accountname");
 
         ItemCategory category = ItemCategory.fromInt(rs.getInt("category"));
         AuctionStatus status = AuctionStatus.fromInt(rs.getInt("status"));
@@ -105,19 +103,18 @@ public class ProductDao {
         Timestamp startTime = rs.getTimestamp("start_time");
         Timestamp endTime = rs.getTimestamp("end_time");
         int version = rs.getInt("version");
-        Timestamp createdAt = rs.getTimestamp("created_at");
 
         if (category == ItemCategory.ELECTRONICS) {
-            return new Electronics(productId, productName, description, startingPrice, currentPrice, stepPrice, 
-                    sellerId, winnerId, status, startTime, endTime, version, createdAt,
+            return new Electronics(productId, name, description, imageUrl, startingPrice, currentPrice, stepPrice, 
+                    sellerAccountname, winnerAccountname, status, startTime, endTime, version,
                     rs.getString("brand"), rs.getInt("warranty_months"));
         } else if (category == ItemCategory.ART) {
-            return new Art(productId, productName, description, startingPrice, currentPrice, stepPrice, 
-                    sellerId, winnerId, status, startTime, endTime, version, createdAt,
+            return new Art(productId, name, description, imageUrl, startingPrice, currentPrice, stepPrice, 
+                    sellerAccountname, winnerAccountname, status, startTime, endTime, version,
                     rs.getString("artist"), rs.getString("art_type"));
         } else {
-            return new Vehicle(productId, productName, description, startingPrice, currentPrice, stepPrice, 
-                    sellerId, winnerId, status, startTime, endTime, version, createdAt,
+            return new Vehicle(productId, name, description, imageUrl, startingPrice, currentPrice, stepPrice, 
+                    sellerAccountname, winnerAccountname, status, startTime, endTime, version,
                     rs.getString("brand"), rs.getString("model"), rs.getInt("manufacture_year"));
         }
     }
@@ -128,45 +125,46 @@ public class ProductDao {
     public boolean insertProduct(Connection connection, Item item) throws SQLException {
         String sql = """
                 INSERT INTO products(
-                    product_name, description, starting_price, current_price, step_price, 
-                    seller_id, category, status, start_time, end_time, brand, 
+                    name, description, image_url, start_price, current_price, step_price, 
+                    seller_accountname, category, status, start_time, end_time, brand, 
                     warranty_months, artist, art_type, model, manufacture_year
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, item.getProductName());
+            ps.setString(1, item.getName());
             ps.setString(2, item.getDescription());
-            ps.setLong(3, item.getStartingPrice());
-            ps.setLong(4, item.getCurrentPrice());
-            ps.setLong(5, item.getStepPrice());
-            ps.setInt(6, item.getSellerId());
-            ps.setInt(7, item.getCategory().getValue());
-            ps.setInt(8, item.getStatus().getValue());
-            ps.setTimestamp(9, item.getStartTime());
-            ps.setTimestamp(10, item.getEndTime());
+            ps.setString(3, item.getImageUrl());
+            ps.setLong(4, item.getStartingPrice());
+            ps.setLong(5, item.getCurrentPrice());
+            ps.setLong(6, item.getStepPrice());
+            ps.setString(7, item.getSellerAccountname());
+            ps.setInt(8, item.getCategory().getValue());
+            ps.setInt(9, item.getStatus().getValue());
+            ps.setTimestamp(10, item.getStartTime());
+            ps.setTimestamp(11, item.getEndTime());
 
             if (item instanceof Electronics e) {
-                ps.setString(11, e.getBrand());
-                ps.setInt(12, e.getWarrantyMonths());
-                ps.setNull(13, Types.VARCHAR);
+                ps.setString(12, e.getBrand());
+                ps.setInt(13, e.getWarrantyMonths());
                 ps.setNull(14, Types.VARCHAR);
                 ps.setNull(15, Types.VARCHAR);
-                ps.setNull(16, Types.INTEGER);
+                ps.setNull(16, Types.VARCHAR);
+                ps.setNull(17, Types.INTEGER);
             } else if (item instanceof Art a) {
-                ps.setNull(11, Types.VARCHAR);
-                ps.setNull(12, Types.INTEGER);
-                ps.setString(13, a.getArtist());
-                ps.setString(14, a.getArtType());
-                ps.setNull(15, Types.VARCHAR);
-                ps.setNull(16, Types.INTEGER);
+                ps.setNull(12, Types.VARCHAR);
+                ps.setNull(13, Types.INTEGER);
+                ps.setString(14, a.getArtist());
+                ps.setString(15, a.getArtType());
+                ps.setNull(16, Types.VARCHAR);
+                ps.setNull(17, Types.INTEGER);
             } else if (item instanceof Vehicle v) {
-                ps.setString(11, v.getBrand());
-                ps.setNull(12, Types.INTEGER);
-                ps.setNull(13, Types.VARCHAR);
+                ps.setString(12, v.getBrand());
+                ps.setNull(13, Types.INTEGER);
                 ps.setNull(14, Types.VARCHAR);
-                ps.setString(15, v.getModel());
-                ps.setInt(16, v.getManufactureYear());
+                ps.setNull(15, Types.VARCHAR);
+                ps.setString(16, v.getModel());
+                ps.setInt(17, v.getManufactureYear());
             }
 
             int affectedRows = ps.executeUpdate();
@@ -183,13 +181,25 @@ public class ProductDao {
     }
 
     /**
+     * Updates the status of a product/auction.
+     */
+    public boolean updateStatus(Connection connection, int productId, AuctionStatus status) throws SQLException {
+        String sql = "UPDATE products SET status = ? WHERE product_id = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, status.getValue());
+            ps.setInt(2, productId);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    /**
      * Updates the current price and winner of a product using Optimistic Locking.
      */
-    public boolean updateBid(Connection connection, int productId, long newPrice, int bidderId, int oldVersion) throws SQLException {
-        String sql = "UPDATE products SET current_price = ?, winner_id = ?, version = version + 1 WHERE product_id = ? AND version = ?";
+    public boolean updateBid(Connection connection, int productId, long newPrice, String bidderAccountname, int oldVersion) throws SQLException {
+        String sql = "UPDATE products SET current_price = ?, winner_accountname = ?, version = version + 1 WHERE product_id = ? AND version = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setLong(1, newPrice);
-            ps.setInt(2, bidderId);
+            ps.setString(2, bidderAccountname);
             ps.setInt(3, productId);
             ps.setInt(4, oldVersion);
             return ps.executeUpdate() > 0;

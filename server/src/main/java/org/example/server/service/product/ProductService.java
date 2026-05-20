@@ -1,17 +1,7 @@
 package org.example.server.service.product;
 
 import org.example.model.product.Item;
-import org.example.server.repository.ProductDao;
-import org.example.util.FileLogger;
-
-import java.sql.SQLException;
-import java.util.List;
-
-/**
- * Service for managing products and auction sessions.
- */
 import org.example.server.repository.DatabaseManager;
-import org.example.model.product.Item;
 import org.example.server.repository.ProductDao;
 import org.example.util.FileLogger;
 
@@ -51,7 +41,7 @@ public class ProductService {
         try (Connection conn = DatabaseManager.getConnection()) {
             return productDao.insertProduct(conn, item);
         } catch (SQLException e) {
-            FileLogger.error("Error creating auction for: " + item.getProductName(), e);
+            FileLogger.error("Error creating auction for: " + item.getName(), e);
             return false;
         }
     }

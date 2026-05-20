@@ -15,6 +15,15 @@ public enum MessageType {
     GET_PROFILE,
     /** User Actions: Update user profile */
     UPDATE_PROFILE,
+    /** User Actions: Update user avatar */
+    USER_UPDATE_AVATAR,
+    
+    /** Admin Actions: Get all users */
+    ADMIN_GET_ALL_USERS,
+    /** Admin Actions: Ban/Unban a user */
+    ADMIN_BAN_USER,
+    /** Admin Actions: Cancel an ongoing auction */
+    ADMIN_CANCEL_AUCTION,
     
     /** Auction/Product Management: Get list of products */
     PRODUCT_LIST,

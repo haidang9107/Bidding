@@ -17,12 +17,14 @@ public class Art extends Item {
         this.setCategory(ItemCategory.ART);
     }
 
-    public Art(int productId, String productName, String description, long startingPrice, 
-               long currentPrice, long stepPrice, int sellerId, Integer winnerId, 
+    public Art(int productId, String name, String description, String imageUrl, 
+               long startingPrice, long currentPrice, long stepPrice, 
+               String sellerAccountname, String winnerAccountname, 
                AuctionStatus status, Timestamp startTime, Timestamp endTime, 
-               int version, Timestamp createdAt, String artist, String artType) {
-        super(productId, productName, description, startingPrice, currentPrice, stepPrice, 
-              sellerId, winnerId, ItemCategory.ART, status, startTime, endTime, version, createdAt);
+               int version, String artist, String artType) {
+        super(productId, name, description, imageUrl, startingPrice, currentPrice, stepPrice, 
+              sellerAccountname, winnerAccountname, ItemCategory.ART, status, 
+              startTime, endTime, version);
         this.artist = artist;
         this.artType = artType;
     }
