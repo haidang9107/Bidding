@@ -163,7 +163,7 @@ public class SocketClient {
             String json = JsonConverter.toJson(request) + "\n";
             ByteBuffer buffer = ByteBuffer.wrap(json.getBytes(StandardCharsets.UTF_8));
             while (buffer.hasRemaining()) {
-                int written = clientChannel.write(buffer);
+                    int written = clientChannel.write(buffer);
                 if (written == 0) {
                     Thread.onSpinWait();
                 }

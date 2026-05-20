@@ -1,9 +1,11 @@
 package org.example.server.network;
 
+import org.example.server.network.command.CommandRegistry;
 import org.example.server.repository.DatabaseManager;
 import org.example.util.Config;
 import org.example.util.FileLogger;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -25,15 +27,19 @@ public class SocketServer {
     private ServerSocketChannel serverChannel;
     private volatile boolean running = true;
     private final ExecutorService executorService = Executors.newFixedThreadPool(3);
+    private final CommandRegistry commandRegistry;
 
-    private final Map<SocketChannel, StringBuilder> clientBuffers = new ConcurrentHashMap<>();
+    private final Map<SocketChannel, ByteArrayOutputStream> clientBuffers = new ConcurrentHashMap<>();
+    private final InactivityMonitor inactivityMonitor = new InactivityMonitor(60); // 60 seconds timeout
 
-    public SocketServer() {
+    public SocketServer(CommandRegistry commandRegistry) {
         this.port = Config.getInt("SERVER_PORT");
+        this.commandRegistry = commandRegistry;
     }
 
     public void run(String... args) {
         try {
+            inactivityMonitor.start();
             selector = Selector.open();
 
             serverChannel = ServerSocketChannel.open();
@@ -72,7 +78,7 @@ public class SocketServer {
         clientChannel.configureBlocking(false);
         clientChannel.register(selector, SelectionKey.OP_READ);
         
-        clientBuffers.put(clientChannel, new StringBuilder());
+        clientBuffers.put(clientChannel, new ByteArrayOutputStream());
         
         // Every connected client is added to Broadcaster to receive updates
         Broadcaster.addClient(clientChannel);
@@ -82,48 +88,37 @@ public class SocketServer {
 
     private void handleRead(SelectionKey key) {
         SocketChannel clientChannel = (SocketChannel) key.channel();
-        StringBuilder buffer = clientBuffers.get(clientChannel);
+        ByteArrayOutputStream buffer = clientBuffers.get(clientChannel);
         ByteBuffer readBuffer = ByteBuffer.allocate(1024);
 
         try {
             int bytesRead = clientChannel.read(readBuffer);
             if (bytesRead == -1) {
-                closeConnection(key);
+                DisconnectionHandler.handle(clientChannel);
+                key.cancel();
+                clientBuffers.remove(clientChannel);
                 return;
             }
 
             readBuffer.flip();
-            String data = StandardCharsets.UTF_8.decode(readBuffer).toString();
-            buffer.append(data);
-
-            int newlineIndex;
-            while ((newlineIndex = buffer.indexOf("\n")) != -1) {
-                String message = buffer.substring(0, newlineIndex).trim();
-                buffer.delete(0, newlineIndex + 1);
-
-                if (!message.isEmpty()) {
-                    executorService.submit(new CommandHandler(clientChannel, message));
+            while (readBuffer.hasRemaining()) {
+                byte b = readBuffer.get();
+                if (b == '\n') {
+                    // Line complete: decode as UTF-8
+                    String message = buffer.toString(StandardCharsets.UTF_8).trim();
+                    buffer.reset();
+                    if (!message.isEmpty()) {
+                        executorService.submit(new CommandHandler(clientChannel, message, commandRegistry));
+                    }
+                } else {
+                    buffer.write(b);
                 }
             }
         } catch (IOException e) {
             FileLogger.error("Error reading from client: " + clientChannel, e);
-            closeConnection(key);
-        }
-    }
-
-    private void closeConnection(SelectionKey key) {
-        SocketChannel channel = (SocketChannel) key.channel();
-        try {
-            FileLogger.info("Closing connection: " + (channel.isOpen() ? channel.getRemoteAddress() : "already closed"));
-            
-            Broadcaster.removeClient(channel);
-            SessionManager.logout(channel);
-            clientBuffers.remove(channel);
-            
+            DisconnectionHandler.handle(clientChannel);
             key.cancel();
-            channel.close();
-        } catch (IOException e) {
-            FileLogger.error("Error closing channel", e);
+            clientBuffers.remove(clientChannel);
         }
     }
 

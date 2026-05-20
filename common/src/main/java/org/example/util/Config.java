@@ -18,23 +18,24 @@ public class Config {
         DEFAULTS.put("SERVER_PORT", "8888");
         DEFAULTS.put("NOTIFY_PORT", "8889");
         DEFAULTS.put("SERVER_HOST", "localhost");
-        DEFAULTS.put("DB_URL", "jdbc:mysql://localhost:3306/MySQL-DB?createDatabaseIfNotExist=true");
-        DEFAULTS.put("DB_USER", "HaiDang91");
-        DEFAULTS.put("DB_PASSWORD", "9107");
+        DEFAULTS.put("DB_URL", "jdbc:mysql://localhost:3306/bidding_db?createDatabaseIfNotExist=true");
+        DEFAULTS.put("DB_DRIVER", "com.mysql.cj.jdbc.Driver");
 
         // Logic to find the .env at project root
         String userDir = System.getProperty("user.dir");
-        File envFile = new File(userDir, ".env");
-        
-        // If not found in current dir, check parent (useful if running from within a module folder)
-        if (!envFile.exists()) {
-            envFile = new File(new File(userDir).getParent(), ".env");
-        }
+        File envFile = findEnvFile(new File(userDir));
 
         dotenv = Dotenv.configure()
-                .directory(envFile.getParent())
+                .directory(envFile != null ? envFile.getParent() : userDir)
                 .ignoreIfMissing()
                 .load();
+    }
+
+    private static File findEnvFile(File currentDir) {
+        if (currentDir == null) return null;
+        File env = new File(currentDir, ".env");
+        if (env.exists()) return env;
+        return findEnvFile(currentDir.getParentFile());
     }
 
     public static String get(String key) {

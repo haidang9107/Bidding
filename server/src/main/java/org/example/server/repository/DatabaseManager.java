@@ -20,7 +20,7 @@ public class DatabaseManager {
             config.setJdbcUrl(Config.get("DB_URL"));
             config.setUsername(Config.get("DB_USER"));
             config.setPassword(Config.get("DB_PASSWORD"));
-            config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+            config.setDriverClassName(Config.get("DB_DRIVER"));
             
             // Unicode and encoding properties
             config.addDataSourceProperty("useUnicode", "true");

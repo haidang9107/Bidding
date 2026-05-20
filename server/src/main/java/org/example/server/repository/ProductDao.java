@@ -13,16 +13,13 @@ import java.util.List;
  */
 public class ProductDao {
 
-    private Connection connection;
-
-    public ProductDao(Connection connection) {
-        this.connection = connection;
+    public ProductDao() {
     }
 
     /**
      * Retrieves all products from the database.
      */
-    public List<Item> getAllProducts() throws SQLException {
+    public List<Item> getAllProducts(Connection connection) throws SQLException {
         List<Item> products = new ArrayList<>();
         String sql = "SELECT * FROM products";
 
@@ -38,7 +35,7 @@ public class ProductDao {
     /**
      * Retrieves a product by its ID.
      */
-    public Item getProductById(int productId) throws SQLException {
+    public Item getProductById(Connection connection, int productId) throws SQLException {
         String sql = "SELECT * FROM products WHERE product_id = ?";
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -55,7 +52,7 @@ public class ProductDao {
     /**
      * Retrieves a product by its ID and locks the row for the transaction.
      */
-    public Item getProductForUpdate(int productId) throws SQLException {
+    public Item getProductForUpdate(Connection connection, int productId) throws SQLException {
         String sql = "SELECT * FROM products WHERE product_id = ? FOR UPDATE";
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -67,6 +64,22 @@ public class ProductDao {
             }
         }
         return null;
+    }
+
+    /**
+     * Checks if a user is the current leader in any active (RUNNING) auction.
+     */
+    public boolean isUserLeadingAnyAuction(Connection connection, int userId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM products WHERE winner_id = ? AND status = 1"; // 1: RUNNING
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -112,7 +125,7 @@ public class ProductDao {
     /**
      * Inserts a new product into the database.
      */
-    public boolean insertProduct(Item item) throws SQLException {
+    public boolean insertProduct(Connection connection, Item item) throws SQLException {
         String sql = """
                 INSERT INTO products(
                     product_name, description, starting_price, current_price, step_price, 
@@ -172,7 +185,7 @@ public class ProductDao {
     /**
      * Updates the current price and winner of a product using Optimistic Locking.
      */
-    public boolean updateBid(int productId, long newPrice, int bidderId, int oldVersion) throws SQLException {
+    public boolean updateBid(Connection connection, int productId, long newPrice, int bidderId, int oldVersion) throws SQLException {
         String sql = "UPDATE products SET current_price = ?, winner_id = ?, version = version + 1 WHERE product_id = ? AND version = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setLong(1, newPrice);

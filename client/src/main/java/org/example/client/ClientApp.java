@@ -1,6 +1,11 @@
 package org.example.client;
 
 import org.example.client.network.SocketClient;
+import org.example.dto.BidRequest;
+import org.example.dto.LoginRequest;
+import org.example.dto.TransferRequest;
+import org.example.dto.ProductAddRequest;
+import org.example.model.enums.ItemCategory;
 import org.example.model.enums.MessageType;
 import org.example.payload.Request;
 import org.example.util.FileLogger;
@@ -36,52 +41,78 @@ public class ClientApp {
             testHeader("SCENARIO 2: Authentication Tests");
             
             System.out.println("-> Testing Login with WRONG password...");
-            client.sendRequest(new Request(MessageType.LOGIN, "nam_member:wrongpass"));
+            client.sendRequest(new Request(MessageType.LOGIN, new LoginRequest("nam_member", "wrongpass")));
             waitForResponse();
 
             System.out.println("-> Testing Successful Login (Member)...");
-            client.sendRequest(new Request(MessageType.LOGIN, "nam_member:password123"));
+            client.sendRequest(new Request(MessageType.LOGIN, new LoginRequest("nam_member", "password123")));
             waitForResponse();
 
             // --- SCENARIO 3: Authorization & RBAC ---
             testHeader("SCENARIO 3: Role-Based Access Control (RBAC)");
             
-            System.out.println("-> Member trying to ADD_PRODUCT (Should be FORBIDDEN)...");
-            client.sendRequest(new Request(MessageType.PRODUCT_ADD, "New Laptop:Description:1000:MEMBER"));
+            System.out.println("-> Member trying to ADD_PRODUCT (Should be FORBIDDEN by RBAC logic in CommandHandler)...");
+            ProductAddRequest memberAdd = new ProductAddRequest("Member Laptop", "Attempt by member", 1000, ItemCategory.ELECTRONICS);
+            client.sendRequest(new Request(MessageType.PRODUCT_ADD, memberAdd));
             waitForResponse();
 
             System.out.println("-> Switching to Admin account...");
             client.sendRequest(new Request(MessageType.LOGOUT, null));
             waitForResponse();
-            client.sendRequest(new Request(MessageType.LOGIN, "admin_minh:password123"));
+            client.sendRequest(new Request(MessageType.LOGIN, new LoginRequest("admin_minh", "password123")));
             waitForResponse();
 
-            System.out.println("-> Admin trying to ADD_PRODUCT (Should be SUCCESS/NOT IMPLEMENTED but NOT Forbidden)...");
-            client.sendRequest(new Request(MessageType.PRODUCT_ADD, "Admin Laptop:Description:5000:ADMIN"));
+            System.out.println("-> Admin trying to ADD_PRODUCT (Should be SUCCESS)...");
+            ProductAddRequest adminAdd = new ProductAddRequest("Admin MacBook", "Authorized add", 5000, ItemCategory.ELECTRONICS);
+            client.sendRequest(new Request(MessageType.PRODUCT_ADD, adminAdd));
             waitForResponse();
 
             // --- SCENARIO 4: Bidding Logic ---
             testHeader("SCENARIO 4: Bidding Scenarios");
             
             System.out.println("-> Switching back to Member (Huong)...");
-            client.sendRequest(new Request(MessageType.LOGIN, "huong_member:password123"));
+            client.sendRequest(new Request(MessageType.LOGIN, new LoginRequest("huong_member", "password123")));
             waitForResponse();
 
             System.out.println("-> Placing a valid bid on iPhone 15 (Product ID: 1)...");
-            // Payload: "productId:bidderId:amount"
-            client.sendRequest(new Request(MessageType.BID_PLACE, "1:4:27000000"));
+            // Use BidRequest DTO
+            client.sendRequest(new Request(MessageType.BID_PLACE, new BidRequest(1, 4, 27000000L)));
             waitForResponse();
 
             System.out.println("-> Placing an INVALID bid (Lower than current price)...");
-            client.sendRequest(new Request(MessageType.BID_PLACE, "1:4:1000000"));
+            client.sendRequest(new Request(MessageType.BID_PLACE, new BidRequest(1, 4, 1000000L)));
             waitForResponse();
 
-            // --- SCENARIO 5: Real-time Updates (Wait and see) ---
-            testHeader("SCENARIO 5: Waiting for Real-time Broadcasts");
-            System.out.println("Now, if another client places a bid, you should see a [BID_UPDATE] here...");
-            System.out.println("Waiting 15 seconds before closing...");
+            // --- SCENARIO 5: Financial Operations ---
+            testHeader("SCENARIO 5: Financial Operations");
             
-            Thread.sleep(15000);
+            System.out.println("-> Testing DEPOSIT (Amount: 5,000,000)...");
+            client.sendRequest(new Request(MessageType.DEPOSIT, 5000000L));
+            waitForResponse();
+
+            System.out.println("-> Testing WITHDRAW (Amount: 2,000,000)...");
+            client.sendRequest(new Request(MessageType.WITHDRAW, 2000000L));
+            waitForResponse();
+
+            System.out.println("-> Testing TRANSFER (To User ID 2, Amount: 1,000,000)...");
+            // Use TransferRequest DTO
+            client.sendRequest(new Request(MessageType.TRANSFER, new TransferRequest(2, 1000000L)));
+            waitForResponse();
+
+            // --- SCENARIO 6: Heartbeat & Persistent Connection ---
+            testHeader("SCENARIO 6: Heartbeat & Inactivity Tests");
+            System.out.println("-> Sending PING to server (Updates lastActiveTime)...");
+            client.sendRequest(new Request(MessageType.PING, null));
+            waitForResponse();
+            
+            System.out.println("-> Sending PRODUCT_LIST (Should also update lastActiveTime via new CommandHandler logic)...");
+            client.sendRequest(new Request(MessageType.PRODUCT_LIST, null));
+            waitForResponse();
+
+            // --- SCENARIO 7: Real-time Updates & Cleanup ---
+            testHeader("SCENARIO 7: Cleanup & Disconnect");
+            System.out.println("Waiting 2 seconds before disconnecting...");
+            Thread.sleep(2000);
 
             client.disconnect();
             System.out.println("\nTest Suite Completed.");

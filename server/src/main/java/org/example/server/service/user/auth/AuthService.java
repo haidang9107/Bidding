@@ -5,9 +5,11 @@ import org.example.model.enums.UserRole;
 import org.example.model.user.Admin;
 import org.example.model.user.Member;
 import org.example.model.user.User;
+import org.example.server.repository.DatabaseManager;
 import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 
@@ -17,8 +19,8 @@ import java.sql.Timestamp;
 public class AuthService {
     private final UserDao userDao;
 
-    public AuthService(UserDao userDao) {
-        this.userDao = userDao;
+    public AuthService() {
+        this.userDao = new UserDao();
     }
 
     /**
@@ -28,8 +30,8 @@ public class AuthService {
      * @return The User object if authenticated, null otherwise.
      */
     public User authenticate(String username, String plainPassword) {
-        try {
-            User user = userDao.findByUsername(username);
+        try (Connection conn = DatabaseManager.getConnection()) {
+            User user = userDao.findByUsername(conn, username);
             if (user != null && PasswordHashing.checkPassword(plainPassword, user.getPassword())) {
                 FileLogger.info("User authenticated: " + username);
                 return user;
@@ -49,8 +51,8 @@ public class AuthService {
      * @return true if registration was successful, false otherwise.
      */
     public boolean register(String username, String plainPassword, String email, String roleString) {
-        try {
-            if (userDao.findByUsername(username) != null) {
+        try (Connection conn = DatabaseManager.getConnection()) {
+            if (userDao.findByUsername(conn, username) != null) {
                 FileLogger.info("Registration failed: Username '" + username + "' already exists.");
                 return false;
             }
@@ -70,7 +72,7 @@ public class AuthService {
                 newUser = new Member(0, username, hashedPassword, email, "", Gender.MALE, "", 0, 0, now);
             }
 
-            boolean success = userDao.createUser(newUser);
+            boolean success = userDao.createUser(conn, newUser);
             if (success) {
                 FileLogger.info("User registered successfully: " + username);
             }

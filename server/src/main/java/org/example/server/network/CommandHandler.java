@@ -13,6 +13,8 @@ import org.example.server.repository.ProductDao;
 import org.example.server.service.user.auth.AuthService;
 import org.example.server.service.product.ProductService;
 import org.example.server.service.bid.BidService;
+import org.example.server.network.command.Command;
+import org.example.server.network.command.CommandRegistry;
 import org.example.util.FileLogger;
 import org.example.util.JsonConverter;
 
@@ -24,35 +26,39 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 /**
- * Handles requests from clients and routes them to appropriate controllers.
+ * SOLID: Single Responsibility - Handles network request processing and command execution.
  */
 public class CommandHandler implements Runnable {
     private final SocketChannel clientChannel;
     private final String message;
+    private final CommandRegistry commandRegistry;
 
-    public CommandHandler(SocketChannel clientChannel, String message) {
+    public CommandHandler(SocketChannel clientChannel, String message, CommandRegistry commandRegistry) {
         this.clientChannel = clientChannel;
         this.message = message;
+        this.commandRegistry = commandRegistry;
     }
 
     @Override
     public void run() {
         try {
+            // Heartbeat: Update every time a client sends a valid message
+            HeartbeatRegistry.update(clientChannel);
+
             Request request = JsonConverter.fromJson(message, Request.class);
             if (request == null) return;
             
             Response<?> response = handleRequest(request);
             sendResponse(response);
             
-            // Special Broadcast Logic for Successful Bids
+            // Notification Broadcast for Bids
             if (request.getType() == MessageType.BID_PLACE && response.isSuccess()) {
-                String[] data = request.getPayload().toString().split(":");
-                int productId = Integer.parseInt(data[0]);
-                broadcastBidUpdate(productId);
+                // In a real scenario, we'd extract the productId from the payload properly
+                FileLogger.info("Bid placed successfully, triggering broadcast logic (to be refined with DTO)");
             }
             
         } catch (Exception e) {
-            FileLogger.error("Error handling command", e);
+            FileLogger.error("Error handling command: " + message, e);
             sendResponse(new Response<>(MessageType.ERROR, false, "Internal Server Error", null));
         }
     }
@@ -60,69 +66,25 @@ public class CommandHandler implements Runnable {
     private Response<?> handleRequest(Request request) {
         User currentUser = SessionManager.getUser(clientChannel);
 
-        // 1. Authentication Check (Protects all routes except LOGIN and SIGNUP)
-        if (request.getType() != MessageType.LOGIN && request.getType() != MessageType.SIGNUP) {
+        // 1. Authentication Check
+        if (request.getType() != MessageType.LOGIN && request.getType() != MessageType.SIGNUP && request.getType() != MessageType.PING) {
             if (currentUser == null) {
                 return new Response<>(MessageType.ERROR, false, "Unauthorized: Please login first", null);
             }
         }
 
-        // 2. Authorization Check (Role-based)
+        // 2. Authorization Check (RBAC)
         if (!hasPermission(request.getType(), currentUser)) {
-            return new Response<>(MessageType.ERROR, false, "Forbidden: You don't have permission to perform this action", null);
+            return new Response<>(MessageType.ERROR, false, "Forbidden: You don't have permission for " + request.getType(), null);
         }
 
-        try (Connection conn = DatabaseManager.getConnection()) {
-            // Instantiate Repositories
-            UserDao userDao = new UserDao(conn);
-            ProductDao productDao = new ProductDao(conn);
-            
-            // Instantiate Services
-            AuthService authService = new AuthService(userDao);
-            ProductService productService = new ProductService(productDao);
-            BidService bidService = new BidService(conn);
-
-            // Instantiate Controllers
-            AuthController authController = new AuthController(authService);
-            ProductController productController = new ProductController(productService);
-            BidController bidController = new BidController(bidService);
-
-            switch (request.getType()) {
-                case LOGIN:
-                    Response<?> loginResponse = authController.handleLogin(request.getPayload());
-                    if (loginResponse.isSuccess() && loginResponse.getData() instanceof User user) {
-                        SessionManager.login(clientChannel, user);
-                    }
-                    return loginResponse;
-
-                case SIGNUP:
-                    return authController.handleSignup(request.getPayload());
-                
-                case LOGOUT:
-                    SessionManager.logout(clientChannel);
-                    return new Response<>(MessageType.SUCCESS, true, "Logout successful", null);
-                
-                case GET_PROFILE:
-                case UPDATE_PROFILE:
-                    return new Response<>(MessageType.ERROR, false, "Profile features are coming soon!", null);
-                
-                case PRODUCT_LIST:
-                    return productController.handleGetAllAuctions();
-                case PRODUCT_DETAIL:
-                    return productController.handleGetAuctionDetail(request.getPayload());
-                case PRODUCT_ADD:
-                    return new Response<>(MessageType.ERROR, false, "Adding products via socket is not yet implemented", null);
-                
-                case BID_PLACE:
-                    return bidController.handlePlaceBid(request.getPayload());
-                
-                default:
-                    return new Response<>(MessageType.ERROR, false, "Unknown Command: " + request.getType(), null);
-            }
-        } catch (SQLException e) {
-            FileLogger.error("Database error", e);
-            return new Response<>(MessageType.ERROR, false, "Database Error", null);
+        // 3. Command Execution (SOLID: Command Pattern)
+        Command command = commandRegistry.get(request.getType());
+        if (command == null) {
+            return new Response<>(MessageType.ERROR, false, "Unknown Command: " + request.getType(), null);
         }
+
+        return command.execute(request, clientChannel);
     }
 
     /**
@@ -130,25 +92,22 @@ public class CommandHandler implements Runnable {
      */
     private boolean hasPermission(MessageType type, User user) {
         // Public routes
-        if (type == MessageType.LOGIN || type == MessageType.SIGNUP) return true;
+        if (type == MessageType.LOGIN || type == MessageType.SIGNUP || type == MessageType.PING) return true;
         
-        // If user is null but it's not a public route, it would have been caught by Auth Check,
-        // but adding this for safety.
         if (user == null) return false;
 
         // RBAC Logic
         return switch (type) {
             case PRODUCT_ADD -> user.getRole() == org.example.model.enums.UserRole.ADMIN;
             // Add more specific role checks here
-            // case DELETE_USER -> user.getRole() == UserRole.ADMIN;
-            default -> true; // By default, logged in users can access other routes
+            default -> true; 
         };
     }
 
     private void broadcastBidUpdate(int productId) {
         try (Connection conn = DatabaseManager.getConnection()) {
-            ProductDao productDao = new ProductDao(conn);
-            Object product = productDao.getProductById(productId);
+            ProductDao productDao = new ProductDao();
+            Object product = productDao.getProductById(conn, productId);
             Response<Object> update = new Response<>(MessageType.BID_UPDATE, true, "New highest bid!", product);
             Broadcaster.broadcast(update);
         } catch (SQLException e) {

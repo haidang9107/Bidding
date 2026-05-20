@@ -28,6 +28,13 @@ public enum MessageType {
     /** Bidding Logic: Server broadcasts new highest bid to all clients */
     BID_UPDATE,
     
+    /** Finance Actions: Deposit money */
+    DEPOSIT,
+    /** Finance Actions: Withdraw money */
+    WITHDRAW,
+    /** Finance Actions: Transfer money between users */
+    TRANSFER,
+    
     /** Real-time Notifications: Server sends remaining time for an auction */
     TIMER_TICK,
     /** Real-time Notifications: Server announces auction started */
@@ -40,5 +47,9 @@ public enum MessageType {
     /** System Status: Success response */
     SUCCESS,
     /** System Status: Error response */
-    ERROR
+    ERROR,
+    /** System Status: Heartbeat check */
+    PING,
+    /** System Status: Heartbeat response */
+    PONG
 }

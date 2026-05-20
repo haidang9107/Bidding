@@ -11,16 +11,13 @@ import java.util.List;
  */
 public class AuctionDao {
 
-    private Connection connection;
-
-    public AuctionDao(Connection connection) {
-        this.connection = connection;
+    public AuctionDao() {
     }
 
     /**
      * Retrieves all auction records (bids) for a specific product.
      */
-    public List<Auction> getAuctionsByProduct(int productId) throws SQLException {
+    public List<Auction> getAuctionsByProduct(Connection connection, int productId) throws SQLException {
         List<Auction> auctions = new ArrayList<>();
         String sql = "SELECT * FROM auctions WHERE product_id = ? ORDER BY bid_amount DESC";
 
@@ -44,7 +41,7 @@ public class AuctionDao {
     /**
      * Retrieves all bids for display, including bidder usernames.
      */
-    public List<Bid> getBidsForDisplay(int productId) throws SQLException {
+    public List<Bid> getBidsForDisplay(Connection connection, int productId) throws SQLException {
         List<Bid> bids = new ArrayList<>();
         String sql = """
                 SELECT a.product_id, a.bidder_id, u.username, a.bid_amount, a.bid_time
@@ -74,7 +71,7 @@ public class AuctionDao {
     /**
      * Inserts a new auction (bid) into the database.
      */
-    public boolean insertAuction(Auction auction) throws SQLException {
+    public boolean insertAuction(Connection connection, Auction auction) throws SQLException {
         String sql = "INSERT INTO auctions(product_id, bidder_id, bid_amount) VALUES (?, ?, ?)";
         try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, auction.getProductId());

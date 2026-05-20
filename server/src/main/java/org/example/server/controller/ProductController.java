@@ -37,4 +37,8 @@ public class ProductController {
             return new Response<>(MessageType.ERROR, false, "Invalid Product ID format", null);
         }
     }
+
+    public boolean handleCreateAuction(Item item) {
+        return productService.createAuction(item);
+    }
 }
