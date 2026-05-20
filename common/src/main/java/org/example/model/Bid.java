@@ -9,18 +9,16 @@ import java.sql.Timestamp;
 public class Bid {
 
     private int productId;
-    private int bidderId;
-    private String bidderName; // Optional: for display purposes
+    private String bidderAccountname;
     private long bidAmount;
     private Timestamp bidTime;
 
     public Bid() {
     }
 
-    public Bid(int productId, int bidderId, String bidderName, long bidAmount, Timestamp bidTime) {
+    public Bid(int productId, String bidderAccountname, long bidAmount, Timestamp bidTime) {
         this.productId = productId;
-        this.bidderId = bidderId;
-        this.bidderName = bidderName;
+        this.bidderAccountname = bidderAccountname;
         this.bidAmount = bidAmount;
         this.bidTime = bidTime;
     }
@@ -29,11 +27,8 @@ public class Bid {
     public int getProductId() { return productId; }
     public void setProductId(int productId) { this.productId = productId; }
 
-    public int getBidderId() { return bidderId; }
-    public void setBidderId(int bidderId) { this.bidderId = bidderId; }
-
-    public String getBidderName() { return bidderName; }
-    public void setBidderName(String bidderName) { this.bidderName = bidderName; }
+    public String getBidderAccountname() { return bidderAccountname; }
+    public void setBidderAccountname(String bidderAccountname) { this.bidderAccountname = bidderAccountname; }
 
     public long getBidAmount() { return bidAmount; }
     public void setBidAmount(long bidAmount) { this.bidAmount = bidAmount; }

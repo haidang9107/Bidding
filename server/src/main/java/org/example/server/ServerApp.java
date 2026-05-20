@@ -5,6 +5,7 @@ import org.example.server.controller.AdminController;
 import org.example.server.controller.UserController;
 import org.example.server.controller.BidController;
 import org.example.server.controller.ProductController;
+import org.example.server.controller.FinanceController;
 import org.example.server.network.SocketServer;
 import org.example.server.network.command.*;
 import org.example.server.service.bid.BidService;
@@ -25,7 +26,7 @@ public class ServerApp {
     public static void main(String[] args) {
         FileLogger.info("Starting Bidding Server...");
 
-        // 1. Initialize Services (They now manage their own connections from the pool)
+        // 1. Initialize Services
         AuthService authService = new AuthService();
         ProductService productService = new ProductService();
         BidService bidService = new BidService();
@@ -39,8 +40,9 @@ public class ServerApp {
         BidController bidController = new BidController(bidService);
         AdminController adminController = new AdminController();
         UserController userController = new UserController();
+        FinanceController financeController = new FinanceController(depositService, withdrawService, transferService);
 
-        // 3. Initialize Command Registry (SOLID & Command Pattern)
+        // 3. Initialize Command Registry
         CommandRegistry registry = new CommandRegistry();
         registry.register(MessageType.LOGIN, new LoginCommand(authController));
         registry.register(MessageType.SIGNUP, new SignupCommand(authController));
@@ -57,9 +59,9 @@ public class ServerApp {
         registry.register(MessageType.ADMIN_CANCEL_AUCTION, new AdminCancelAuctionCommand(adminController));
         
         // Financial Commands
-        registry.register(MessageType.DEPOSIT, new DepositCommand(depositService));
-        registry.register(MessageType.WITHDRAW, new WithdrawCommand(withdrawService));
-        registry.register(MessageType.TRANSFER, new TransferCommand(transferService));
+        registry.register(MessageType.DEPOSIT, new DepositCommand(financeController));
+        registry.register(MessageType.WITHDRAW, new WithdrawCommand(financeController));
+        registry.register(MessageType.TRANSFER, new TransferCommand(financeController));
 
         // 4. Start Socket Server
         SocketServer server = new SocketServer(registry);

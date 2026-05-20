@@ -2,9 +2,10 @@ package org.example.server.controller;
 
 import org.example.dto.LoginRequest;
 import org.example.dto.SignupRequest;
-import org.example.model.user.User;
 import org.example.model.enums.MessageType;
+import org.example.model.user.User;
 import org.example.payload.Response;
+import org.example.server.exception.AuthException;
 import org.example.server.service.user.auth.AuthService;
 import org.example.util.JsonConverter;
 
@@ -27,17 +28,15 @@ public class AuthController {
             return new Response<>(MessageType.ERROR, false, "Invalid login credentials", null);
         }
 
-        User user = authService.authenticate(loginReq.getUsername(), loginReq.getPassword());
-        if (user != null) {
-            if (user.getStatus() == 1) {
-                return new Response<>(MessageType.ERROR, false, "Your account has been BANNED.", null);
+        try {
+            User user = authService.authenticate(loginReq.getUsername(), loginReq.getPassword());
+            if (user != null) {
+                return new Response<>(MessageType.SUCCESS, true, "Login successful", user);
+            } else {
+                return new Response<>(MessageType.ERROR, false, "Invalid username or password", null);
             }
-            // Security: Remove sensitive password hash before sending to client
-            user.setPassword(null); 
-            
-            return new Response<>(MessageType.SUCCESS, true, "Login successful", user);
-        } else {
-            return new Response<>(MessageType.ERROR, false, "Invalid username or password", null);
+        } catch (AuthException e) {
+            return new Response<>(MessageType.ERROR, false, e.getMessage(), null);
         }
     }
 

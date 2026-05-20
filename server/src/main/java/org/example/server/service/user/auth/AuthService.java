@@ -29,15 +29,21 @@ public class AuthService {
      * @param plainPassword The plain text password provided.
      * @return The User object if authenticated, null otherwise.
      */
-    public User authenticate(String accountname, String plainPassword) {
+    public User authenticate(String accountname, String plainPassword) throws org.example.server.exception.AuthException {
         try (Connection conn = DatabaseManager.getConnection()) {
             User user = userDao.findByAccountname(conn, accountname);
             if (user != null && PasswordHashing.checkPassword(plainPassword, user.getPassword())) {
+                if (user.getStatus() == 1) {
+                    throw new org.example.server.exception.AuthException("Your account has been BANNED.");
+                }
                 FileLogger.info("User authenticated: " + accountname);
+                // Security: Remove sensitive password hash before returning
+                user.setPassword(null);
                 return user;
             }
         } catch (SQLException e) {
             FileLogger.error("Authentication error for user: " + accountname, e);
+            throw new org.example.server.exception.AuthException("Internal server error during authentication");
         }
         return null;
     }

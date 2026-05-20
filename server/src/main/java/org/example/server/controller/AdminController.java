@@ -1,38 +1,32 @@
 package org.example.server.controller;
 
-import org.example.model.enums.AuctionStatus;
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
 import org.example.payload.Response;
-import org.example.server.repository.DatabaseManager;
-import org.example.server.repository.ProductDao;
-import org.example.server.repository.UserDao;
+import org.example.server.service.user.admin.AdminService;
 import org.example.util.FileLogger;
 
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.List;
 
 /**
  * Controller for handling administrative tasks.
+ * Refactored to delegate business logic to AdminService.
  */
 public class AdminController {
-    private final UserDao userDao;
-    private final ProductDao productDao;
+    private final AdminService adminService;
 
     public AdminController() {
-        this.userDao = new UserDao();
-        this.productDao = new ProductDao();
+        this.adminService = new AdminService();
     }
 
     /**
      * Retrieves all users in the system.
      */
     public Response<List<User>> handleGetAllUsers() {
-        try (Connection conn = DatabaseManager.getConnection()) {
-            List<User> users = userDao.findAllUsers(conn);
+        try {
+            List<User> users = adminService.getAllUsers();
             return new Response<>(MessageType.SUCCESS, true, "Users fetched successfully", users);
-        } catch (SQLException e) {
+        } catch (Exception e) {
             FileLogger.error("Admin: Failed to fetch users", e);
             return new Response<>(MessageType.ERROR, false, "Internal error fetching users", null);
         }
@@ -45,16 +39,18 @@ public class AdminController {
     public Response<String> handleBanUser(Object payload) {
         if (payload == null) return new Response<>(MessageType.ERROR, false, "Account name and status required", null);
         
-        try (Connection conn = DatabaseManager.getConnection()) {
-            // Simplification: Expecting format "accountname:status"
+        try {
+            // Controller handles data parsing/transformation
             String[] parts = payload.toString().split(":");
+            if (parts.length < 2) return new Response<>(MessageType.ERROR, false, "Invalid format. Use accountname:status", null);
+            
             String accountname = parts[0];
             int status = Integer.parseInt(parts[1]);
 
-            boolean success = userDao.updateUserStatus(conn, accountname, status);
+            // Delegate to Service
+            boolean success = adminService.updateUserStatus(accountname, status);
+            
             if (success) {
-                String action = (status == 1) ? "banned" : "unbanned";
-                FileLogger.info("Admin action: User " + accountname + " has been " + action);
                 return new Response<>(MessageType.SUCCESS, true, "User status updated successfully", null);
             } else {
                 return new Response<>(MessageType.ERROR, false, "User not found or status already set", null);
@@ -71,12 +67,13 @@ public class AdminController {
     public Response<String> handleCancelAuction(Object payload) {
         if (payload == null) return new Response<>(MessageType.ERROR, false, "Product ID required", null);
 
-        try (Connection conn = DatabaseManager.getConnection()) {
+        try {
             int productId = Integer.parseInt(payload.toString());
-            boolean success = productDao.updateStatus(conn, productId, AuctionStatus.CANCELED);
+            
+            // Delegate to Service
+            boolean success = adminService.cancelAuction(productId);
             
             if (success) {
-                FileLogger.info("Admin action: Auction " + productId + " has been CANCELED.");
                 return new Response<>(MessageType.SUCCESS, true, "Auction canceled successfully", null);
             } else {
                 return new Response<>(MessageType.ERROR, false, "Auction not found", null);

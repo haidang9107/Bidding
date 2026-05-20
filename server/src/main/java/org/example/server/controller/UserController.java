@@ -4,22 +4,20 @@ import org.example.model.enums.MessageType;
 import org.example.model.user.User;
 import org.example.payload.Response;
 import org.example.server.network.SessionManager;
-import org.example.server.repository.DatabaseManager;
-import org.example.server.repository.UserDao;
+import org.example.server.service.user.UserService;
 import org.example.util.FileLogger;
 
 import java.nio.channels.SocketChannel;
-import java.sql.Connection;
-import java.sql.SQLException;
 
 /**
  * Controller for handling common user-related requests (non-auth).
+ * Refactored to delegate to UserService.
  */
 public class UserController {
-    private final UserDao userDao;
+    private final UserService userService;
 
     public UserController() {
-        this.userDao = new UserDao();
+        this.userService = new UserService();
     }
 
     /**
@@ -31,20 +29,20 @@ public class UserController {
         User currentUser = SessionManager.getUser(channel);
         if (currentUser == null) return new Response<>(MessageType.ERROR, false, "Unauthorized", null);
 
-        try (Connection conn = DatabaseManager.getConnection()) {
+        try {
             String avatarPath = payload.toString();
-            boolean success = userDao.updateAvatar(conn, currentUser.getAccountname(), avatarPath);
+            boolean success = userService.updateAvatar(currentUser.getAccountname(), avatarPath);
             
             if (success) {
                 currentUser.setAvt(avatarPath); // Update in-memory session
                 FileLogger.info("User " + currentUser.getAccountname() + " updated their avatar.");
                 return new Response<>(MessageType.SUCCESS, true, "Avatar updated successfully", null);
             } else {
-                return new Response<>(MessageType.ERROR, false, "Failed to update avatar in DB", null);
+                return new Response<>(MessageType.ERROR, false, "Failed to update avatar", null);
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             FileLogger.error("Error updating avatar", e);
-            return new Response<>(MessageType.ERROR, false, "Internal DB error", null);
+            return new Response<>(MessageType.ERROR, false, "Internal server error", null);
         }
     }
 }
