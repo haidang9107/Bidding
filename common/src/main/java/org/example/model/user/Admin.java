@@ -1,24 +1,25 @@
 package org.example.model.user;
 
+import org.example.model.enums.Gender;
+import org.example.model.enums.UserRole;
+import java.sql.Timestamp;
+
 /**
- * Admin la duy nhat va chi tao duy nhat 1 lan khi db duoc khoi tao, Admin la user dau tien duoc them vao db, ID=1
+ * Represents an administrator in the system.
  */
 public class Admin extends User {
-    private static Admin instance;
 
-    // Default constructor for JSON
     public Admin() {
         super();
+        this.setRole(UserRole.ADMIN);
     }
 
-    private Admin(Long id, String name, String nameAccount, String email, String password) {
-        super(id, name, nameAccount, email, password);
+    public Admin(int userId, String username, String password, String email, 
+                 String phoneNumber, Gender gender, String avt, long balance, 
+                 long blockedBalance, Timestamp createdAt) {
+        super(userId, username, password, email, phoneNumber, gender, avt, 
+              balance, blockedBalance, UserRole.ADMIN, createdAt);
     }
-
-    public static Admin getInstance(Long id, String name, String nameAccount, String email, String password) {
-        if (instance == null) {
-            instance = new Admin(id, name, nameAccount, email, password);
-        }
-        return instance;
-    }
+    
+    // Admin specific methods (e.g., banUser, deleteAuction)
 }
