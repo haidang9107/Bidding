@@ -79,6 +79,7 @@ public class UserDashboardController {
     @FXML
     public void initialize() {
         historyList.setItems(historyData);
+
         listener = this::handleResponse;
         client.addListener(listener);
 
@@ -89,7 +90,7 @@ public class UserDashboardController {
     // Top-Up
     // ============================================================
     @FXML
-    private void handleTopUp() {//xử lý nap tien
+    private void handleTopUp() {
         long amount = parseAmount(topUpField);
         if (amount <= 0) {
             statusLabel.setText("Số tiền nạp không hợp lệ!");
