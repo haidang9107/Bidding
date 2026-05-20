@@ -44,13 +44,14 @@ public class AuthService {
 
     /**
      * Registers a new user in the system.
+     * All new registrations are assigned the MEMBER role by default for security.
+     * Admin roles must be assigned manually via database access.
      * @param username The desired username.
      * @param plainPassword The plain text password to be hashed.
      * @param email The user's email address.
-     * @param roleString The role assigned (ADMIN or MEMBER).
      * @return true if registration was successful, false otherwise.
      */
-    public boolean register(String username, String plainPassword, String email, String roleString) {
+    public boolean register(String username, String plainPassword, String email) {
         try (Connection conn = DatabaseManager.getConnection()) {
             if (userDao.findByUsername(conn, username) != null) {
                 FileLogger.info("Registration failed: Username '" + username + "' already exists.");
@@ -58,23 +59,17 @@ public class AuthService {
             }
 
             String hashedPassword = PasswordHashing.hashPassword(plainPassword);
-            UserRole role = UserRole.MEMBER;
-            if ("ADMIN".equalsIgnoreCase(roleString)) {
-                role = UserRole.ADMIN;
-            }
+            UserRole role = UserRole.MEMBER; // Secure default
 
             User newUser;
             Timestamp now = new Timestamp(System.currentTimeMillis());
             
-            if (role == UserRole.ADMIN) {
-                newUser = new Admin(0, username, hashedPassword, email, "", Gender.MALE, "", 0, 0, now);
-            } else {
-                newUser = new Member(0, username, hashedPassword, email, "", Gender.MALE, "", 0, 0, now);
-            }
+            // All new users are Members. Admin is assigned manually in DB.
+            newUser = new Member(0, username, hashedPassword, email, "", Gender.MALE, "", 0, 0, now);
 
             boolean success = userDao.createUser(conn, newUser);
             if (success) {
-                FileLogger.info("User registered successfully: " + username);
+                FileLogger.info("User registered successfully as MEMBER: " + username);
             }
             return success;
         } catch (SQLException e) {

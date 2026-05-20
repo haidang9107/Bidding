@@ -44,12 +44,13 @@ public class AuthController {
             return new Response<>(MessageType.ERROR, false, "Invalid signup data", null);
         }
 
+        // All new users are registered as MEMBER by default for security.
         boolean success = authService.register(signupReq.getUsername(), signupReq.getPassword(), 
-                                             signupReq.getEmail(), signupReq.getRole());
+                                             signupReq.getEmail());
         if (success) {
-            return new Response<>(MessageType.SUCCESS, true, "Registration successful", null);
+            return new Response<>(MessageType.SUCCESS, true, "Registration successful as MEMBER", null);
         } else {
-            return new Response<>(MessageType.ERROR, false, "Registration failed", null);
+            return new Response<>(MessageType.ERROR, false, "Registration failed (Username might exist)", null);
         }
     }
 }

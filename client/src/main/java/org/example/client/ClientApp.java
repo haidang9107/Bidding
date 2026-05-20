@@ -3,6 +3,7 @@ package org.example.client;
 import org.example.client.network.SocketClient;
 import org.example.dto.BidRequest;
 import org.example.dto.LoginRequest;
+import org.example.dto.SignupRequest;
 import org.example.dto.TransferRequest;
 import org.example.dto.ProductAddRequest;
 import org.example.model.enums.ItemCategory;
@@ -31,6 +32,13 @@ public class ClientApp {
             });
 
             client.connect();
+
+            // --- SCENARIO 0: Signup Test ---
+            testHeader("SCENARIO 0: User Registration");
+            String testUser = "new_user_" + System.currentTimeMillis() / 1000;
+            System.out.println("-> Registering a new user: " + testUser);
+            client.sendRequest(new Request(MessageType.SIGNUP, new SignupRequest(testUser, "password123", testUser + "@test.com")));
+            waitForResponse();
 
             // --- SCENARIO 1: Unauthorized Access ---
             testHeader("SCENARIO 1: Accessing protected resource without Login");
