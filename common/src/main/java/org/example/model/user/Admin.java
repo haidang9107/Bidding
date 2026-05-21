@@ -1,8 +1,6 @@
 package org.example.model.user;
 
-import org.example.model.enums.Gender;
 import org.example.model.enums.UserRole;
-import java.sql.Timestamp;
 
 /**
  * Represents an administrator in the system.
@@ -14,12 +12,8 @@ public class Admin extends User {
         this.setRole(UserRole.ADMIN);
     }
 
-    public Admin(int userId, String username, String password, String email, 
-                 String phoneNumber, Gender gender, String avt, long balance, 
-                 long blockedBalance, Timestamp createdAt) {
-        super(userId, username, password, email, phoneNumber, gender, avt, 
-              balance, blockedBalance, UserRole.ADMIN, createdAt);
+    public Admin(String accountname, String password, String email, 
+                 String avt, int status) {
+        super(accountname, password, email, avt, UserRole.ADMIN, status);
     }
-    
-    // Admin specific methods (e.g., banUser, deleteAuction)
 }

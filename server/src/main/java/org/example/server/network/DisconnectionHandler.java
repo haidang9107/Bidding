@@ -24,16 +24,16 @@ public class DisconnectionHandler {
 
         try (Connection conn = DatabaseManager.getConnection()) {
             ProductDao productDao = new ProductDao();
-            boolean isLeading = productDao.isUserLeadingAnyAuction(conn, user.getUserId());
+            boolean isLeading = productDao.isUserLeadingAnyAuction(conn, user.getAccountname());
 
             if (isLeading) {
-                FileLogger.warn("User " + user.getUsername() + " disconnected while leading an auction. Session removed, but bid remains active.");
+                FileLogger.warn("User " + user.getAccountname() + " disconnected while leading an auction. Session removed, but bid remains active.");
             } else {
-                FileLogger.info("User " + user.getUsername() + " disconnected safely.");
+                FileLogger.info("User " + user.getAccountname() + " disconnected safely.");
             }
 
         } catch (SQLException e) {
-            FileLogger.error("Error checking auction status during disconnection for user: " + user.getUsername(), e);
+            FileLogger.error("Error checking auction status during disconnection for user: " + user.getAccountname(), e);
         } finally {
             cleanResources(channel);
         }

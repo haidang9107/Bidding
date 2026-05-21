@@ -18,12 +18,14 @@ public class Vehicle extends Item {
         this.setCategory(ItemCategory.VEHICLE);
     }
 
-    public Vehicle(int productId, String productName, String description, long startingPrice, 
-                   long currentPrice, long stepPrice, int sellerId, Integer winnerId, 
+    public Vehicle(int productId, String name, String description, String imageUrl, 
+                   long startingPrice, long currentPrice, long stepPrice, 
+                   String sellerAccountname, String winnerAccountname, 
                    AuctionStatus status, Timestamp startTime, Timestamp endTime, 
-                   int version, Timestamp createdAt, String brand, String model, int manufactureYear) {
-        super(productId, productName, description, startingPrice, currentPrice, stepPrice, 
-              sellerId, winnerId, ItemCategory.VEHICLE, status, startTime, endTime, version, createdAt);
+                   int version, String brand, String model, int manufactureYear) {
+        super(productId, name, description, imageUrl, startingPrice, currentPrice, stepPrice, 
+              sellerAccountname, winnerAccountname, ItemCategory.VEHICLE, status, 
+              startTime, endTime, version);
         this.brand = brand;
         this.model = model;
         this.manufactureYear = manufactureYear;

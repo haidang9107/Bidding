@@ -29,56 +29,54 @@ public class AuthService {
      * @param plainPassword The plain text password provided.
      * @return The User object if authenticated, null otherwise.
      */
-    public User authenticate(String username, String plainPassword) {
+    public User authenticate(String accountname, String plainPassword) throws org.example.server.exception.AuthException {
         try (Connection conn = DatabaseManager.getConnection()) {
-            User user = userDao.findByUsername(conn, username);
+            User user = userDao.findByAccountname(conn, accountname);
             if (user != null && PasswordHashing.checkPassword(plainPassword, user.getPassword())) {
-                FileLogger.info("User authenticated: " + username);
+                if (user.getStatus() == 1) {
+                    throw new org.example.server.exception.AuthException("Your account has been BANNED.");
+                }
+                FileLogger.info("User authenticated: " + accountname);
+                // Security: Remove sensitive password hash before returning
+                user.setPassword(null);
                 return user;
             }
         } catch (SQLException e) {
-            FileLogger.error("Authentication error for user: " + username, e);
+            FileLogger.error("Authentication error for user: " + accountname, e);
+            throw new org.example.server.exception.AuthException("Internal server error during authentication");
         }
         return null;
     }
 
     /**
      * Registers a new user in the system.
-     * @param username The desired username.
+     * All new registrations are assigned the MEMBER role by default for security.
+     * Admin roles must be assigned manually via database access.
+     * @param accountname The desired accountname (primary key).
      * @param plainPassword The plain text password to be hashed.
      * @param email The user's email address.
-     * @param roleString The role assigned (ADMIN or MEMBER).
      * @return true if registration was successful, false otherwise.
      */
-    public boolean register(String username, String plainPassword, String email, String roleString) {
+    public boolean register(String accountname, String plainPassword, String email) {
         try (Connection conn = DatabaseManager.getConnection()) {
-            if (userDao.findByUsername(conn, username) != null) {
-                FileLogger.info("Registration failed: Username '" + username + "' already exists.");
+            if (userDao.findByAccountname(conn, accountname) != null) {
+                FileLogger.info("Registration failed: Account name '" + accountname + "' already exists.");
                 return false;
             }
 
             String hashedPassword = PasswordHashing.hashPassword(plainPassword);
-            UserRole role = UserRole.MEMBER;
-            if ("ADMIN".equalsIgnoreCase(roleString)) {
-                role = UserRole.ADMIN;
-            }
 
             User newUser;
-            Timestamp now = new Timestamp(System.currentTimeMillis());
-            
-            if (role == UserRole.ADMIN) {
-                newUser = new Admin(0, username, hashedPassword, email, "", Gender.MALE, "", 0, 0, now);
-            } else {
-                newUser = new Member(0, username, hashedPassword, email, "", Gender.MALE, "", 0, 0, now);
-            }
+            // Simplified Member: accountname, password, email, avt(null), status(0), balance(0), blockedBalance(0)
+            newUser = new Member(accountname, hashedPassword, email, null, 0, 0, 0);
 
             boolean success = userDao.createUser(conn, newUser);
             if (success) {
-                FileLogger.info("User registered successfully: " + username);
+                FileLogger.info("User registered successfully as MEMBER: " + accountname);
             }
             return success;
         } catch (SQLException e) {
-            FileLogger.error("Registration error for user: " + username, e);
+            FileLogger.error("Registration error for user: " + accountname, e);
         }
         return false;
     }

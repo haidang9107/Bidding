@@ -34,6 +34,13 @@ public class Broadcaster {
     }
 
     /**
+     * Returns the total number of connected clients.
+     */
+    public static int getClientsCount() {
+        return clients.size();
+    }
+
+    /**
      * Broadcasts a response message to all connected clients.
      */
     public static void broadcast(Response<?> response) {

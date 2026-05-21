@@ -2,6 +2,7 @@ package org.example.util;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.ToNumberPolicy;
 import java.lang.reflect.Type;
 
 /**
@@ -11,6 +12,7 @@ public class JsonConverter {
     // Gson instance is thread-safe, so we can reuse it
     private static final Gson gson = new GsonBuilder()
             .setDateFormat("yyyy-MM-dd HH:mm:ss")
+            .setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE)
             .create();
 
     /**

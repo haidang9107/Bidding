@@ -1,13 +1,15 @@
 package org.example.server.repository;
 
-import org.example.model.enums.Gender;
 import org.example.model.enums.UserRole;
 import org.example.model.user.*;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Data Access Object for managing user-related database operations.
+ * Simplified: Uses accountname as Primary Key.
  */
 public class UserDao {
 
@@ -15,12 +17,12 @@ public class UserDao {
     }
 
     /**
-     * Finds a user by their username.
+     * Finds a user by their accountname.
      */
-    public User findByUsername(Connection connection, String username) throws SQLException {
-        String sql = "SELECT * FROM users WHERE username = ?";
+    public User findByAccountname(Connection connection, String accountname) throws SQLException {
+        String sql = "SELECT * FROM users WHERE accountname = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, username);
+            pstmt.setString(1, accountname);
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
                     return mapResultSetToUser(rs);
@@ -31,28 +33,12 @@ public class UserDao {
     }
 
     /**
-     * Finds a user by their ID.
+     * Finds a user by their accountname and locks the row for update.
      */
-    public User findById(Connection connection, int userId) throws SQLException {
-        String sql = "SELECT * FROM users WHERE user_id = ?";
+    public User findByAccountnameForUpdate(Connection connection, String accountname) throws SQLException {
+        String sql = "SELECT * FROM users WHERE accountname = ? FOR UPDATE";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setInt(1, userId);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    return mapResultSetToUser(rs);
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Finds a user by their ID and locks the row for update.
-     */
-    public User findByIdForUpdate(Connection connection, int userId) throws SQLException {
-        String sql = "SELECT * FROM users WHERE user_id = ? FOR UPDATE";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setInt(1, userId);
+            pstmt.setString(1, accountname);
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
                     return mapResultSetToUser(rs);
@@ -65,11 +51,11 @@ public class UserDao {
     /**
      * Atomically adds or subtracts from the balance.
      */
-    public boolean addBalance(Connection connection, int userId, long amount) throws SQLException {
-        String sql = "UPDATE users SET balance = balance + ? WHERE user_id = ?";
+    public boolean addBalance(Connection connection, String accountname, long amount) throws SQLException {
+        String sql = "UPDATE users SET balance = balance + ? WHERE accountname = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setLong(1, amount);
-            pstmt.setInt(2, userId);
+            pstmt.setString(2, accountname);
             return pstmt.executeUpdate() > 0;
         }
     }
@@ -81,21 +67,18 @@ public class UserDao {
         int roleValue = rs.getInt("role");
         UserRole role = UserRole.fromInt(roleValue);
         
-        int userId = rs.getInt("user_id");
-        String username = rs.getString("username");
+        String accountname = rs.getString("accountname");
         String password = rs.getString("password");
         String email = rs.getString("email");
-        String phoneNumber = rs.getString("phonenumber");
-        Gender gender = Gender.fromInt(rs.getInt("gender"));
         String avt = rs.getString("avt");
         long balance = rs.getLong("balance");
         long blockedBalance = rs.getLong("blocked_balance");
-        Timestamp createdAt = rs.getTimestamp("created_at");
+        int status = rs.getInt("status");
 
         if (role == UserRole.ADMIN) {
-            return new Admin(userId, username, password, email, phoneNumber, gender, avt, balance, blockedBalance, createdAt);
+            return new Admin(accountname, password, email, avt, status);
         } else {
-            return new Member(userId, username, password, email, phoneNumber, gender, avt, balance, blockedBalance, createdAt);
+            return new Member(accountname, password, email, avt, status, balance, blockedBalance);
         }
     }
 
@@ -103,40 +86,76 @@ public class UserDao {
      * Creates a new user in the database.
      */
     public boolean createUser(Connection connection, User user) throws SQLException {
-        String sql = "INSERT INTO users (username, password, email, phonenumber, gender, avt, balance, blocked_balance, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            pstmt.setString(1, user.getUsername());
+        String sql = "INSERT INTO users (accountname, password, email, avt, balance, blocked_balance, role, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, user.getAccountname());
             pstmt.setString(2, user.getPassword());
             pstmt.setString(3, user.getEmail());
-            pstmt.setString(4, user.getPhoneNumber());
-            pstmt.setInt(5, user.getGender().getValue());
-            pstmt.setString(6, user.getAvt());
-            pstmt.setLong(7, user.getBalance());
-            pstmt.setLong(8, user.getBlockedBalance());
-            pstmt.setInt(9, user.getRole().getValue());
+            pstmt.setString(4, user.getAvt());
             
-            int affectedRows = pstmt.executeUpdate();
-            if (affectedRows > 0) {
-                try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
-                    if (generatedKeys.next()) {
-                        user.setUserId(generatedKeys.getInt(1));
-                    }
-                }
-                return true;
+            if (user instanceof Member member) {
+                pstmt.setLong(5, member.getBalance());
+                pstmt.setLong(6, member.getBlockedBalance());
+            } else {
+                pstmt.setLong(5, 0);
+                pstmt.setLong(6, 0);
+            }
+            
+            pstmt.setInt(7, user.getRole().getValue());
+            pstmt.setInt(8, user.getStatus());
+            
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Updates the user's avatar.
+     */
+    public boolean updateAvatar(Connection connection, String accountname, String avatarPath) throws SQLException {
+        String sql = "UPDATE users SET avt = ? WHERE accountname = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, avatarPath);
+            pstmt.setString(2, accountname);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Updates the user's status (e.g., Active/Banned).
+     */
+    public boolean updateUserStatus(Connection connection, String accountname, int status) throws SQLException {
+        String sql = "UPDATE users SET status = ? WHERE accountname = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, status);
+            pstmt.setString(2, accountname);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Retrieves all users from the database.
+     */
+    public List<User> findAllUsers(Connection connection) throws SQLException {
+        List<User> users = new ArrayList<>();
+        String sql = "SELECT * FROM users";
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                users.add(mapResultSetToUser(rs));
             }
         }
-        return false;
+        return users;
     }
 
     /**
      * Updates user's balances.
      */
-    public boolean updateBalance(Connection connection, int userId, long balance, long blockedBalance) throws SQLException {
-        String sql = "UPDATE users SET balance = ?, blocked_balance = ? WHERE user_id = ?";
+    public boolean updateBalance(Connection connection, String accountname, long balance, long blockedBalance) throws SQLException {
+        String sql = "UPDATE users SET balance = ?, blocked_balance = ? WHERE accountname = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setLong(1, balance);
             pstmt.setLong(2, blockedBalance);
-            pstmt.setInt(3, userId);
+            pstmt.setString(3, accountname);
             return pstmt.executeUpdate() > 0;
         }
     }
@@ -144,11 +163,11 @@ public class UserDao {
     /**
      * Atomically adds or subtracts from the blocked balance.
      */
-    public boolean addBlockedBalance(Connection connection, int userId, long amount) throws SQLException {
-        String sql = "UPDATE users SET blocked_balance = blocked_balance + ? WHERE user_id = ?";
+    public boolean addBlockedBalance(Connection connection, String accountname, long amount) throws SQLException {
+        String sql = "UPDATE users SET blocked_balance = blocked_balance + ? WHERE accountname = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setLong(1, amount);
-            pstmt.setInt(2, userId);
+            pstmt.setString(2, accountname);
             return pstmt.executeUpdate() > 0;
         }
     }

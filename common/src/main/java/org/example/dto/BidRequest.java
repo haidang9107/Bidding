@@ -2,17 +2,17 @@ package org.example.dto;
 
 public class BidRequest {
     private int productId;
-    private int bidderId;
+    private String bidderAccountname;
     private long amount;
 
     public BidRequest() {}
-    public BidRequest(int productId, int bidderId, long amount) {
+    public BidRequest(int productId, String bidderAccountname, long amount) {
         this.productId = productId;
-        this.bidderId = bidderId;
+        this.bidderAccountname = bidderAccountname;
         this.amount = amount;
     }
 
     public int getProductId() { return productId; }
-    public int getBidderId() { return bidderId; }
+    public String getBidderAccountname() { return bidderAccountname; }
     public long getAmount() { return amount; }
 }

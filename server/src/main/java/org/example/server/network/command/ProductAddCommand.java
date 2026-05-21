@@ -24,39 +24,11 @@ public class ProductAddCommand implements Command {
 
     @Override
     public Response<?> execute(Request request, SocketChannel channel) {
-        try {
-            ProductAddRequest addReq = JsonConverter.fromJson(JsonConverter.toJson(request.getPayload()), ProductAddRequest.class);
-            if (addReq == null) {
-                return new Response<>(MessageType.ERROR, false, "Invalid product data", null);
-            }
-
-            User currentUser = SessionManager.getUser(channel);
-            int sellerId = (currentUser != null) ? currentUser.getUserId() : 0;
-
-            Item item = switch (addReq.getCategory()) {
-                case ELECTRONICS -> JsonConverter.fromJson(JsonConverter.toJson(addReq), Electronics.class);
-                case ART -> JsonConverter.fromJson(JsonConverter.toJson(addReq), Art.class);
-                case VEHICLE -> JsonConverter.fromJson(JsonConverter.toJson(addReq), Vehicle.class);
-            };
-            
-            // Initialize mandatory auction fields
-            item.setSellerId(sellerId);
-            item.setStatus(AuctionStatus.OPEN);
-            item.setCurrentPrice(item.getStartingPrice());
-            item.setStepPrice(item.getStartingPrice() / 10); // Default step price
-            
-            if (item.getStartTime() == null) {
-                item.setStartTime(new Timestamp(System.currentTimeMillis()));
-            }
-            if (item.getEndTime() == null) {
-                // Default end time: 7 days from now
-                item.setEndTime(new Timestamp(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000L));
-            }
-
-            boolean success = productController.handleCreateAuction(item);
-            return new Response<>(MessageType.SUCCESS, success, success ? "Product added" : "Failed to add", null);
-        } catch (Exception e) {
-            return new Response<>(MessageType.ERROR, false, "Error adding product: " + e.getMessage(), null);
+        User currentUser = SessionManager.getUser(channel);
+        if (currentUser == null) {
+            return new Response<>(MessageType.ERROR, false, "Unauthorized", null);
         }
+        
+        return productController.handleCreateAuction(request.getPayload(), currentUser.getAccountname());
     }
 }

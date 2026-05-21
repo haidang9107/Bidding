@@ -4,15 +4,6 @@ import org.example.model.enums.MessageType;
 import org.example.model.user.User;
 import org.example.payload.Request;
 import org.example.payload.Response;
-import org.example.server.controller.AuthController;
-import org.example.server.controller.BidController;
-import org.example.server.controller.ProductController;
-import org.example.server.repository.DatabaseManager;
-import org.example.server.repository.UserDao;
-import org.example.server.repository.ProductDao;
-import org.example.server.service.user.auth.AuthService;
-import org.example.server.service.product.ProductService;
-import org.example.server.service.bid.BidService;
 import org.example.server.network.command.Command;
 import org.example.server.network.command.CommandRegistry;
 import org.example.util.FileLogger;
@@ -22,8 +13,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
-import java.sql.SQLException;
 
 /**
  * SOLID: Single Responsibility - Handles network request processing and command execution.
@@ -42,6 +31,9 @@ public class CommandHandler implements Runnable {
     @Override
     public void run() {
         try {
+            // Log incoming raw message
+            FileLogger.info(">>> INCOMING from " + clientChannel.getRemoteAddress() + ": " + message);
+
             // Heartbeat: Update every time a client sends a valid message
             HeartbeatRegistry.update(clientChannel);
 
@@ -53,8 +45,7 @@ public class CommandHandler implements Runnable {
             
             // Notification Broadcast for Bids
             if (request.getType() == MessageType.BID_PLACE && response.isSuccess()) {
-                // In a real scenario, we'd extract the productId from the payload properly
-                FileLogger.info("Bid placed successfully, triggering broadcast logic (to be refined with DTO)");
+                FileLogger.info("Bid placed successfully. (Broadcasting logic is handled within the command/service if implemented)");
             }
             
         } catch (Exception e) {
@@ -98,28 +89,21 @@ public class CommandHandler implements Runnable {
 
         // RBAC Logic
         return switch (type) {
-            case PRODUCT_ADD -> user.getRole() == org.example.model.enums.UserRole.ADMIN;
-            // Add more specific role checks here
+            case PRODUCT_ADD, ADMIN_GET_ALL_USERS, ADMIN_BAN_USER, ADMIN_CANCEL_AUCTION -> 
+                user.getRole() == org.example.model.enums.UserRole.ADMIN;
+            case USER_UPDATE_AVATAR -> true; // Any logged in user can update their own avatar
             default -> true; 
         };
-    }
-
-    private void broadcastBidUpdate(int productId) {
-        try (Connection conn = DatabaseManager.getConnection()) {
-            ProductDao productDao = new ProductDao();
-            Object product = productDao.getProductById(conn, productId);
-            Response<Object> update = new Response<>(MessageType.BID_UPDATE, true, "New highest bid!", product);
-            Broadcaster.broadcast(update);
-        } catch (SQLException e) {
-            FileLogger.error("Failed to broadcast bid update", e);
-        }
     }
 
     private void sendResponse(Response<?> response) {
         synchronized (clientChannel) {
             try {
-                String json = JsonConverter.toJson(response) + "\n";
-                ByteBuffer buffer = ByteBuffer.wrap(json.getBytes(StandardCharsets.UTF_8));
+                String json = JsonConverter.toJson(response);
+                FileLogger.info("<<< OUTGOING to " + clientChannel.getRemoteAddress() + ": " + json);
+
+                String messageWithNewline = json + "\n";
+                ByteBuffer buffer = ByteBuffer.wrap(messageWithNewline.getBytes(StandardCharsets.UTF_8));
                 while (buffer.hasRemaining()) {
                     int written = clientChannel.write(buffer);
                     if (written == 0) {

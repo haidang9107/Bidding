@@ -9,17 +9,17 @@ public class Auction {
 
     private int auctionId;
     private int productId;
-    private int bidderId;
+    private String bidderAccountname;
     private long bidAmount;
     private Timestamp bidTime;
 
     public Auction() {
     }
 
-    public Auction(int auctionId, int productId, int bidderId, long bidAmount, Timestamp bidTime) {
+    public Auction(int auctionId, int productId, String bidderAccountname, long bidAmount, Timestamp bidTime) {
         this.auctionId = auctionId;
         this.productId = productId;
-        this.bidderId = bidderId;
+        this.bidderAccountname = bidderAccountname;
         this.bidAmount = bidAmount;
         this.bidTime = bidTime;
     }
@@ -31,8 +31,8 @@ public class Auction {
     public int getProductId() { return productId; }
     public void setProductId(int productId) { this.productId = productId; }
 
-    public int getBidderId() { return bidderId; }
-    public void setBidderId(int bidderId) { this.bidderId = bidderId; }
+    public String getBidderAccountname() { return bidderAccountname; }
+    public void setBidderAccountname(String bidderAccountname) { this.bidderAccountname = bidderAccountname; }
 
     public long getBidAmount() { return bidAmount; }
     public void setBidAmount(long bidAmount) { this.bidAmount = bidAmount; }

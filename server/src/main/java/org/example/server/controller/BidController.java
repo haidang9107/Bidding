@@ -25,7 +25,7 @@ public class BidController {
             return new Response<>(MessageType.ERROR, false, "Bid data required", null);
         }
 
-        String result = bidService.placeBid(bidReq.getProductId(), bidReq.getBidderId(), bidReq.getAmount());
+        String result = bidService.placeBid(bidReq.getProductId(), bidReq.getBidderAccountname(), bidReq.getAmount());
         
         if ("SUCCESS".equals(result)) {
             return new Response<>(MessageType.SUCCESS, true, "Bid placed successfully", null);

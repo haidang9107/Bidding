@@ -26,4 +26,8 @@ public class SessionManager {
     public static boolean isLoggedIn(SocketChannel channel) {
         return activeSessions.containsKey(channel);
     }
+
+    public static int getActiveSessionsCount() {
+        return activeSessions.size();
+    }
 }

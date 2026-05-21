@@ -2,9 +2,10 @@ package org.example.server.controller;
 
 import org.example.dto.LoginRequest;
 import org.example.dto.SignupRequest;
-import org.example.model.user.User;
 import org.example.model.enums.MessageType;
+import org.example.model.user.User;
 import org.example.payload.Response;
+import org.example.server.exception.AuthException;
 import org.example.server.service.user.auth.AuthService;
 import org.example.util.JsonConverter;
 
@@ -27,11 +28,15 @@ public class AuthController {
             return new Response<>(MessageType.ERROR, false, "Invalid login credentials", null);
         }
 
-        User user = authService.authenticate(loginReq.getUsername(), loginReq.getPassword());
-        if (user != null) {
-            return new Response<>(MessageType.SUCCESS, true, "Login successful", user);
-        } else {
-            return new Response<>(MessageType.ERROR, false, "Invalid username or password", null);
+        try {
+            User user = authService.authenticate(loginReq.getUsername(), loginReq.getPassword());
+            if (user != null) {
+                return new Response<>(MessageType.SUCCESS, true, "Login successful", user);
+            } else {
+                return new Response<>(MessageType.ERROR, false, "Invalid username or password", null);
+            }
+        } catch (AuthException e) {
+            return new Response<>(MessageType.ERROR, false, e.getMessage(), null);
         }
     }
 
@@ -44,12 +49,13 @@ public class AuthController {
             return new Response<>(MessageType.ERROR, false, "Invalid signup data", null);
         }
 
+        // All new users are registered as MEMBER by default for security.
         boolean success = authService.register(signupReq.getUsername(), signupReq.getPassword(), 
-                                             signupReq.getEmail(), signupReq.getRole());
+                                             signupReq.getEmail());
         if (success) {
-            return new Response<>(MessageType.SUCCESS, true, "Registration successful", null);
+            return new Response<>(MessageType.SUCCESS, true, "Registration successful as MEMBER", null);
         } else {
-            return new Response<>(MessageType.ERROR, false, "Registration failed", null);
+            return new Response<>(MessageType.ERROR, false, "Registration failed (Username might exist)", null);
         }
     }
 }
