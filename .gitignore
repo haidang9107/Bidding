@@ -39,3 +39,7 @@ out/
 
 # private
 .env
+logs/
+
+#test
+client/

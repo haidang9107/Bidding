@@ -15,13 +15,15 @@ services:
   mysql:
     image: 'mysql:latest'
     container_name: "MySQL-DB"
+    env_file:
+      - ../.env
     ports:
-      - '3306:3306'
+      - "${DB_PORT:-3306}:3306"
     environment:
-      - 'MYSQL_DATABASE=MySQL-DB'
-      - 'MYSQL_USER=HaiDang91'
-      - 'MYSQL_PASSWORD=9107'
-      - 'MYSQL_ROOT_PASSWORD=root'
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-MySQL-DB}
+      - MYSQL_USER=${DB_USER:-root}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-root}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root}
     command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes:
       - ./src/main/resources/MySQL/1schema.sql:/docker-entrypoint-initdb.d/1schema.sql
