@@ -1,0 +1,30 @@
+services:
+#  postgres:
+#    image: 'postgres:latest'
+#    container_name: "PostgresDB"
+#    ports:
+#      - '7108:5432'
+#    environment:
+#      - 'POSTGRES_DB=PostgresDB'
+#      - 'POSTGRES_USER=HaiDang91'
+#      - 'POSTGRES_PASSWORD=9107'
+#    volumes:
+#      - ./src/main/resources/PostgreSQL/1schema.sql:/docker-entrypoint-initdb.d/1schema.sql
+#      - ./src/main/resources/PostgreSQL/2data.sql:/docker-entrypoint-initdb.d/2data.sql
+
+  mysql:
+    image: 'mysql:latest'
+    container_name: "MySQL-DB"
+    env_file:
+      - ../.env
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-MySQL-DB}
+      - MYSQL_USER=${DB_USER:-root}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-root}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root}
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - ./src/main/resources/MySQL/1schema.sql:/docker-entrypoint-initdb.d/1schema.sql
+      - ./src/main/resources/MySQL/2data.sql:/docker-entrypoint-initdb.d/2data.sql
