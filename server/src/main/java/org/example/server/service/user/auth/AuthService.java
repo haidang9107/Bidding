@@ -25,7 +25,7 @@ public class AuthService {
 
     /**
      * Authenticates a user.
-     * @param username The username provided.
+     * @param accountname The accountname provided.
      * @param plainPassword The plain text password provided.
      * @return The User object if authenticated, null otherwise.
      */
@@ -50,12 +50,6 @@ public class AuthService {
 
     /**
      * Registers a new user in the system.
-     * All new registrations are assigned the MEMBER role by default for security.
-     * Admin roles must be assigned manually via database access.
-     * @param accountname The desired accountname (primary key).
-     * @param plainPassword The plain text password to be hashed.
-     * @param email The user's email address.
-     * @return true if registration was successful, false otherwise.
      */
     public boolean register(String accountname, String plainPassword, String email) {
         try (Connection conn = DatabaseManager.getConnection()) {
@@ -65,10 +59,7 @@ public class AuthService {
             }
 
             String hashedPassword = PasswordHashing.hashPassword(plainPassword);
-
-            User newUser;
-            // Simplified Member: accountname, password, email, avt(null), status(0), balance(0), blockedBalance(0)
-            newUser = new Member(accountname, hashedPassword, email, null, 0, 0, 0);
+            User newUser = new Member(accountname, hashedPassword, email, null, 0, 0, 0);
 
             boolean success = userDao.createUser(conn, newUser);
             if (success) {
@@ -79,5 +70,31 @@ public class AuthService {
             FileLogger.error("Registration error for user: " + accountname, e);
         }
         return false;
+    }
+
+    /**
+     * Checks if a user has permission to perform a specific action.
+     * Centralizes RBAC logic in the service layer.
+     */
+    public boolean canAccess(org.example.model.enums.MessageType type, User user) {
+        // Public routes
+        if (type == org.example.model.enums.MessageType.LOGIN || 
+            type == org.example.model.enums.MessageType.SIGNUP || 
+            type == org.example.model.enums.MessageType.PING) {
+            return true;
+        }
+        
+        if (user == null) return false;
+
+        return switch (type) {
+            case ADMIN_GET_ALL_USERS, ADMIN_BAN_USER, ADMIN_CANCEL_AUCTION -> 
+                user.getRole() == org.example.model.enums.UserRole.ADMIN;
+            case BID_PLACE, AUTO_BID_SET, AUTO_BID_CANCEL, PRODUCT_ADD, DEPOSIT, WITHDRAW, TRANSFER,
+                 JOIN_AUCTION_ROOM, LEAVE_AUCTION_ROOM -> 
+                user.getRole() == org.example.model.enums.UserRole.MEMBER;
+            case USER_UPDATE_AVATAR, UPDATE_PROFILE, GET_PROFILE, PRODUCT_DETAIL, PRODUCT_LIST -> 
+                true; 
+            default -> true; 
+        };
     }
 }

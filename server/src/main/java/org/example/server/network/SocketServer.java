@@ -26,20 +26,22 @@ public class SocketServer {
     private Selector selector;
     private ServerSocketChannel serverChannel;
     private volatile boolean running = true;
-    private final ExecutorService executorService = Executors.newFixedThreadPool(3);
+    private final ExecutorService executorService = Executors.newFixedThreadPool(10);
     private final CommandRegistry commandRegistry;
+    private final org.example.server.service.user.auth.AuthService authService;
 
     private final Map<SocketChannel, ByteArrayOutputStream> clientBuffers = new ConcurrentHashMap<>();
     private final InactivityMonitor inactivityMonitor = new InactivityMonitor(60); // 60 seconds timeout
     private final AuctionMonitor auctionMonitor;
 
-    public SocketServer(CommandRegistry commandRegistry) {
-        this(commandRegistry, null);
+    public SocketServer(CommandRegistry commandRegistry, org.example.server.service.user.auth.AuthService authService) {
+        this(commandRegistry, authService, null);
     }
 
-    public SocketServer(CommandRegistry commandRegistry, AuctionMonitor auctionMonitor) {
+    public SocketServer(CommandRegistry commandRegistry, org.example.server.service.user.auth.AuthService authService, AuctionMonitor auctionMonitor) {
         this.port = Config.getInt("SERVER_PORT");
         this.commandRegistry = commandRegistry;
+        this.authService = authService;
         this.auctionMonitor = auctionMonitor;
     }
 
@@ -117,7 +119,7 @@ public class SocketServer {
                     String message = buffer.toString(StandardCharsets.UTF_8).trim();
                     buffer.reset();
                     if (!message.isEmpty()) {
-                        executorService.submit(new CommandHandler(clientChannel, message, commandRegistry));
+                        executorService.submit(new CommandHandler(clientChannel, message, commandRegistry, authService));
                     }
                 } else {
                     buffer.write(b);

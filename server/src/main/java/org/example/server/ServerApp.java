@@ -74,7 +74,7 @@ public class ServerApp {
         // 4. Start Auction Monitor (Background task)
         AuctionMonitor auctionMonitor = new AuctionMonitor(productService);
         // 5. Start Socket Server
-        SocketServer server = new SocketServer(registry, auctionMonitor);
+        SocketServer server = new SocketServer(registry, authService, auctionMonitor);
         server.run();
     }
 }

@@ -39,20 +39,8 @@ public class ProductService {
             conn.setAutoCommit(false);
             List<Item> expired = productDao.getExpiredProducts(conn);
             for (Item item : expired) {
-                boolean success = finishAuction(conn, item);
-                if (success) {
-                    item.setStatus(AuctionStatus.FINISHED);
-                    FileLogger.info("Auction automatically CLOSED: Product ID " + item.getProductId());
-                    
-                    // Broadcast notification
-                    Response<ProductResponse> notification = new Response<>(
-                        MessageType.AUCTION_END,
-                        true,
-                        "Auction for '" + item.getName() + "' has ended!",
-                        new ProductResponse(item)
-                    );
-                    Broadcaster.broadcastToAuction(item.getAuctionId(), notification);
-                }
+                // We re-fetch each auction with FOR UPDATE inside finishAuction
+                finishAuction(conn, item.getAuctionId());
             }
             conn.commit();
         } catch (SQLException e) {
@@ -60,19 +48,38 @@ public class ProductService {
         }
     }
 
-    private boolean finishAuction(Connection conn, Item item) throws SQLException {
-        boolean success = productDao.updateStatus(conn, item.getAuctionId(), AuctionStatus.FINISHED);
-        productDao.updateProductAuctionFlag(conn, item.getProductId(), false);
+    private boolean finishAuction(Connection conn, int auctionId) throws SQLException {
+        // Lock the row to prevent last-second bids while settling
+        Item latestItem = productDao.getAuctionForUpdate(conn, auctionId);
+        if (latestItem == null || latestItem.getStatus() != AuctionStatus.ACTIVE) {
+            return false;
+        }
 
-        String winner = item.getWinnerAccountname();
+        boolean success = productDao.updateStatus(conn, auctionId, AuctionStatus.FINISHED);
+        productDao.updateProductAuctionFlag(conn, latestItem.getProductId(), false);
+
+        String winner = latestItem.getWinnerAccountname();
         if (success && winner != null) {
-            userDao.addBlockedBalance(conn, winner, -item.getCurrentPrice());
-            userDao.addBalance(conn, winner, -item.getCurrentPrice());
-            userDao.addBalance(conn, item.getSellerAccountname(), item.getCurrentPrice());
-            productDao.updateProductOwner(conn, item.getProductId(), winner);
-            transactionDao.insertTransaction(conn, winner, item.getSellerAccountname(), 3,
-                    item.getProductId(), item.getCurrentPrice(), item.getAuctionId(),
-                    "Auction success for product " + item.getProductId());
+            userDao.addBlockedBalance(conn, winner, -latestItem.getCurrentPrice());
+            userDao.addBalance(conn, winner, -latestItem.getCurrentPrice());
+            userDao.addBalance(conn, latestItem.getSellerAccountname(), latestItem.getCurrentPrice());
+            productDao.updateProductOwner(conn, latestItem.getProductId(), winner);
+            transactionDao.insertTransaction(conn, winner, latestItem.getSellerAccountname(), 3,
+                    latestItem.getProductId(), latestItem.getCurrentPrice(), auctionId,
+                    "Auction success for product " + latestItem.getProductId());
+            
+            FileLogger.info("Auction CLOSED: Auction ID " + auctionId + ", Winner: " + winner);
+            
+            // Broadcast notification
+            Response<ProductResponse> notification = new Response<>(
+                MessageType.AUCTION_END,
+                true,
+                "Auction for '" + latestItem.getName() + "' has ended!",
+                new ProductResponse(latestItem)
+            );
+            Broadcaster.broadcastToAuction(auctionId, notification);
+        } else if (success) {
+            FileLogger.info("Auction CLOSED: Auction ID " + auctionId + " (No winner)");
         }
         return success;
     }
