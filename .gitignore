@@ -37,9 +37,10 @@ out/
 .AppleDouble
 .LSOverride
 
+
+
 # private
 .env
-logs/
 
 #test
 client/

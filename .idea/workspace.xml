@@ -191,50 +191,50 @@
     <option name="showLibraryContents" value="true" />
     <option name="showVisibilityIcons" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_MARK_IGNORED_FILES_AS_EXCLUDED": "true",
-    "Application.ClientApp.executor": "Run",
-    "Application.PasswordHashing.executor": "Run",
-    "Application.ServerApp.executor": "Run",
-    "Docker.server/compose.yaml.mysql: Compose Deployment.executor": "Run",
-    "Docker.server/compose.yaml.postgres: Compose Deployment.executor": "Run",
-    "Docker.server/compose.yaml: Compose Deployment.executor": "Run",
-    "Maven.bidding [clean].executor": "Run",
-    "Maven.bidding [compile].executor": "Run",
-    "Maven.bidding [install].executor": "Run",
-    "Maven.bidding-parent [clean].executor": "Run",
-    "Maven.bidding-parent [install].executor": "Run",
-    "Maven.client [install].executor": "Run",
-    "Maven.server [compile].executor": "Run",
-    "Maven.server [install].executor": "Run",
-    "Maven.server [org.springframework.boot:spring-boot-maven-plugin:4.0.6:run].executor": "Run",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.MCP Project settings loaded": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "SHELLCHECK.PATH": "I do mind",
-    "ShowUsagesActions.previewPropertyKey": "true",
-    "Spring Boot.ServerApp.executor": "Run",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "main",
-    "git.auto.fetch.suggestion.counter": "3",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/Users/haidang91/Developer/Java_Work/UET.CS2043-LTNC/FinalProject/Bidding",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "onboarding.tips.debug.path": "/Users/haidang91/Developer/Java_Work/UET.CS2043-LTNC/FinalProject/Bidding/common/src/main/java/org/example/Main.java",
-    "project.structure.last.edited": "Modules",
-    "project.structure.proportion": "0.15",
-    "project.structure.side.proportion": "0.2",
-    "settings.editor.selected.configurable": "advanced.settings"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_MARK_IGNORED_FILES_AS_EXCLUDED&quot;: &quot;true&quot;,
+    &quot;Application.ClientApp.executor&quot;: &quot;Run&quot;,
+    &quot;Application.PasswordHashing.executor&quot;: &quot;Run&quot;,
+    &quot;Application.ServerApp.executor&quot;: &quot;Run&quot;,
+    &quot;Docker.server/compose.yaml.mysql: Compose Deployment.executor&quot;: &quot;Run&quot;,
+    &quot;Docker.server/compose.yaml.postgres: Compose Deployment.executor&quot;: &quot;Run&quot;,
+    &quot;Docker.server/compose.yaml: Compose Deployment.executor&quot;: &quot;Run&quot;,
+    &quot;Maven.bidding [clean].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.bidding [compile].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.bidding [install].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.bidding-parent [clean].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.bidding-parent [install].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.client [install].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.server [compile].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.server [install].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.server [org.springframework.boot:spring-boot-maven-plugin:4.0.6:run].executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;SHELLCHECK.PATH&quot;: &quot;I do mind&quot;,
+    &quot;ShowUsagesActions.previewPropertyKey&quot;: &quot;true&quot;,
+    &quot;Spring Boot.ServerApp.executor&quot;: &quot;Run&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;git.auto.fetch.suggestion.counter&quot;: &quot;3&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/haidang91/Developer/Java_Work/UET.CS2043-LTNC/FinalProject/Bidding&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;onboarding.tips.debug.path&quot;: &quot;/Users/haidang91/Developer/Java_Work/UET.CS2043-LTNC/FinalProject/Bidding/common/src/main/java/org/example/Main.java&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;advanced.settings&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$" />
@@ -250,7 +250,7 @@
       <recent name="org.example.sever" />
     </key>
   </component>
-  <component name="RunManager" selected="Docker.server/compose.yaml: Compose Deployment">
+  <component name="RunManager" selected="Application.ServerApp">
     <configuration name="ClientApp" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="ALTERNATIVE_JRE_PATH" value="temurin-25" />
       <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
@@ -339,11 +339,11 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Application.ServerApp" />
         <item itemvalue="Docker.server/compose.yaml: Compose Deployment" />
         <item itemvalue="Docker.server/compose.yaml.mysql: Compose Deployment" />
         <item itemvalue="Docker.server/compose.yaml.postgres: Compose Deployment" />
         <item itemvalue="Application.ClientApp" />
-        <item itemvalue="Application.ServerApp" />
       </list>
     </recent_temporary>
   </component>
