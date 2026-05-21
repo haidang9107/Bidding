@@ -53,10 +53,6 @@ public class ServerApp {
         registry.register(MessageType.PRODUCT_DETAIL, new ProductDetailCommand(productController));
         registry.register(MessageType.PRODUCT_ADD, new ProductAddCommand(productController));
         registry.register(MessageType.BID_PLACE, new BidPlaceCommand(bidController));
-        registry.register(MessageType.AUTO_BID_SET, new AutoBidSetCommand(bidController));
-        registry.register(MessageType.AUTO_BID_CANCEL, new AutoBidCancelCommand(bidController));
-        registry.register(MessageType.JOIN_AUCTION_ROOM, new JoinAuctionRoomCommand());
-        registry.register(MessageType.LEAVE_AUCTION_ROOM, new LeaveAuctionRoomCommand());
         
         // User & Admin Commands
         registry.register(MessageType.GET_PROFILE, new GetProfileCommand(userController));
@@ -73,8 +69,10 @@ public class ServerApp {
 
         // 4. Start Auction Monitor (Background task)
         AuctionMonitor auctionMonitor = new AuctionMonitor(productService);
+        auctionMonitor.start();
+
         // 5. Start Socket Server
-        SocketServer server = new SocketServer(registry, authService, auctionMonitor);
+        SocketServer server = new SocketServer(registry);
         server.run();
     }
 }

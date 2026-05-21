@@ -95,10 +95,10 @@ public class AdminController {
 
         try {
             AuctionCancelRequest request = JsonConverter.fromJson(JsonConverter.toJson(payload), AuctionCancelRequest.class);
-            int auctionId = request.getAuctionId();
+            int productId = request.getProductId();
             
             // Delegate to Service
-            boolean success = adminService.cancelAuction(auctionId);
+            boolean success = adminService.cancelAuction(productId);
             
             if (success) {
                 return new Response<>(MessageType.SUCCESS, true, "Auction canceled successfully", null);

@@ -9,8 +9,6 @@ import org.example.payload.Response;
 import org.example.server.network.Broadcaster;
 import org.example.server.repository.DatabaseManager;
 import org.example.server.repository.ProductDao;
-import org.example.server.repository.TransactionDao;
-import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
 
 import java.sql.Connection;
@@ -22,13 +20,9 @@ import java.util.List;
  */
 public class ProductService {
     private final ProductDao productDao;
-    private final UserDao userDao;
-    private final TransactionDao transactionDao;
 
     public ProductService() {
         this.productDao = new ProductDao();
-        this.userDao = new UserDao();
-        this.transactionDao = new TransactionDao();
     }
 
     /**
@@ -36,52 +30,27 @@ public class ProductService {
      */
     public void processExpiredAuctions() {
         try (Connection conn = DatabaseManager.getConnection()) {
-            conn.setAutoCommit(false);
             List<Item> expired = productDao.getExpiredProducts(conn);
             for (Item item : expired) {
-                // We re-fetch each auction with FOR UPDATE inside finishAuction
-                finishAuction(conn, item.getAuctionId());
+                // Update status to FINISHED
+                boolean success = productDao.updateStatus(conn, item.getProductId(), AuctionStatus.FINISHED);
+                if (success) {
+                    item.setStatus(AuctionStatus.FINISHED);
+                    FileLogger.info("Auction automatically CLOSED: Product ID " + item.getProductId());
+                    
+                    // Broadcast notification
+                    Response<ProductResponse> notification = new Response<>(
+                        MessageType.AUCTION_END,
+                        true,
+                        "Auction for '" + item.getName() + "' has ended!",
+                        new ProductResponse(item)
+                    );
+                    Broadcaster.broadcast(notification);
+                }
             }
-            conn.commit();
         } catch (SQLException e) {
             FileLogger.error("Error processing expired auctions", e);
         }
-    }
-
-    private boolean finishAuction(Connection conn, int auctionId) throws SQLException {
-        // Lock the row to prevent last-second bids while settling
-        Item latestItem = productDao.getAuctionForUpdate(conn, auctionId);
-        if (latestItem == null || latestItem.getStatus() != AuctionStatus.ACTIVE) {
-            return false;
-        }
-
-        boolean success = productDao.updateStatus(conn, auctionId, AuctionStatus.FINISHED);
-        productDao.updateProductAuctionFlag(conn, latestItem.getProductId(), false);
-
-        String winner = latestItem.getWinnerAccountname();
-        if (success && winner != null) {
-            userDao.addBlockedBalance(conn, winner, -latestItem.getCurrentPrice());
-            userDao.addBalance(conn, winner, -latestItem.getCurrentPrice());
-            userDao.addBalance(conn, latestItem.getSellerAccountname(), latestItem.getCurrentPrice());
-            productDao.updateProductOwner(conn, latestItem.getProductId(), winner);
-            transactionDao.insertTransaction(conn, winner, latestItem.getSellerAccountname(), 3,
-                    latestItem.getProductId(), latestItem.getCurrentPrice(), auctionId,
-                    "Auction success for product " + latestItem.getProductId());
-            
-            FileLogger.info("Auction CLOSED: Auction ID " + auctionId + ", Winner: " + winner);
-            
-            // Broadcast notification
-            Response<ProductResponse> notification = new Response<>(
-                MessageType.AUCTION_END,
-                true,
-                "Auction for '" + latestItem.getName() + "' has ended!",
-                new ProductResponse(latestItem)
-            );
-            Broadcaster.broadcastToAuction(auctionId, notification);
-        } else if (success) {
-            FileLogger.info("Auction CLOSED: Auction ID " + auctionId + " (No winner)");
-        }
-        return success;
     }
 
     public List<Item> getAllAuctions() {
@@ -104,20 +73,17 @@ public class ProductService {
         }
     }
 
-    public Item getAuctionById(int id) {
+    public Item getAuctionById(int productId) {
         try (Connection conn = DatabaseManager.getConnection()) {
-            Item item = productDao.getAuctionById(conn, id);
-            return item != null ? item : productDao.getProductById(conn, id);
+            return productDao.getProductById(conn, productId);
         } catch (SQLException e) {
-            FileLogger.error("Error fetching auction/product by ID: " + id, e);
+            FileLogger.error("Error fetching product by ID: " + productId, e);
             return null;
         }
     }
 
     public boolean createAuction(org.example.dto.ProductAddRequest addReq, String sellerAccount) {
         try (Connection conn = DatabaseManager.getConnection()) {
-            conn.setAutoCommit(false);
-
             Item item = switch (addReq.getCategory()) {
                 case ELECTRONICS -> org.example.util.JsonConverter.fromJson(org.example.util.JsonConverter.toJson(addReq), org.example.model.product.Electronics.class);
                 case ART -> org.example.util.JsonConverter.fromJson(org.example.util.JsonConverter.toJson(addReq), org.example.model.product.Art.class);
@@ -126,10 +92,9 @@ public class ProductService {
 
             // Initialize mandatory auction fields
             item.setSellerAccountname(sellerAccount);
-            item.setOwnerAccountname(sellerAccount);
-            item.setStatus(org.example.model.enums.AuctionStatus.ACTIVE);
+            item.setStatus(org.example.model.enums.AuctionStatus.RUNNING);
             item.setCurrentPrice(item.getStartingPrice());
-            item.setStepPrice(Math.max(1, item.getStartingPrice() / 10));
+            item.setStepPrice(item.getStartingPrice() / 10); // Default step price 10%
 
             if (item.getStartTime() == null) {
                 item.setStartTime(new java.sql.Timestamp(System.currentTimeMillis()));
@@ -141,14 +106,11 @@ public class ProductService {
 
             boolean success = productDao.insertProduct(conn, item);
             if (success) {
-                conn.commit();
                 // Real-time broadcast: Inform everyone about the new product
                 org.example.payload.Response<Item> broadcastResponse = new org.example.payload.Response<>(
                     org.example.model.enums.MessageType.PRODUCT_LIST, true, "New product added!", item
                 );
                 org.example.server.network.Broadcaster.broadcast(broadcastResponse);
-            } else {
-                conn.rollback();
             }
             return success;
         } catch (SQLException e) {

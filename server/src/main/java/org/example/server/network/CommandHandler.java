@@ -22,13 +22,11 @@ public class CommandHandler implements Runnable {
     private final SocketChannel clientChannel;
     private final String message;
     private final CommandRegistry commandRegistry;
-    private final org.example.server.service.user.auth.AuthService authService;
 
-    public CommandHandler(SocketChannel clientChannel, String message, CommandRegistry commandRegistry, org.example.server.service.user.auth.AuthService authService) {
+    public CommandHandler(SocketChannel clientChannel, String message, CommandRegistry commandRegistry) {
         this.clientChannel = clientChannel;
         this.message = message;
         this.commandRegistry = commandRegistry;
-        this.authService = authService;
     }
 
     @Override
@@ -73,8 +71,8 @@ public class CommandHandler implements Runnable {
             }
         }
 
-        // 2. Authorization Check (RBAC) - Centralized in Service
-        if (!authService.canAccess(request.getType(), currentUser)) {
+        // 2. Authorization Check (RBAC)
+        if (!hasPermission(request.getType(), currentUser)) {
             return new Response<>(MessageType.ERROR, false, "Forbidden: You don't have permission for " + request.getType(), null);
         }
 
@@ -85,6 +83,26 @@ public class CommandHandler implements Runnable {
         }
 
         return command.execute(request, clientChannel);
+    }
+
+    /**
+     * Helper to verify if a user has permission for a specific message type.
+     */
+    private boolean hasPermission(MessageType type, User user) {
+        // Public routes
+        if (type == MessageType.LOGIN || type == MessageType.SIGNUP || type == MessageType.PING) return true;
+        
+        if (user == null) return false;
+
+        // RBAC Logic
+        return switch (type) {
+            case ADMIN_GET_ALL_USERS, ADMIN_BAN_USER, ADMIN_CANCEL_AUCTION -> 
+                user.getRole() == org.example.model.enums.UserRole.ADMIN;
+            case BID_PLACE, PRODUCT_ADD, DEPOSIT, WITHDRAW, TRANSFER -> 
+                user.getRole() == org.example.model.enums.UserRole.MEMBER;
+            case USER_UPDATE_AVATAR -> true; // Both can update avatars
+            default -> true; 
+        };
     }
 
     private void sendResponse(Response<?> response) {
