@@ -9,6 +9,7 @@ import org.example.model.user.Member;
  */
 public class UserResponse {
     private String accountname;
+    private String fullname;
     private String email;
     private String avt;
     private UserRole role;
@@ -20,6 +21,7 @@ public class UserResponse {
 
     public UserResponse(User user) {
         this.accountname = user.getAccountname();
+        this.fullname = user.getFullname();
         this.email = user.getEmail();
         this.avt = user.getAvt();
         this.role = user.getRole();
@@ -34,6 +36,9 @@ public class UserResponse {
     // Getters and Setters
     public String getAccountname() { return accountname; }
     public void setAccountname(String accountname) { this.accountname = accountname; }
+
+    public String getFullname() { return fullname; }
+    public void setFullname(String fullname) { this.fullname = fullname; }
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }

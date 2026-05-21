@@ -12,17 +12,33 @@ import java.time.format.DateTimeFormatter;
  * Enhanced Utility class for logging, splitting Audit and Error logs into separate files.
  */
 public class FileLogger {
-    private static final String LOG_DIR = "common/logs/";
-    private static final String AUDIT_LOG = LOG_DIR + "audit.log";
-    private static final String ERROR_LOG = LOG_DIR + "error.log";
+    private static final String LOG_DIR;
+    private static final String AUDIT_LOG;
+    private static final String ERROR_LOG;
     
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     static {
+        // Find project root by looking for .env
+        String userDir = System.getProperty("user.dir");
+        File projectRoot = findProjectRoot(new File(userDir));
+        String rootPath = projectRoot != null ? projectRoot.getAbsolutePath() : userDir;
+        
+        LOG_DIR = rootPath + File.separator + "common" + File.separator + "logs" + File.separator;
+        AUDIT_LOG = LOG_DIR + "audit.log";
+        ERROR_LOG = LOG_DIR + "error.log";
+
         File dir = new File(LOG_DIR);
         if (!dir.exists()) {
             dir.mkdirs();
         }
+    }
+
+    private static File findProjectRoot(File currentDir) {
+        if (currentDir == null) return null;
+        File env = new File(currentDir, ".env");
+        if (env.exists()) return currentDir;
+        return findProjectRoot(currentDir.getParentFile());
     }
 
     /**

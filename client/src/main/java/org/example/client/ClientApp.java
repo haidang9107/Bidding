@@ -83,7 +83,7 @@ public class ClientApp {
                 report.check("Huong configures auto-bid",
                         huong.awaitType("SUCCESS").success);
 
-                nam.send("BID_PLACE", bid(auctionId, 26_000_000L));
+                nam.send("BID_PLACE", bid(auctionId, 30_000_000L));
                 ServerMessage manualBidResponse = nam.awaitType("SUCCESS");
                 report.check("Manual bid against auto-bid endpoint succeeds", manualBidResponse.success);
 
@@ -242,6 +242,7 @@ public class ClientApp {
         private final Socket socket;
         private final BufferedWriter writer;
         private final BlockingQueue<ServerMessage> inbox = new LinkedBlockingQueue<>();
+        private final List<ServerMessage> unhandled = new ArrayList<>();
         private final Thread readerThread;
 
         private TestClient(String name, Socket socket) throws IOException {
@@ -266,7 +267,7 @@ public class ClientApp {
 
         ServerMessage sendAndAwait(String type, Object payload) throws Exception {
             send(type, payload);
-            return awaitNext();
+            return awaitType("SUCCESS", "ERROR", "PONG", type);
         }
 
         void send(String type, Object payload) throws IOException {
@@ -290,18 +291,34 @@ public class ClientApp {
             return message;
         }
 
-        ServerMessage awaitType(String type) throws Exception {
+        ServerMessage awaitType(String... types) throws Exception {
+            List<String> expectedTypes = List.of(types);
+            synchronized (unhandled) {
+                for (int i = 0; i < unhandled.size(); i++) {
+                    ServerMessage msg = unhandled.get(i);
+                    if (expectedTypes.contains(msg.type)) {
+                        unhandled.remove(i);
+                        System.out.println("[" + name + " <- cached] " + msg);
+                        return msg;
+                    }
+                }
+            }
+
             long deadline = System.nanoTime() + RESPONSE_TIMEOUT.toNanos();
             while (System.nanoTime() < deadline) {
                 long remaining = deadline - System.nanoTime();
                 ServerMessage message = inbox.poll(remaining, TimeUnit.NANOSECONDS);
                 if (message == null) break;
                 System.out.println("[" + name + " <-] " + message);
-                if (type.equals(message.type)) {
+                if (expectedTypes.contains(message.type)) {
                     return message;
+                } else {
+                    synchronized (unhandled) {
+                        unhandled.add(message);
+                    }
                 }
             }
-            throw new IllegalStateException("Timed out waiting for " + type + " for client " + name);
+            throw new IllegalStateException("Timed out waiting for " + expectedTypes + " for client " + name);
         }
 
         private void readLoop(BufferedReader reader) {

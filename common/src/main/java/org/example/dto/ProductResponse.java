@@ -11,12 +11,15 @@ import java.sql.Timestamp;
  */
 public class ProductResponse {
     private int productId;
+    private int auctionId;
     private String name;
     private String description;
     private String imageUrl;
+    private String ownerAccountname;
     private long startingPrice;
     private long currentPrice;
     private long stepPrice;
+    private Long buyNowPrice;
     private String sellerAccountname;
     private String winnerAccountname;
     private ItemCategory category;
@@ -28,12 +31,15 @@ public class ProductResponse {
 
     public ProductResponse(Item item) {
         this.productId = item.getProductId();
+        this.auctionId = item.getAuctionId();
         this.name = item.getName();
         this.description = item.getDescription();
         this.imageUrl = item.getImageUrl();
+        this.ownerAccountname = item.getOwnerAccountname();
         this.startingPrice = item.getStartingPrice();
         this.currentPrice = item.getCurrentPrice();
         this.stepPrice = item.getStepPrice();
+        this.buyNowPrice = item.getBuyNowPrice();
         this.sellerAccountname = item.getSellerAccountname();
         this.winnerAccountname = item.getWinnerAccountname();
         this.category = item.getCategory();
@@ -46,6 +52,9 @@ public class ProductResponse {
     public int getProductId() { return productId; }
     public void setProductId(int productId) { this.productId = productId; }
 
+    public int getAuctionId() { return auctionId; }
+    public void setAuctionId(int auctionId) { this.auctionId = auctionId; }
+
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
@@ -55,6 +64,9 @@ public class ProductResponse {
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
+    public String getOwnerAccountname() { return ownerAccountname; }
+    public void setOwnerAccountname(String ownerAccountname) { this.ownerAccountname = ownerAccountname; }
+
     public long getStartingPrice() { return startingPrice; }
     public void setStartingPrice(long startingPrice) { this.startingPrice = startingPrice; }
 
@@ -63,6 +75,9 @@ public class ProductResponse {
 
     public long getStepPrice() { return stepPrice; }
     public void setStepPrice(long stepPrice) { this.stepPrice = stepPrice; }
+
+    public Long getBuyNowPrice() { return buyNowPrice; }
+    public void setBuyNowPrice(Long buyNowPrice) { this.buyNowPrice = buyNowPrice; }
 
     public String getSellerAccountname() { return sellerAccountname; }
     public void setSellerAccountname(String sellerAccountname) { this.sellerAccountname = sellerAccountname; }
