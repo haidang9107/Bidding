@@ -31,6 +31,7 @@ out/
 .idea/
 *.iml
 *.iws
+.ai/
 
 # macOS rác (Rất quan trọng trên MacBook)
 .DS_Store
