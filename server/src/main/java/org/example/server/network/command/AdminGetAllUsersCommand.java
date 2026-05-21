@@ -15,6 +15,6 @@ public class AdminGetAllUsersCommand implements Command {
 
     @Override
     public Response<?> execute(Request request, SocketChannel channel) {
-        return adminController.handleGetAllUsers();
+        return adminController.handleGetAllUsers(request.getPayload());
     }
 }

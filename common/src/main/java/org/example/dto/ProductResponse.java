@@ -1,59 +1,51 @@
-package org.example.model.product;
+package org.example.dto;
 
-import org.example.model.enums.ItemCategory;
 import org.example.model.enums.AuctionStatus;
+import org.example.model.enums.ItemCategory;
+import org.example.model.product.Item;
+
 import java.sql.Timestamp;
 
 /**
- * Represents a generic item in the auction system.
- * Simplified: Uses sellerAccountname and winnerAccountname (Strings).
+ * DTO for displaying product information in a list or grid on the client side.
  */
-public abstract class Item {
-
+public class ProductResponse {
     private int productId;
     private int auctionId;
     private String name;
     private String description;
     private String imageUrl;
     private String ownerAccountname;
-    private boolean inAuction;
-    private Timestamp withdrawnAt;
     private long startingPrice;
     private long currentPrice;
     private long stepPrice;
     private Long buyNowPrice;
     private String sellerAccountname;
-    private String winnerAccountname; // Can be null
+    private String winnerAccountname;
     private ItemCategory category;
     private AuctionStatus status;
-    
     private Timestamp startTime;
     private Timestamp endTime;
-    
-    private int version; // For optimistic locking
 
-    public Item() {
-    }
+    public ProductResponse() {}
 
-    public Item(int productId, String name, String description, String imageUrl, 
-                long startingPrice, long currentPrice, long stepPrice, 
-                String sellerAccountname, String winnerAccountname, 
-                ItemCategory category, AuctionStatus status, Timestamp startTime, 
-                Timestamp endTime, int version) {
-        this.productId = productId;
-        this.name = name;
-        this.description = description;
-        this.imageUrl = imageUrl;
-        this.startingPrice = startingPrice;
-        this.currentPrice = currentPrice;
-        this.stepPrice = stepPrice;
-        this.sellerAccountname = sellerAccountname;
-        this.winnerAccountname = winnerAccountname;
-        this.category = category;
-        this.status = status;
-        this.startTime = startTime;
-        this.endTime = endTime;
-        this.version = version;
+    public ProductResponse(Item item) {
+        this.productId = item.getProductId();
+        this.auctionId = item.getAuctionId();
+        this.name = item.getName();
+        this.description = item.getDescription();
+        this.imageUrl = item.getImageUrl();
+        this.ownerAccountname = item.getOwnerAccountname();
+        this.startingPrice = item.getStartingPrice();
+        this.currentPrice = item.getCurrentPrice();
+        this.stepPrice = item.getStepPrice();
+        this.buyNowPrice = item.getBuyNowPrice();
+        this.sellerAccountname = item.getSellerAccountname();
+        this.winnerAccountname = item.getWinnerAccountname();
+        this.category = item.getCategory();
+        this.status = item.getStatus();
+        this.startTime = item.getStartTime();
+        this.endTime = item.getEndTime();
     }
 
     // Getters and Setters
@@ -74,12 +66,6 @@ public abstract class Item {
 
     public String getOwnerAccountname() { return ownerAccountname; }
     public void setOwnerAccountname(String ownerAccountname) { this.ownerAccountname = ownerAccountname; }
-
-    public boolean isInAuction() { return inAuction; }
-    public void setInAuction(boolean inAuction) { this.inAuction = inAuction; }
-
-    public Timestamp getWithdrawnAt() { return withdrawnAt; }
-    public void setWithdrawnAt(Timestamp withdrawnAt) { this.withdrawnAt = withdrawnAt; }
 
     public long getStartingPrice() { return startingPrice; }
     public void setStartingPrice(long startingPrice) { this.startingPrice = startingPrice; }
@@ -110,7 +96,4 @@ public abstract class Item {
 
     public Timestamp getEndTime() { return endTime; }
     public void setEndTime(Timestamp endTime) { this.endTime = endTime; }
-
-    public int getVersion() { return version; }
-    public void setVersion(int version) { this.version = version; }
 }

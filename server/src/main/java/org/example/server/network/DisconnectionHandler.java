@@ -42,6 +42,7 @@ public class DisconnectionHandler {
     private static void cleanResources(SocketChannel channel) {
         try {
             Broadcaster.removeClient(channel);
+            RoomManager.removeChannel(channel);
             SessionManager.logout(channel);
             HeartbeatRegistry.remove(channel);
             

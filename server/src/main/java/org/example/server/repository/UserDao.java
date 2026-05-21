@@ -69,6 +69,7 @@ public class UserDao {
         
         String accountname = rs.getString("accountname");
         String password = rs.getString("password");
+        String fullname = rs.getString("fullname");
         String email = rs.getString("email");
         String avt = rs.getString("avt");
         long balance = rs.getLong("balance");
@@ -76,9 +77,13 @@ public class UserDao {
         int status = rs.getInt("status");
 
         if (role == UserRole.ADMIN) {
-            return new Admin(accountname, password, email, avt, status);
+            Admin admin = new Admin(accountname, password, email, avt, status);
+            admin.setFullname(fullname);
+            return admin;
         } else {
-            return new Member(accountname, password, email, avt, status, balance, blockedBalance);
+            Member member = new Member(accountname, password, email, avt, status, balance, blockedBalance);
+            member.setFullname(fullname);
+            return member;
         }
     }
 
@@ -86,23 +91,24 @@ public class UserDao {
      * Creates a new user in the database.
      */
     public boolean createUser(Connection connection, User user) throws SQLException {
-        String sql = "INSERT INTO users (accountname, password, email, avt, balance, blocked_balance, role, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO users (accountname, fullname, password, email, avt, balance, blocked_balance, role, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, user.getAccountname());
-            pstmt.setString(2, user.getPassword());
-            pstmt.setString(3, user.getEmail());
-            pstmt.setString(4, user.getAvt());
+            pstmt.setString(2, user.getFullname() == null ? user.getAccountname() : user.getFullname());
+            pstmt.setString(3, user.getPassword());
+            pstmt.setString(4, user.getEmail());
+            pstmt.setString(5, user.getAvt());
             
             if (user instanceof Member member) {
-                pstmt.setLong(5, member.getBalance());
-                pstmt.setLong(6, member.getBlockedBalance());
+                pstmt.setLong(6, member.getBalance());
+                pstmt.setLong(7, member.getBlockedBalance());
             } else {
-                pstmt.setLong(5, 0);
                 pstmt.setLong(6, 0);
+                pstmt.setLong(7, 0);
             }
             
-            pstmt.setInt(7, user.getRole().getValue());
-            pstmt.setInt(8, user.getStatus());
+            pstmt.setInt(8, user.getRole().getValue());
+            pstmt.setInt(9, user.getStatus());
             
             return pstmt.executeUpdate() > 0;
         }
@@ -130,6 +136,38 @@ public class UserDao {
             pstmt.setString(2, accountname);
             return pstmt.executeUpdate() > 0;
         }
+    }
+
+    /**
+     * Retrieves a page of users from the database.
+     */
+    public List<User> getUsersPaged(Connection connection, int limit, int offset) throws SQLException {
+        List<User> users = new ArrayList<>();
+        String sql = "SELECT * FROM users LIMIT ? OFFSET ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, limit);
+            ps.setInt(2, offset);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    users.add(mapResultSetToUser(rs));
+                }
+            }
+        }
+        return users;
+    }
+
+    /**
+     * Retrieves the total count of users in the database.
+     */
+    public long getTotalUsersCount(Connection connection) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM users";
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) {
+                return rs.getLong(1);
+            }
+        }
+        return 0;
     }
 
     /**

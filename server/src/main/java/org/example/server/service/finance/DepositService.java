@@ -2,6 +2,7 @@ package org.example.server.service.finance;
 
 import org.example.model.user.User;
 import org.example.server.repository.DatabaseManager;
+import org.example.server.repository.TransactionDao;
 import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
 
@@ -13,9 +14,11 @@ import java.sql.SQLException;
  */
 public class DepositService {
     private final UserDao userDao;
+    private final TransactionDao transactionDao;
 
     public DepositService() {
         this.userDao = new UserDao();
+        this.transactionDao = new TransactionDao();
     }
 
     public String deposit(String accountname, long amount) {
@@ -37,6 +40,8 @@ public class DepositService {
                 }
 
                 userDao.addBalance(connection, accountname, amount);
+                transactionDao.insertTransaction(connection, null, accountname, 0, null,
+                        amount, null, "Deposit");
                 
                 connection.commit();
                 FileLogger.info("User " + accountname + " deposited " + amount);

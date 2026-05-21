@@ -31,15 +31,24 @@ public class SocketServer {
 
     private final Map<SocketChannel, ByteArrayOutputStream> clientBuffers = new ConcurrentHashMap<>();
     private final InactivityMonitor inactivityMonitor = new InactivityMonitor(60); // 60 seconds timeout
+    private final AuctionMonitor auctionMonitor;
 
     public SocketServer(CommandRegistry commandRegistry) {
+        this(commandRegistry, null);
+    }
+
+    public SocketServer(CommandRegistry commandRegistry, AuctionMonitor auctionMonitor) {
         this.port = Config.getInt("SERVER_PORT");
         this.commandRegistry = commandRegistry;
+        this.auctionMonitor = auctionMonitor;
     }
 
     public void run(String... args) {
         try {
             inactivityMonitor.start();
+            if (auctionMonitor != null) {
+                auctionMonitor.start();
+            }
             selector = Selector.open();
 
             serverChannel = ServerSocketChannel.open();
@@ -67,7 +76,7 @@ public class SocketServer {
                 }
             }
         } catch (IOException e) {
-            FileLogger.error("NIO Server Critical Failure", e);
+            FileLogger.error("NIO Server Critical Failure: " + e.getMessage(), e);
         } finally {
             stop();
         }
@@ -132,6 +141,9 @@ public class SocketServer {
         } finally {
             if (executorService != null) {
                 executorService.shutdown();
+            }
+            if (auctionMonitor != null) {
+                auctionMonitor.stop();
             }
             DatabaseManager.closeConnection();
         }

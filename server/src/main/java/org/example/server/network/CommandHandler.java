@@ -9,6 +9,7 @@ import org.example.server.network.command.CommandRegistry;
 import org.example.util.FileLogger;
 import org.example.util.JsonConverter;
 
+import org.example.server.repository.DatabaseManager;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
@@ -55,6 +56,12 @@ public class CommandHandler implements Runnable {
     }
 
     private Response<?> handleRequest(Request request) {
+        // 0. Database Health Check (For commands requiring DB access)
+        if (request.getType() != MessageType.PING && !DatabaseManager.isConnected()) {
+            FileLogger.error("Database connection lost! Cannot process request: " + request.getType());
+            return new Response<>(MessageType.ERROR, false, "Service Unavailable: Database connection lost. Please try again later.", null);
+        }
+
         User currentUser = SessionManager.getUser(clientChannel);
 
         // 1. Authentication Check
@@ -89,9 +96,12 @@ public class CommandHandler implements Runnable {
 
         // RBAC Logic
         return switch (type) {
-            case PRODUCT_ADD, ADMIN_GET_ALL_USERS, ADMIN_BAN_USER, ADMIN_CANCEL_AUCTION -> 
+            case ADMIN_GET_ALL_USERS, ADMIN_BAN_USER, ADMIN_CANCEL_AUCTION -> 
                 user.getRole() == org.example.model.enums.UserRole.ADMIN;
-            case USER_UPDATE_AVATAR -> true; // Any logged in user can update their own avatar
+            case BID_PLACE, AUTO_BID_SET, AUTO_BID_CANCEL, PRODUCT_ADD, DEPOSIT, WITHDRAW, TRANSFER,
+                 JOIN_AUCTION_ROOM, LEAVE_AUCTION_ROOM -> 
+                user.getRole() == org.example.model.enums.UserRole.MEMBER;
+            case USER_UPDATE_AVATAR -> true; // Both can update avatars
             default -> true; 
         };
     }

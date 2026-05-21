@@ -1,55 +1,99 @@
--- Phân loại giới tính
-CREATE TYPE gender_enum AS ENUM ('MALE', 'FEMALE', 'OTHER', 'UNKNOWN');
-
--- Phân loại vai trò người dùng
-CREATE TYPE role_enum AS ENUM ('ADMIN', 'SELLER', 'BIDDER');
-
--- Phân loại trạng thái sản phẩm
-CREATE TYPE product_status_enum AS ENUM ('ACTIVE', 'SOLD', 'CLOSED', 'PENDING');
-
--- Phân loại danh mục sản phẩm (Category)
-CREATE TYPE category_enum AS ENUM ('ELECTRONICS', 'ART', 'VEHICLE');
-
--- 1. Bảng người dùng (Users)
 CREATE TABLE IF NOT EXISTS users (
-    user_id VARCHAR(255) PRIMARY KEY,
-    username VARCHAR(255) NOT NULL,
+    accountname VARCHAR(255) PRIMARY KEY,
+    fullname VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    phonenumber VARCHAR(20),
-    gender gender_enum DEFAULT 'UNKNOWN', -- Sử dụng ENUM
-    avt TEXT,
-    balance DECIMAL(15, 2) DEFAULT 0.00,
-    role role_enum NOT NULL,              -- Sử dụng ENUM
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    avt VARCHAR(1024) DEFAULT NULL,
+    balance BIGINT DEFAULT 0 CHECK (balance >= 0),
+    blocked_balance BIGINT DEFAULT 0 CHECK (blocked_balance >= 0),
+    role INT NOT NULL,
+    status INT DEFAULT 0
 );
 
--- 2. Bảng sản phẩm (Products/Items)
 CREATE TABLE IF NOT EXISTS products (
-    product_id VARCHAR(255) PRIMARY KEY,
-    product_name VARCHAR(255) NOT NULL,
+    product_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
     description TEXT,
-    starting_price DECIMAL(15, 2) NOT NULL,
-    step_price DECIMAL(15, 2) NOT NULL,
-    seller_id VARCHAR(255) REFERENCES users(user_id) ON DELETE CASCADE,
-    category category_enum NOT NULL,       -- Sử dụng ENUM
-    status product_status_enum DEFAULT 'ACTIVE', -- Sử dụng ENUM
-
--- Các trường mở rộng
+    image_url VARCHAR(1024),
+    category INT NOT NULL,
+    owner_accountname VARCHAR(255) NOT NULL,
+    is_in_auction BOOLEAN DEFAULT FALSE,
+    withdrawn_at TIMESTAMP NULL DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     brand VARCHAR(255),
-    warranty_months INTEGER,
+    warranty_months INT,
     artist VARCHAR(255),
-    art_type VARCHAR(255),
+    art_type VARCHAR(1024),
     model VARCHAR(255),
-    manufacture_year INTEGER,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    manufacture_year INT,
+    FOREIGN KEY (owner_accountname) REFERENCES users(accountname) ON DELETE CASCADE
 );
 
--- 3. Bảng lịch sử đấu giá (Auctions)
 CREATE TABLE IF NOT EXISTS auctions (
-    auction_id VARCHAR(255) PRIMARY KEY,
-    product_id VARCHAR(255) REFERENCES products(product_id) ON DELETE CASCADE,
-    bidder_id VARCHAR(255) REFERENCES users(user_id) ON DELETE CASCADE,
-    bid_amount DECIMAL(15, 2) NOT NULL,
-    bid_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    auction_id SERIAL PRIMARY KEY,
+    product_id INT NOT NULL,
+    seller_accountname VARCHAR(255) NOT NULL,
+    winner_accountname VARCHAR(255) DEFAULT NULL,
+    start_price BIGINT NOT NULL CHECK (start_price >= 0),
+    step_price BIGINT NOT NULL CHECK (step_price > 0),
+    current_price BIGINT NOT NULL CHECK (current_price >= 0),
+    buy_now_price BIGINT DEFAULT NULL CHECK (buy_now_price IS NULL OR buy_now_price > 0),
+    start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    end_time TIMESTAMP NOT NULL,
+    status INT DEFAULT 0,
+    version INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
+    FOREIGN KEY (seller_accountname) REFERENCES users(accountname) ON DELETE CASCADE,
+    FOREIGN KEY (winner_accountname) REFERENCES users(accountname) ON DELETE SET NULL
 );
+
+CREATE TABLE IF NOT EXISTS bids (
+    bid_id SERIAL PRIMARY KEY,
+    auction_id INT NOT NULL,
+    bidder_accountname VARCHAR(255) NOT NULL,
+    bid_amount BIGINT NOT NULL CHECK (bid_amount > 0),
+    bid_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_auto_bid BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (auction_id) REFERENCES auctions(auction_id) ON DELETE CASCADE,
+    FOREIGN KEY (bidder_accountname) REFERENCES users(accountname) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS auto_bids (
+    auto_bid_id SERIAL PRIMARY KEY,
+    auction_id INT NOT NULL,
+    bidder_accountname VARCHAR(255) NOT NULL,
+    max_bid BIGINT NOT NULL CHECK (max_bid > 0),
+    increment_amount BIGINT NOT NULL CHECK (increment_amount > 0),
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (auction_id, bidder_accountname),
+    FOREIGN KEY (auction_id) REFERENCES auctions(auction_id) ON DELETE CASCADE,
+    FOREIGN KEY (bidder_accountname) REFERENCES users(accountname) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS transactions (
+    transaction_id SERIAL PRIMARY KEY,
+    sender_accountname VARCHAR(255) NULL,
+    receiver_accountname VARCHAR(255) NULL,
+    type INT NOT NULL,
+    product_id INT NULL,
+    amount BIGINT DEFAULT 0 CHECK (amount >= 0),
+    reference_id INT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_accountname) REFERENCES users(accountname) ON DELETE SET NULL,
+    FOREIGN KEY (receiver_accountname) REFERENCES users(accountname) ON DELETE SET NULL,
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_products_owner ON products(owner_accountname);
+CREATE INDEX IF NOT EXISTS idx_products_auction ON products(is_in_auction);
+CREATE INDEX IF NOT EXISTS idx_auctions_product ON auctions(product_id);
+CREATE INDEX IF NOT EXISTS idx_auctions_status_end_time ON auctions(status, end_time);
+CREATE INDEX IF NOT EXISTS idx_bids_auction_amount ON bids(auction_id, bid_amount DESC);
+CREATE INDEX IF NOT EXISTS idx_auto_bids_auction ON auto_bids(auction_id, active, max_bid);
+CREATE INDEX IF NOT EXISTS idx_transactions_sender ON transactions(sender_accountname);
+CREATE INDEX IF NOT EXISTS idx_transactions_receiver ON transactions(receiver_accountname);
+CREATE INDEX IF NOT EXISTS idx_transactions_reference ON transactions(reference_id);

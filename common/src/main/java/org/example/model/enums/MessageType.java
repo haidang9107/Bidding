@@ -34,6 +34,14 @@ public enum MessageType {
     
     /** Bidding Logic: Client sends a bid */
     BID_PLACE,
+    /** Bidding Logic: Client configures automatic bidding */
+    AUTO_BID_SET,
+    /** Bidding Logic: Client disables automatic bidding */
+    AUTO_BID_CANCEL,
+    /** Bidding Logic: Client joins a realtime auction room */
+    JOIN_AUCTION_ROOM,
+    /** Bidding Logic: Client leaves a realtime auction room */
+    LEAVE_AUCTION_ROOM,
     /** Bidding Logic: Server broadcasts new highest bid to all clients */
     BID_UPDATE,
     

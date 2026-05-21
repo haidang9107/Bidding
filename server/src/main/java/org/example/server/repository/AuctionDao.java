@@ -2,32 +2,36 @@ package org.example.server.repository;
 
 import org.example.model.Auction;
 import org.example.model.Bid;
-import java.sql.*;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Data Access Object for managing auction-related database operations.
+ * Data Access Object for bid history.
  */
 public class AuctionDao {
 
-    public AuctionDao() {
-    }
-
-    /**
-     * Retrieves all auction records (bids) for a specific product.
-     */
-    public List<Auction> getAuctionsByProduct(Connection connection, int productId) throws SQLException {
+    public List<Auction> getAuctionsByProduct(Connection connection, int auctionId) throws SQLException {
         List<Auction> auctions = new ArrayList<>();
-        String sql = "SELECT * FROM auctions WHERE product_id = ? ORDER BY bid_amount DESC";
+        String sql = """
+                SELECT bid_id, auction_id, bidder_accountname, bid_amount, bid_time
+                FROM bids
+                WHERE auction_id = ?
+                ORDER BY bid_amount DESC
+                """;
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setInt(1, productId);
+            ps.setInt(1, auctionId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     auctions.add(new Auction(
+                            rs.getInt("bid_id"),
                             rs.getInt("auction_id"),
-                            rs.getInt("product_id"),
                             rs.getString("bidder_accountname"),
                             rs.getLong("bid_amount"),
                             rs.getTimestamp("bid_time")
@@ -38,19 +42,21 @@ public class AuctionDao {
         return auctions;
     }
 
-    /**
-     * Retrieves all bids for display.
-     */
-    public List<Bid> getBidsForDisplay(Connection connection, int productId) throws SQLException {
+    public List<Bid> getBidsForDisplay(Connection connection, int auctionId) throws SQLException {
         List<Bid> bids = new ArrayList<>();
-        String sql = "SELECT product_id, bidder_accountname, bid_amount, bid_time FROM auctions WHERE product_id = ? ORDER BY bid_amount DESC";
+        String sql = """
+                SELECT auction_id, bidder_accountname, bid_amount, bid_time
+                FROM bids
+                WHERE auction_id = ?
+                ORDER BY bid_amount DESC
+                """;
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setInt(1, productId);
+            ps.setInt(1, auctionId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     bids.add(new Bid(
-                            rs.getInt("product_id"),
+                            rs.getInt("auction_id"),
                             rs.getString("bidder_accountname"),
                             rs.getLong("bid_amount"),
                             rs.getTimestamp("bid_time")
@@ -61,26 +67,23 @@ public class AuctionDao {
         return bids;
     }
 
-    /**
-     * Inserts a new auction (bid) into the database.
-     */
     public boolean insertAuction(Connection connection, Auction auction) throws SQLException {
-        String sql = "INSERT INTO auctions(product_id, bidder_accountname, bid_amount) VALUES (?, ?, ?)";
+        return insertBid(connection, auction.getProductId(), auction.getBidderAccountname(),
+                auction.getBidAmount(), false);
+    }
+
+    public boolean insertBid(Connection connection, int auctionId, String bidderAccountname,
+                             long bidAmount, boolean autoBid) throws SQLException {
+        String sql = """
+                INSERT INTO bids(auction_id, bidder_accountname, bid_amount, is_auto_bid)
+                VALUES (?, ?, ?, ?)
+                """;
         try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setInt(1, auction.getProductId());
-            ps.setString(2, auction.getBidderAccountname());
-            ps.setLong(3, auction.getBidAmount());
-            
-            int affectedRows = ps.executeUpdate();
-            if (affectedRows > 0) {
-                try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
-                    if (generatedKeys.next()) {
-                        auction.setAuctionId(generatedKeys.getInt(1));
-                    }
-                }
-                return true;
-            }
+            ps.setInt(1, auctionId);
+            ps.setString(2, bidderAccountname);
+            ps.setLong(3, bidAmount);
+            ps.setBoolean(4, autoBid);
+            return ps.executeUpdate() > 0;
         }
-        return false;
     }
 }

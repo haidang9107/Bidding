@@ -6,6 +6,7 @@ import org.example.server.controller.UserController;
 import org.example.server.controller.BidController;
 import org.example.server.controller.ProductController;
 import org.example.server.controller.FinanceController;
+import org.example.server.network.AuctionMonitor;
 import org.example.server.network.SocketServer;
 import org.example.server.network.command.*;
 import org.example.server.service.bid.BidService;
@@ -49,10 +50,17 @@ public class ServerApp {
         registry.register(MessageType.LOGOUT, new LogoutCommand());
         registry.register(MessageType.PING, new PingCommand());
         registry.register(MessageType.PRODUCT_LIST, new ProductListCommand(productController));
+        registry.register(MessageType.PRODUCT_DETAIL, new ProductDetailCommand(productController));
         registry.register(MessageType.PRODUCT_ADD, new ProductAddCommand(productController));
         registry.register(MessageType.BID_PLACE, new BidPlaceCommand(bidController));
+        registry.register(MessageType.AUTO_BID_SET, new AutoBidSetCommand(bidController));
+        registry.register(MessageType.AUTO_BID_CANCEL, new AutoBidCancelCommand(bidController));
+        registry.register(MessageType.JOIN_AUCTION_ROOM, new JoinAuctionRoomCommand());
+        registry.register(MessageType.LEAVE_AUCTION_ROOM, new LeaveAuctionRoomCommand());
         
         // User & Admin Commands
+        registry.register(MessageType.GET_PROFILE, new GetProfileCommand(userController));
+        registry.register(MessageType.UPDATE_PROFILE, new UpdateProfileCommand(userController));
         registry.register(MessageType.USER_UPDATE_AVATAR, new UserUpdateAvatarCommand(userController));
         registry.register(MessageType.ADMIN_GET_ALL_USERS, new AdminGetAllUsersCommand(adminController));
         registry.register(MessageType.ADMIN_BAN_USER, new AdminBanUserCommand(adminController));
@@ -63,8 +71,10 @@ public class ServerApp {
         registry.register(MessageType.WITHDRAW, new WithdrawCommand(financeController));
         registry.register(MessageType.TRANSFER, new TransferCommand(financeController));
 
-        // 4. Start Socket Server
-        SocketServer server = new SocketServer(registry);
+        // 4. Start Auction Monitor (Background task)
+        AuctionMonitor auctionMonitor = new AuctionMonitor(productService);
+        // 5. Start Socket Server
+        SocketServer server = new SocketServer(registry, auctionMonitor);
         server.run();
     }
 }

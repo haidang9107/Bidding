@@ -1,12 +1,19 @@
 package org.example.server.controller;
 
+import org.example.dto.AdminUserControlRequest;
+import org.example.dto.AuctionCancelRequest;
+import org.example.dto.PagedResponse;
+import org.example.dto.PaginationRequest;
+import org.example.dto.UserResponse;
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
 import org.example.payload.Response;
 import org.example.server.service.user.admin.AdminService;
 import org.example.util.FileLogger;
+import org.example.util.JsonConverter;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Controller for handling administrative tasks.
@@ -20,12 +27,32 @@ public class AdminController {
     }
 
     /**
-     * Retrieves all users in the system.
+     * Retrieves users in the system with pagination.
      */
-    public Response<List<User>> handleGetAllUsers() {
+    public Response<?> handleGetAllUsers(Object payload) {
         try {
-            List<User> users = adminService.getAllUsers();
-            return new Response<>(MessageType.SUCCESS, true, "Users fetched successfully", users);
+            PaginationRequest pagReq;
+            if (payload == null) {
+                pagReq = new PaginationRequest(1, 10);
+            } else {
+                pagReq = JsonConverter.fromJson(JsonConverter.toJson(payload), PaginationRequest.class);
+                if (pagReq == null) pagReq = new PaginationRequest(1, 10);
+            }
+
+            PagedResponse<User> pagedUsers = adminService.getUsersPaged(pagReq.getPage(), pagReq.getPageSize());
+            
+            List<UserResponse> userResponses = pagedUsers.getItems().stream()
+                    .map(UserResponse::new)
+                    .collect(Collectors.toList());
+            
+            PagedResponse<UserResponse> finalResponse = new PagedResponse<>(
+                userResponses,
+                pagedUsers.getTotalItems(),
+                pagedUsers.getCurrentPage(),
+                pagedUsers.getPageSize()
+            );
+
+            return new Response<>(MessageType.SUCCESS, true, "Users fetched successfully", finalResponse);
         } catch (Exception e) {
             FileLogger.error("Admin: Failed to fetch users", e);
             return new Response<>(MessageType.ERROR, false, "Internal error fetching users", null);
@@ -34,18 +61,16 @@ public class AdminController {
 
     /**
      * Bans or unbans a user.
-     * Expects a payload containing the target userId and the new status.
+     * Expects an AdminUserControlRequest DTO.
      */
     public Response<String> handleBanUser(Object payload) {
-        if (payload == null) return new Response<>(MessageType.ERROR, false, "Account name and status required", null);
+        if (payload == null) return new Response<>(MessageType.ERROR, false, "AdminUserControlRequest required", null);
         
         try {
-            // Controller handles data parsing/transformation
-            String[] parts = payload.toString().split(":");
-            if (parts.length < 2) return new Response<>(MessageType.ERROR, false, "Invalid format. Use accountname:status", null);
+            AdminUserControlRequest request = JsonConverter.fromJson(JsonConverter.toJson(payload), AdminUserControlRequest.class);
             
-            String accountname = parts[0];
-            int status = Integer.parseInt(parts[1]);
+            String accountname = request.getTargetAccountname();
+            int status = request.getStatus();
 
             // Delegate to Service
             boolean success = adminService.updateUserStatus(accountname, status);
@@ -57,21 +82,23 @@ public class AdminController {
             }
         } catch (Exception e) {
             FileLogger.error("Admin: Failed to update user status", e);
-            return new Response<>(MessageType.ERROR, false, "Invalid format or internal error", null);
+            return new Response<>(MessageType.ERROR, false, "Invalid payload or internal error", null);
         }
     }
 
     /**
      * Cancels an ongoing auction.
+     * Expects an AuctionCancelRequest DTO.
      */
     public Response<String> handleCancelAuction(Object payload) {
-        if (payload == null) return new Response<>(MessageType.ERROR, false, "Product ID required", null);
+        if (payload == null) return new Response<>(MessageType.ERROR, false, "AuctionCancelRequest required", null);
 
         try {
-            int productId = Integer.parseInt(payload.toString());
+            AuctionCancelRequest request = JsonConverter.fromJson(JsonConverter.toJson(payload), AuctionCancelRequest.class);
+            int auctionId = request.getAuctionId();
             
             // Delegate to Service
-            boolean success = adminService.cancelAuction(productId);
+            boolean success = adminService.cancelAuction(auctionId);
             
             if (success) {
                 return new Response<>(MessageType.SUCCESS, true, "Auction canceled successfully", null);
@@ -80,7 +107,7 @@ public class AdminController {
             }
         } catch (Exception e) {
             FileLogger.error("Admin: Failed to cancel auction", e);
-            return new Response<>(MessageType.ERROR, false, "Invalid Product ID or internal error", null);
+            return new Response<>(MessageType.ERROR, false, "Invalid payload or internal error", null);
         }
     }
 }

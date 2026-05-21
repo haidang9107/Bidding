@@ -1,8 +1,16 @@
 package org.example.server.service.product;
 
+import org.example.dto.PagedResponse;
+import org.example.dto.ProductResponse;
+import org.example.model.enums.AuctionStatus;
+import org.example.model.enums.MessageType;
 import org.example.model.product.Item;
+import org.example.payload.Response;
+import org.example.server.network.Broadcaster;
 import org.example.server.repository.DatabaseManager;
 import org.example.server.repository.ProductDao;
+import org.example.server.repository.TransactionDao;
+import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
 
 import java.sql.Connection;
@@ -14,9 +22,59 @@ import java.util.List;
  */
 public class ProductService {
     private final ProductDao productDao;
+    private final UserDao userDao;
+    private final TransactionDao transactionDao;
 
     public ProductService() {
         this.productDao = new ProductDao();
+        this.userDao = new UserDao();
+        this.transactionDao = new TransactionDao();
+    }
+
+    /**
+     * Periodically called to close auctions that have reached their end time.
+     */
+    public void processExpiredAuctions() {
+        try (Connection conn = DatabaseManager.getConnection()) {
+            conn.setAutoCommit(false);
+            List<Item> expired = productDao.getExpiredProducts(conn);
+            for (Item item : expired) {
+                boolean success = finishAuction(conn, item);
+                if (success) {
+                    item.setStatus(AuctionStatus.FINISHED);
+                    FileLogger.info("Auction automatically CLOSED: Product ID " + item.getProductId());
+                    
+                    // Broadcast notification
+                    Response<ProductResponse> notification = new Response<>(
+                        MessageType.AUCTION_END,
+                        true,
+                        "Auction for '" + item.getName() + "' has ended!",
+                        new ProductResponse(item)
+                    );
+                    Broadcaster.broadcastToAuction(item.getAuctionId(), notification);
+                }
+            }
+            conn.commit();
+        } catch (SQLException e) {
+            FileLogger.error("Error processing expired auctions", e);
+        }
+    }
+
+    private boolean finishAuction(Connection conn, Item item) throws SQLException {
+        boolean success = productDao.updateStatus(conn, item.getAuctionId(), AuctionStatus.FINISHED);
+        productDao.updateProductAuctionFlag(conn, item.getProductId(), false);
+
+        String winner = item.getWinnerAccountname();
+        if (success && winner != null) {
+            userDao.addBlockedBalance(conn, winner, -item.getCurrentPrice());
+            userDao.addBalance(conn, winner, -item.getCurrentPrice());
+            userDao.addBalance(conn, item.getSellerAccountname(), item.getCurrentPrice());
+            productDao.updateProductOwner(conn, item.getProductId(), winner);
+            transactionDao.insertTransaction(conn, winner, item.getSellerAccountname(), 3,
+                    item.getProductId(), item.getCurrentPrice(), item.getAuctionId(),
+                    "Auction success for product " + item.getProductId());
+        }
+        return success;
     }
 
     public List<Item> getAllAuctions() {
@@ -28,17 +86,31 @@ public class ProductService {
         }
     }
 
-    public Item getAuctionById(int productId) {
+    public org.example.dto.PagedResponse<Item> getAuctionsPaged(int page, int pageSize) {
         try (Connection conn = DatabaseManager.getConnection()) {
-            return productDao.getProductById(conn, productId);
+            long totalItems = productDao.getTotalProductsCount(conn);
+            List<Item> items = productDao.getProductsPaged(conn, pageSize, (page - 1) * pageSize);
+            return new org.example.dto.PagedResponse<>(items, totalItems, page, pageSize);
         } catch (SQLException e) {
-            FileLogger.error("Error fetching product by ID: " + productId, e);
+            FileLogger.error("Error fetching paged products", e);
+            return new org.example.dto.PagedResponse<>(List.of(), 0, page, pageSize);
+        }
+    }
+
+    public Item getAuctionById(int id) {
+        try (Connection conn = DatabaseManager.getConnection()) {
+            Item item = productDao.getAuctionById(conn, id);
+            return item != null ? item : productDao.getProductById(conn, id);
+        } catch (SQLException e) {
+            FileLogger.error("Error fetching auction/product by ID: " + id, e);
             return null;
         }
     }
 
     public boolean createAuction(org.example.dto.ProductAddRequest addReq, String sellerAccount) {
         try (Connection conn = DatabaseManager.getConnection()) {
+            conn.setAutoCommit(false);
+
             Item item = switch (addReq.getCategory()) {
                 case ELECTRONICS -> org.example.util.JsonConverter.fromJson(org.example.util.JsonConverter.toJson(addReq), org.example.model.product.Electronics.class);
                 case ART -> org.example.util.JsonConverter.fromJson(org.example.util.JsonConverter.toJson(addReq), org.example.model.product.Art.class);
@@ -47,9 +119,10 @@ public class ProductService {
 
             // Initialize mandatory auction fields
             item.setSellerAccountname(sellerAccount);
-            item.setStatus(org.example.model.enums.AuctionStatus.RUNNING);
+            item.setOwnerAccountname(sellerAccount);
+            item.setStatus(org.example.model.enums.AuctionStatus.ACTIVE);
             item.setCurrentPrice(item.getStartingPrice());
-            item.setStepPrice(item.getStartingPrice() / 10); // Default step price 10%
+            item.setStepPrice(Math.max(1, item.getStartingPrice() / 10));
 
             if (item.getStartTime() == null) {
                 item.setStartTime(new java.sql.Timestamp(System.currentTimeMillis()));
@@ -61,11 +134,14 @@ public class ProductService {
 
             boolean success = productDao.insertProduct(conn, item);
             if (success) {
+                conn.commit();
                 // Real-time broadcast: Inform everyone about the new product
                 org.example.payload.Response<Item> broadcastResponse = new org.example.payload.Response<>(
                     org.example.model.enums.MessageType.PRODUCT_LIST, true, "New product added!", item
                 );
                 org.example.server.network.Broadcaster.broadcast(broadcastResponse);
+            } else {
+                conn.rollback();
             }
             return success;
         } catch (SQLException e) {

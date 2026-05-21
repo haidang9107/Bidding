@@ -8,6 +8,7 @@ import org.example.model.enums.UserRole;
 public abstract class User {
 
     private String accountname;
+    private String fullname;
     private String password;
     private String email;
     private String avt;
@@ -20,6 +21,7 @@ public abstract class User {
     public User(String accountname, String password, String email, 
                 String avt, UserRole role, int status) {
         this.accountname = accountname;
+        this.fullname = accountname;
         this.password = password;
         this.email = email;
         this.avt = avt;
@@ -30,6 +32,9 @@ public abstract class User {
     // Getters and Setters
     public String getAccountname() { return accountname; }
     public void setAccountname(String accountname) { this.accountname = accountname; }
+
+    public String getFullname() { return fullname; }
+    public void setFullname(String fullname) { this.fullname = fullname; }
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }

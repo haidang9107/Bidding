@@ -2,6 +2,7 @@ package org.example.server.service.finance;
 
 import org.example.model.user.User;
 import org.example.server.repository.DatabaseManager;
+import org.example.server.repository.TransactionDao;
 import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
 
@@ -13,9 +14,11 @@ import java.sql.SQLException;
  */
 public class WithdrawService {
     private final UserDao userDao;
+    private final TransactionDao transactionDao;
 
     public WithdrawService() {
         this.userDao = new UserDao();
+        this.transactionDao = new TransactionDao();
     }
 
     public String withdraw(String accountname, long amount) {
@@ -43,6 +46,8 @@ public class WithdrawService {
                 }
 
                 userDao.addBalance(connection, accountname, -amount);
+                transactionDao.insertTransaction(connection, accountname, null, 1, null,
+                        amount, null, "Withdraw");
                 
                 connection.commit();
                 FileLogger.info("User " + accountname + " withdrew " + amount);

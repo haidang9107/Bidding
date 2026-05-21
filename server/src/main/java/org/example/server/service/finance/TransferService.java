@@ -2,6 +2,7 @@ package org.example.server.service.finance;
 
 import org.example.model.user.User;
 import org.example.server.repository.DatabaseManager;
+import org.example.server.repository.TransactionDao;
 import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
 
@@ -14,9 +15,11 @@ import java.sql.SQLException;
  */
 public class TransferService {
     private final UserDao userDao;
+    private final TransactionDao transactionDao;
 
     public TransferService() {
         this.userDao = new UserDao();
+        this.transactionDao = new TransactionDao();
     }
 
     public String transfer(String fromAccount, String toAccount, long amount) {
@@ -59,6 +62,8 @@ public class TransferService {
                 // 4. Execute transfer
                 userDao.addBalance(connection, fromAccount, -amount);
                 userDao.addBalance(connection, toAccount, amount);
+                transactionDao.insertTransaction(connection, fromAccount, toAccount, 2,
+                        null, amount, null, "Transfer");
 
                 connection.commit();
                 FileLogger.info("Transfer: " + amount + " from " + fromAccount + " to " + toAccount);

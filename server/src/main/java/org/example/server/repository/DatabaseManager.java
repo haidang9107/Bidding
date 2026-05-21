@@ -17,10 +17,10 @@ public class DatabaseManager {
     static {
         try {
             HikariConfig config = new HikariConfig();
-            config.setJdbcUrl(Config.get("DB_URL"));
-            config.setUsername(Config.get("DB_USER"));
-            config.setPassword(Config.get("DB_PASSWORD"));
-            config.setDriverClassName(Config.get("DB_DRIVER"));
+            config.setJdbcUrl(Config.get("BID_DB_URL"));
+            config.setUsername(Config.get("BID_DB_USER"));
+            config.setPassword(Config.get("BID_DB_PASSWORD"));
+            config.setDriverClassName(Config.get("BID_DB_DRIVER"));
             
             // Unicode and encoding properties
             config.addDataSourceProperty("useUnicode", "true");
@@ -34,11 +34,28 @@ public class DatabaseManager {
             config.setConnectionTimeout(10000);
             config.setMaxLifetime(1800000); // 30 minutes
             
+            // Resilience properties
+            config.setConnectionTestQuery("SELECT 1");
+            config.setValidationTimeout(5000);
+            
             dataSource = new HikariDataSource(config);
             FileLogger.info("HikariCP Database connection pool established successfully!");
         } catch (Exception e) {
             FileLogger.error("Failed to initialize HikariCP pool", e);
             throw new RuntimeException("Database pool initialization failed", e);
+        }
+    }
+
+    /**
+     * Checks if the database is currently reachable.
+     * @return true if connected, false otherwise
+     */
+    public static boolean isConnected() {
+        if (dataSource == null || dataSource.isClosed()) return false;
+        try (Connection conn = getConnection()) {
+            return conn.isValid(2);
+        } catch (SQLException e) {
+            return false;
         }
     }
 

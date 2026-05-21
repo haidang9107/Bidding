@@ -6,15 +6,15 @@ import org.example.server.controller.ProductController;
 
 import java.nio.channels.SocketChannel;
 
-public class ProductListCommand implements Command {
+public class ProductDetailCommand implements Command {
     private final ProductController productController;
 
-    public ProductListCommand(ProductController productController) {
+    public ProductDetailCommand(ProductController productController) {
         this.productController = productController;
     }
 
     @Override
     public Response<?> execute(Request request, SocketChannel channel) {
-        return productController.handleGetAllAuctions(request.getPayload());
+        return productController.handleGetAuctionDetail(request.getPayload());
     }
 }

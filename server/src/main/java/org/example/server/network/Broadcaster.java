@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Collection;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -44,12 +45,21 @@ public class Broadcaster {
      * Broadcasts a response message to all connected clients.
      */
     public static void broadcast(Response<?> response) {
+        writeToChannels(clients, response);
+    }
+
+    public static void broadcastToAuction(int auctionId, Response<?> response) {
+        writeToChannels(RoomManager.getAuctionClients(auctionId), response);
+    }
+
+    private static void writeToChannels(Collection<SocketChannel> channels, Response<?> response) {
         String jsonMessage = JsonConverter.toJson(response) + "\n";
         byte[] messageBytes = jsonMessage.getBytes(StandardCharsets.UTF_8);
 
-        for (SocketChannel channel : clients) {
+        for (SocketChannel channel : channels) {
             if (!channel.isOpen()) {
                 clients.remove(channel);
+                RoomManager.removeChannel(channel);
                 continue;
             }
 
@@ -64,6 +74,7 @@ public class Broadcaster {
             } catch (IOException e) {
                 FileLogger.error("Failed to send broadcast to channel: " + channel, e);
                 clients.remove(channel);
+                RoomManager.removeChannel(channel);
                 try {
                     channel.close();
                 } catch (IOException ignored) {}
