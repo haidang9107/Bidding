@@ -17,10 +17,10 @@ public class DatabaseManager {
     static {
         try {
             HikariConfig config = new HikariConfig();
-            config.setJdbcUrl(Config.get("BID_DB_URL"));
-            config.setUsername(Config.get("BID_DB_USER"));
-            config.setPassword(Config.get("BID_DB_PASSWORD"));
-            config.setDriverClassName(Config.get("BID_DB_DRIVER"));
+            config.setJdbcUrl(Config.get("DB_URL"));
+            config.setUsername(Config.get("DB_USER"));
+            config.setPassword(Config.get("DB_PASSWORD"));
+            config.setDriverClassName(Config.get("DB_DRIVER"));
             
             // Unicode and encoding properties
             config.addDataSourceProperty("useUnicode", "true");
