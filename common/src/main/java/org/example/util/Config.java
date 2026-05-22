@@ -22,6 +22,8 @@ public class Config {
         DEFAULTS.put("DB_NAME", "bidding_db");
         DEFAULTS.put("DB_URL", "jdbc:mysql://localhost:3306/bidding_db?createDatabaseIfNotExist=true");
         DEFAULTS.put("DB_DRIVER", "com.mysql.cj.jdbc.Driver");
+        DEFAULTS.put("DB_USER", "root");
+        DEFAULTS.put("DB_PASSWORD", "root");
 
         // Logic to find the .env at project root
         String userDir = System.getProperty("user.dir");

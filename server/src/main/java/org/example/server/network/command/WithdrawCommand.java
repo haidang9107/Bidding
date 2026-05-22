@@ -1,10 +1,12 @@
 package org.example.server.network.command;
 
+import org.example.model.enums.MessageType;
 import org.example.model.user.User;
 import org.example.payload.Request;
 import org.example.payload.Response;
 import org.example.server.controller.FinanceController;
 import org.example.server.network.SessionManager;
+import org.example.util.JsonConverter;
 
 import java.nio.channels.SocketChannel;
 
@@ -18,7 +20,9 @@ public class WithdrawCommand implements Command {
     @Override
     public Response<?> execute(Request request, SocketChannel channel) {
         User user = SessionManager.getUser(channel);
-        if (user == null) return new Response<>(org.example.model.enums.MessageType.ERROR, false, "Unauthorized", null);
-        return financeController.handleWithdraw(user.getAccountname(), request.getPayload());
+        if (user == null) return new Response<>(MessageType.ERROR, false, "Unauthorized", null);
+        
+        Long amount = JsonConverter.convert(request.getPayload(), Long.class);
+        return financeController.handleWithdraw(user.getAccountname(), amount);
     }
 }

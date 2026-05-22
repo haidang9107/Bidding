@@ -58,23 +58,16 @@ public class AutoBidDao {
         }
     }
 
-    public List<AutoBid> findActiveCandidates(Connection connection, int auctionId,
-                                              String currentWinnerAccountname,
-                                              long minimumNextBid) throws SQLException {
+    public List<AutoBid> findAllActiveForAuction(Connection connection, int auctionId) throws SQLException {
         List<AutoBid> autoBids = new ArrayList<>();
         String sql = """
                 SELECT *
                 FROM auto_bids
-                WHERE auction_id = ?
-                  AND active = TRUE
-                  AND max_bid >= ?
-                  AND bidder_accountname <> ?
-                ORDER BY max_bid DESC, updated_at ASC
+                WHERE auction_id = ? AND active = TRUE
+                ORDER BY max_bid DESC, created_at ASC
                 """;
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, auctionId);
-            ps.setLong(2, minimumNextBid);
-            ps.setString(3, currentWinnerAccountname == null ? "" : currentWinnerAccountname);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     autoBids.add(mapRow(rs));

@@ -48,4 +48,18 @@ public class JsonConverter {
     public static <T> T fromJson(String json, Type typeOfT) {
         return gson.fromJson(json, typeOfT);
     }
+
+    /**
+     * Efficiently converts an object (usually a Map from GSON) to a specific class.
+     * 
+     * @param from the source object
+     * @param to the target class
+     * @param <T> the target type
+     * @return the converted object
+     */
+    public static <T> T convert(Object from, Class<T> to) {
+        if (from == null) return null;
+        if (to.isInstance(from)) return to.cast(from);
+        return gson.fromJson(gson.toJsonTree(from), to);
+    }
 }

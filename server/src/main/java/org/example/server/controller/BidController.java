@@ -21,12 +21,7 @@ public class BidController {
     /**
      * Handles bid placement.
      */
-    public Response<BidResult> handlePlaceBid(Object payload) {
-        return handlePlaceBid(payload, null);
-    }
-
-    public Response<BidResult> handlePlaceBid(Object payload, String authenticatedAccountname) {
-        BidRequest bidReq = JsonConverter.fromJson(JsonConverter.toJson(payload), BidRequest.class);
+    public Response<BidResult> handlePlaceBid(BidRequest bidReq, String authenticatedAccountname) {
         if (bidReq == null) {
             return new Response<>(MessageType.ERROR, false, "Bid data required", null);
         }
@@ -43,8 +38,7 @@ public class BidController {
         }
     }
 
-    public Response<String> handleConfigureAutoBid(Object payload, String authenticatedAccountname) {
-        AutoBidRequest autoBidReq = JsonConverter.fromJson(JsonConverter.toJson(payload), AutoBidRequest.class);
+    public Response<String> handleConfigureAutoBid(AutoBidRequest autoBidReq, String authenticatedAccountname) {
         if (autoBidReq == null) {
             return new Response<>(MessageType.ERROR, false, "Auto bid data required", null);
         }
@@ -64,8 +58,7 @@ public class BidController {
         return new Response<>(MessageType.ERROR, false, result, null);
     }
 
-    public Response<String> handleCancelAutoBid(Object payload, String authenticatedAccountname) {
-        AutoBidRequest autoBidReq = JsonConverter.fromJson(JsonConverter.toJson(payload), AutoBidRequest.class);
+    public Response<String> handleCancelAutoBid(AutoBidRequest autoBidReq, String authenticatedAccountname) {
         if (autoBidReq == null) {
             return new Response<>(MessageType.ERROR, false, "Auto bid data required", null);
         }

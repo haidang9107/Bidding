@@ -24,8 +24,7 @@ public class AuthController {
      * Authenticates and returns the raw User object.
      * Used by LoginCommand for session management.
      */
-    public Object authenticateAndGetUser(Object payload) {
-        LoginRequest loginReq = JsonConverter.fromJson(JsonConverter.toJson(payload), LoginRequest.class);
+    public Object authenticateAndGetUser(LoginRequest loginReq) {
         if (loginReq == null || loginReq.getUsername() == null) {
             return new Response<>(MessageType.ERROR, false, "Invalid login credentials", null);
         }
@@ -38,23 +37,9 @@ public class AuthController {
     }
 
     /**
-     * Handles login request.
-     */
-    public Response<?> handleLogin(Object payload) {
-        Object result = authenticateAndGetUser(payload);
-        if (result instanceof User user) {
-            return new Response<>(MessageType.SUCCESS, true, "Login successful", new UserResponse(user));
-        } else if (result instanceof Response<?> response) {
-            return response;
-        }
-        return new Response<>(MessageType.ERROR, false, "Invalid username or password", null);
-    }
-
-    /**
      * Handles signup request.
      */
-    public Response<?> handleSignup(Object payload) {
-        SignupRequest signupReq = JsonConverter.fromJson(JsonConverter.toJson(payload), SignupRequest.class);
+    public Response<?> handleSignup(SignupRequest signupReq) {
         if (signupReq == null || signupReq.getUsername() == null) {
             return new Response<>(MessageType.ERROR, false, "Invalid signup data", null);
         }

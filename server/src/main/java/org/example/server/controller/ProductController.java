@@ -25,18 +25,9 @@ public class ProductController {
     /**
      * Handles retrieving a paginated list of products.
      */
-    public Response<?> handleGetAllAuctions(Object payload) {
-        PaginationRequest pagReq;
-        if (payload == null) {
+    public Response<?> handleGetAllAuctions(PaginationRequest pagReq) {
+        if (pagReq == null) {
             pagReq = new PaginationRequest(1, 10); // Default
-        } else {
-            try {
-                pagReq = org.example.util.JsonConverter.fromJson(
-                    org.example.util.JsonConverter.toJson(payload), PaginationRequest.class);
-                if (pagReq == null) pagReq = new PaginationRequest(1, 10);
-            } catch (Exception e) {
-                pagReq = new PaginationRequest(1, 10);
-            }
         }
 
         PagedResponse<Item> pagedItems = productService.getAuctionsPaged(pagReq.getPage(), pagReq.getPageSize());
@@ -55,12 +46,11 @@ public class ProductController {
         return new Response<>(MessageType.PRODUCT_LIST, true, "Auctions fetched successfully", finalResponse);
     }
 
-    public Response<ProductResponse> handleGetAuctionDetail(Object payload) {
-        if (payload == null) {
-            return new Response<>(MessageType.ERROR, false, "Product ID required", null);
+    public Response<ProductResponse> handleGetAuctionDetail(Integer productId) {
+        if (productId == null || productId <= 0) {
+            return new Response<>(MessageType.ERROR, false, "Valid Product ID required", null);
         }
         try {
-            int productId = Integer.parseInt(payload.toString());
             Item item = productService.getAuctionById(productId);
             if (item != null) {
                 return new Response<>(MessageType.PRODUCT_DETAIL, true, "Product found", new ProductResponse(item));
@@ -69,19 +59,16 @@ public class ProductController {
             }
         } catch (Exception e) {
             FileLogger.error("Failed to fetch product detail", e);
-            return new Response<>(MessageType.ERROR, false, "Invalid Product ID or internal error", null);
+            return new Response<>(MessageType.ERROR, false, "Internal error fetching detail", null);
         }
     }
 
-    public Response<String> handleCreateAuction(Object payload, String sellerAccount) {
-        try {
-            org.example.dto.ProductAddRequest addReq = org.example.util.JsonConverter.fromJson(
-                org.example.util.JsonConverter.toJson(payload), org.example.dto.ProductAddRequest.class);
-            
-            if (addReq == null) {
-                return new Response<>(MessageType.ERROR, false, "Invalid product data", null);
-            }
+    public Response<String> handleCreateAuction(org.example.dto.ProductAddRequest addReq, String sellerAccount) {
+        if (addReq == null) {
+            return new Response<>(MessageType.ERROR, false, "Invalid product data", null);
+        }
 
+        try {
             boolean success = productService.createAuction(addReq, sellerAccount);
             if (success) {
                 return new Response<>(MessageType.SUCCESS, true, "Product added successfully", null);

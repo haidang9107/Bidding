@@ -2,6 +2,7 @@ package org.example.server.repository;
 
 import org.example.model.enums.UserRole;
 import org.example.model.user.*;
+import org.example.server.repository.mapper.ResultSetMapper;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -25,7 +26,7 @@ public class UserDao {
             pstmt.setString(1, accountname);
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    return mapResultSetToUser(rs);
+                    return ResultSetMapper.mapToUser(rs);
                 }
             }
         }
@@ -41,7 +42,7 @@ public class UserDao {
             pstmt.setString(1, accountname);
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    return mapResultSetToUser(rs);
+                    return ResultSetMapper.mapToUser(rs);
                 }
             }
         }
@@ -57,33 +58,6 @@ public class UserDao {
             pstmt.setLong(1, amount);
             pstmt.setString(2, accountname);
             return pstmt.executeUpdate() > 0;
-        }
-    }
-
-    /**
-     * Maps a result set row to a User object.
-     */
-    private User mapResultSetToUser(ResultSet rs) throws SQLException {
-        int roleValue = rs.getInt("role");
-        UserRole role = UserRole.fromInt(roleValue);
-        
-        String accountname = rs.getString("accountname");
-        String password = rs.getString("password");
-        String fullname = rs.getString("fullname");
-        String email = rs.getString("email");
-        String avt = rs.getString("avt");
-        long balance = rs.getLong("balance");
-        long blockedBalance = rs.getLong("blocked_balance");
-        int status = rs.getInt("status");
-
-        if (role == UserRole.ADMIN) {
-            Admin admin = new Admin(accountname, password, email, avt, status);
-            admin.setFullname(fullname);
-            return admin;
-        } else {
-            Member member = new Member(accountname, password, email, avt, status, balance, blockedBalance);
-            member.setFullname(fullname);
-            return member;
         }
     }
 
@@ -149,7 +123,7 @@ public class UserDao {
             ps.setInt(2, offset);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    users.add(mapResultSetToUser(rs));
+                    users.add(ResultSetMapper.mapToUser(rs));
                 }
             }
         }
@@ -179,7 +153,7 @@ public class UserDao {
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                users.add(mapResultSetToUser(rs));
+                users.add(ResultSetMapper.mapToUser(rs));
             }
         }
         return users;

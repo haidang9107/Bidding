@@ -23,46 +23,38 @@ public class FinanceController {
         this.transferService = transferService;
     }
 
-    public Response<String> handleDeposit(String accountname, Object payload) {
-        try {
-            long amount = parseAmount(payload);
-            String result = depositService.deposit(accountname, amount);
-            return new Response<>(MessageType.DEPOSIT, "SUCCESS".equals(result), result, null);
-        } catch (Exception e) {
-            FileLogger.error("Finance: Deposit error", e);
-            return new Response<>(MessageType.ERROR, false, "Invalid deposit amount format", null);
+    public Response<String> handleDeposit(String accountname, Long amount) {
+        if (amount == null || amount <= 0) {
+            return new Response<>(MessageType.ERROR, false, "Invalid deposit amount", null);
         }
+        String result = depositService.deposit(accountname, amount);
+        return new Response<>(MessageType.DEPOSIT, "SUCCESS".equals(result), result, null);
     }
 
-    public Response<String> handleWithdraw(String accountname, Object payload) {
-        try {
-            long amount = parseAmount(payload);
-            String result = withdrawService.withdraw(accountname, amount);
-            return new Response<>(MessageType.WITHDRAW, "SUCCESS".equals(result), result, null);
-        } catch (Exception e) {
-            FileLogger.error("Finance: Withdrawal error", e);
-            return new Response<>(MessageType.ERROR, false, "Invalid withdrawal format", null);
+    public Response<String> handleWithdraw(String accountname, Long amount) {
+        if (amount == null || amount <= 0) {
+            return new Response<>(MessageType.ERROR, false, "Invalid withdrawal amount", null);
         }
+        String result = withdrawService.withdraw(accountname, amount);
+        return new Response<>(MessageType.WITHDRAW, "SUCCESS".equals(result), result, null);
     }
 
-    public Response<String> handleTransfer(String fromAccount, Object payload) {
-        try {
-            TransferRequest transferReq = JsonConverter.fromJson(JsonConverter.toJson(payload), TransferRequest.class);
-            if (transferReq == null) {
-                return new Response<>(MessageType.ERROR, false, "Invalid transfer request", null);
-            }
-            String result = transferService.transfer(fromAccount, transferReq.getToAccountname(), transferReq.getAmount());
-            return new Response<>(MessageType.TRANSFER, "SUCCESS".equals(result), result, null);
-        } catch (Exception e) {
-            FileLogger.error("Finance: Transfer error", e);
-            return new Response<>(MessageType.ERROR, false, "Internal error in transfer", null);
+    public Response<String> handleTransfer(String fromAccount, TransferRequest transferReq) {
+        if (transferReq == null || transferReq.getAmount() <= 0) {
+            return new Response<>(MessageType.ERROR, false, "Invalid transfer request", null);
         }
+        String result = transferService.transfer(fromAccount, transferReq.getToAccountname(), transferReq.getAmount());
+        return new Response<>(MessageType.TRANSFER, "SUCCESS".equals(result), result, null);
     }
 
     private long parseAmount(Object payload) {
         if (payload instanceof Number number) {
             return number.longValue();
         }
-        return Long.parseLong(payload.toString());
+        try {
+            return Long.parseLong(payload.toString());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 }

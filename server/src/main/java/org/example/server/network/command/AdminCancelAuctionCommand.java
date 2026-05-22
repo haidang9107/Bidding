@@ -1,8 +1,10 @@
 package org.example.server.network.command;
 
+import org.example.dto.AuctionCancelRequest;
 import org.example.payload.Request;
 import org.example.payload.Response;
 import org.example.server.controller.AdminController;
+import org.example.util.JsonConverter;
 
 import java.nio.channels.SocketChannel;
 
@@ -15,6 +17,7 @@ public class AdminCancelAuctionCommand implements Command {
 
     @Override
     public Response<?> execute(Request request, SocketChannel channel) {
-        return adminController.handleCancelAuction(request.getPayload());
+        AuctionCancelRequest cancelReq = JsonConverter.convert(request.getPayload(), AuctionCancelRequest.class);
+        return adminController.handleCancelAuction(cancelReq);
     }
 }

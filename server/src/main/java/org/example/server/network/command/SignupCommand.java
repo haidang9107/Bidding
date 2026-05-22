@@ -1,9 +1,11 @@
 package org.example.server.network.command;
 
 import org.example.model.enums.MessageType;
+import org.example.dto.SignupRequest;
 import org.example.payload.Request;
 import org.example.payload.Response;
 import org.example.server.controller.AuthController;
+import org.example.util.JsonConverter;
 
 import java.nio.channels.SocketChannel;
 
@@ -16,6 +18,7 @@ public class SignupCommand implements Command {
 
     @Override
     public Response<?> execute(Request request, SocketChannel channel) {
-        return authController.handleSignup(request.getPayload());
+        SignupRequest signupReq = JsonConverter.convert(request.getPayload(), SignupRequest.class);
+        return authController.handleSignup(signupReq);
     }
 }

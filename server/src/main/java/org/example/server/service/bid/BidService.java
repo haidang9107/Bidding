@@ -199,38 +199,57 @@ public class BidService {
     }
 
     private boolean runAutoBidding(Connection connection, Item item) throws SQLException {
-        boolean applied = false;
-        int guard = 0;
+        boolean appliedAtLeastOnce = false;
 
-        while (guard++ < 50) {
-            long minimumNextBid = item.getCurrentPrice() + item.getStepPrice();
-            List<AutoBid> candidates = autoBidDao.findActiveCandidates(
-                    connection, item.getAuctionId(), item.getWinnerAccountname(), minimumNextBid);
-            if (candidates.isEmpty()) {
+        while (true) {
+            List<AutoBid> activeBids = autoBidDao.findAllActiveForAuction(connection, item.getAuctionId());
+            if (activeBids.isEmpty()) {
                 break;
             }
 
-            boolean placed = false;
-            for (AutoBid candidate : candidates) {
-                long nextBid = Math.min(candidate.getMaxBid(),
-                        Math.max(minimumNextBid, item.getCurrentPrice() + candidate.getIncrementAmount()));
-                if (nextBid < minimumNextBid) {
-                    continue;
-                }
+            AutoBid highest = activeBids.get(0);
+            AutoBid secondHighest = activeBids.size() > 1 ? activeBids.get(1) : null;
 
-                String error = applyBid(connection, item, candidate.getBidderAccountname(), nextBid, true);
-                if (error == null) {
-                    applied = true;
-                    placed = true;
+            long minimumNextBid = item.getCurrentPrice() + item.getStepPrice();
+            long targetPrice;
+
+            if (secondHighest != null) {
+                // Determine price based on competition
+                long competePrice = secondHighest.getMaxBid() + item.getStepPrice();
+                targetPrice = Math.min(highest.getMaxBid(), competePrice);
+                
+                // If highest is not winning, must at least meet minimumNextBid
+                if (!highest.getBidderAccountname().equals(item.getWinnerAccountname())) {
+                    targetPrice = Math.max(targetPrice, minimumNextBid);
+                }
+            } else {
+                // Competing against manual bid
+                if (highest.getBidderAccountname().equals(item.getWinnerAccountname())) {
+                    break; // Already winning and no one is pushing
+                }
+                targetPrice = minimumNextBid;
+            }
+
+            // Safety check: targetPrice must be within highest's limit and above current
+            if (targetPrice > highest.getMaxBid() || targetPrice < minimumNextBid) {
+                // If current winner is already highest, we are done
+                if (highest.getBidderAccountname().equals(item.getWinnerAccountname())) {
                     break;
                 }
-            }
-
-            if (!placed) {
+                // Otherwise, highest cannot beat current price
                 break;
             }
+
+            String error = applyBid(connection, item, highest.getBidderAccountname(), targetPrice, true);
+            if (error == null) {
+                appliedAtLeastOnce = true;
+                break; // Target achieved
+            } else {
+                // If highest bidder has issues (e.g. balance), deactivate and re-evaluate
+                autoBidDao.deactivateAutoBid(connection, item.getAuctionId(), highest.getBidderAccountname());
+            }
         }
-        return applied;
+        return appliedAtLeastOnce;
     }
 
     private User lockBidderAndPreviousWinner(Connection connection, String bidderAccountname,
