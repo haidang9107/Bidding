@@ -26,7 +26,16 @@ import org.example.util.FileLogger;
 public class ServerApp {
 
     public static void main(String[] args) {
-        FileLogger.info("Starting Bidding Server...");
+        try {
+            bootstrap();
+        } catch (Exception e) {
+            FileLogger.error("CRITICAL: Server failed to start", e);
+            System.exit(1);
+        }
+    }
+
+    private static void bootstrap() {
+        FileLogger.info("Starting Bidding Server Bootstrap Sequence...");
 
         // 0. Initialize Database
         DatabaseManager.init();
@@ -49,36 +58,57 @@ public class ServerApp {
 
         // 3. Initialize Command Registry
         CommandRegistry registry = new CommandRegistry();
-        registry.register(MessageType.LOGIN, new LoginCommand(authController));
-        registry.register(MessageType.SIGNUP, new SignupCommand(authController));
+        registerCommands(registry, authController, productController, bidController, adminController, userController, financeController);
+
+        // 4. Start Background Tasks
+        AuctionMonitor auctionMonitor = new AuctionMonitor(productService);
+        
+        // 5. Initialize Socket Server
+        SocketServer server = new SocketServer(registry, authService, auctionMonitor);
+
+        // 6. Register Shutdown Hook for Graceful Cleanup
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            FileLogger.info("Shutdown signal received. Cleaning up resources...");
+            server.stop();
+            FileLogger.info("Server shutdown complete.");
+        }));
+
+        // 7. Start Server
+        server.run();
+    }
+
+    private static void registerCommands(CommandRegistry registry, AuthController auth, ProductController product,
+                                         BidController bid, AdminController admin, UserController user, 
+                                         FinanceController finance) {
+        // Auth Commands
+        registry.register(MessageType.LOGIN, new LoginCommand(auth));
+        registry.register(MessageType.SIGNUP, new SignupCommand(auth));
         registry.register(MessageType.LOGOUT, new LogoutCommand());
         registry.register(MessageType.PING, new PingCommand());
-        registry.register(MessageType.PRODUCT_LIST, new ProductListCommand(productController));
-        registry.register(MessageType.PRODUCT_DETAIL, new ProductDetailCommand(productController));
-        registry.register(MessageType.PRODUCT_ADD, new ProductAddCommand(productController));
-        registry.register(MessageType.BID_PLACE, new BidPlaceCommand(bidController));
-        registry.register(MessageType.AUTO_BID_SET, new AutoBidSetCommand(bidController));
-        registry.register(MessageType.AUTO_BID_CANCEL, new AutoBidCancelCommand(bidController));
+
+        // Product & Auction Commands
+        registry.register(MessageType.PRODUCT_LIST, new ProductListCommand(product));
+        registry.register(MessageType.PRODUCT_DETAIL, new ProductDetailCommand(product));
+        registry.register(MessageType.PRODUCT_ADD, new ProductAddCommand(product));
         registry.register(MessageType.JOIN_AUCTION_ROOM, new JoinAuctionRoomCommand());
         registry.register(MessageType.LEAVE_AUCTION_ROOM, new LeaveAuctionRoomCommand());
-        
-        // User & Admin Commands
-        registry.register(MessageType.GET_PROFILE, new GetProfileCommand(userController));
-        registry.register(MessageType.UPDATE_PROFILE, new UpdateProfileCommand(userController));
-        registry.register(MessageType.USER_UPDATE_AVATAR, new UserUpdateAvatarCommand(userController));
-        registry.register(MessageType.ADMIN_GET_ALL_USERS, new AdminGetAllUsersCommand(adminController));
-        registry.register(MessageType.ADMIN_BAN_USER, new AdminBanUserCommand(adminController));
-        registry.register(MessageType.ADMIN_CANCEL_AUCTION, new AdminCancelAuctionCommand(adminController));
-        
-        // Financial Commands
-        registry.register(MessageType.DEPOSIT, new DepositCommand(financeController));
-        registry.register(MessageType.WITHDRAW, new WithdrawCommand(financeController));
-        registry.register(MessageType.TRANSFER, new TransferCommand(financeController));
 
-        // 4. Start Auction Monitor (Background task)
-        AuctionMonitor auctionMonitor = new AuctionMonitor(productService);
-        // 5. Start Socket Server
-        SocketServer server = new SocketServer(registry, authService, auctionMonitor);
-        server.run();
+        // Bidding Commands
+        registry.register(MessageType.BID_PLACE, new BidPlaceCommand(bid));
+        registry.register(MessageType.AUTO_BID_SET, new AutoBidSetCommand(bid));
+        registry.register(MessageType.AUTO_BID_CANCEL, new AutoBidCancelCommand(bid));
+
+        // User & Admin Commands
+        registry.register(MessageType.GET_PROFILE, new GetProfileCommand(user));
+        registry.register(MessageType.UPDATE_PROFILE, new UpdateProfileCommand(user));
+        registry.register(MessageType.USER_UPDATE_AVATAR, new UserUpdateAvatarCommand(user));
+        registry.register(MessageType.ADMIN_GET_ALL_USERS, new AdminGetAllUsersCommand(admin));
+        registry.register(MessageType.ADMIN_BAN_USER, new AdminBanUserCommand(admin));
+        registry.register(MessageType.ADMIN_CANCEL_AUCTION, new AdminCancelAuctionCommand(admin));
+
+        // Financial Commands
+        registry.register(MessageType.DEPOSIT, new DepositCommand(finance));
+        registry.register(MessageType.WITHDRAW, new WithdrawCommand(finance));
+        registry.register(MessageType.TRANSFER, new TransferCommand(finance));
     }
 }
