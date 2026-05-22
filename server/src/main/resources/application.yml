@@ -1,8 +1,0 @@
-spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/MySQL-DB?createDatabaseIfNotExist=true
-    username: HaiDang91
-    password: '9107'
-    driver-class-name: com.mysql.cj.jdbc.Driver
-  application:
-    name: bidding-server
