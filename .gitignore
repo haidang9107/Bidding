@@ -31,16 +31,20 @@ out/
 .idea/
 *.iml
 *.iws
+.ai/
 
 # macOS rác (Rất quan trọng trên MacBook)
 .DS_Store
 .AppleDouble
 .LSOverride
-
-
+.gitnexus/
+.claude/
+AGENTS.md
+CLAUDE.md
 
 # private
 .env
+logs/
 
 #test
 client/
