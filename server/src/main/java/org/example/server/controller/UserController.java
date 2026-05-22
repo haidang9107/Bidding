@@ -37,19 +37,15 @@ public class UserController {
     /**
      * Updates the profile of the logged-in user.
      */
-    public Response<String> handleUpdateProfile(Object payload, SocketChannel channel) {
-        if (payload == null) return new Response<>(MessageType.ERROR, false, "Update data required", null);
+    public Response<String> handleUpdateProfile(UserProfileUpdateRequest request, SocketChannel channel) {
+        if (request == null) return new Response<>(MessageType.ERROR, false, "Update data required", null);
         
         User currentUser = SessionManager.getUser(channel);
         if (currentUser == null) return new Response<>(MessageType.ERROR, false, "Unauthorized", null);
 
         try {
-            UserProfileUpdateRequest request = JsonConverter.fromJson(JsonConverter.toJson(payload), UserProfileUpdateRequest.class);
-            
             boolean success = true;
-            if (request.getEmail() != null) {
-                // Assuming we can update email via userService.updateEmail (need to check)
-                // For now, let's just focus on avatar as implemented
+            if (request.getAvt() != null) {
                 success = userService.updateAvatar(currentUser.getAccountname(), request.getAvt());
                 if (success) currentUser.setAvt(request.getAvt());
             }
@@ -68,14 +64,13 @@ public class UserController {
     /**
      * Updates the avatar of the logged-in user.
      */
-    public Response<String> handleUpdateAvatar(Object payload, SocketChannel channel) {
-        if (payload == null) return new Response<>(MessageType.ERROR, false, "Avatar path required", null);
+    public Response<String> handleUpdateAvatar(String avatarPath, SocketChannel channel) {
+        if (avatarPath == null || avatarPath.isBlank()) return new Response<>(MessageType.ERROR, false, "Avatar path required", null);
         
         User currentUser = SessionManager.getUser(channel);
         if (currentUser == null) return new Response<>(MessageType.ERROR, false, "Unauthorized", null);
 
         try {
-            String avatarPath = payload.toString();
             boolean success = userService.updateAvatar(currentUser.getAccountname(), avatarPath);
             
             if (success) {

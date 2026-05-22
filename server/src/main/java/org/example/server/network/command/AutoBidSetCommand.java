@@ -27,25 +27,23 @@ public class AutoBidSetCommand implements Command {
             return new Response<>(MessageType.ERROR, false, "Unauthorized", null);
         }
 
+        AutoBidRequest autoBidRequest = JsonConverter.convert(request.getPayload(), AutoBidRequest.class);
         Response<?> response = bidController.handleConfigureAutoBid(
-                request.getPayload(), currentUser.getAccountname());
-        if (response.isSuccess()) {
-            AutoBidRequest autoBidRequest = JsonConverter.fromJson(
-                    JsonConverter.toJson(request.getPayload()), AutoBidRequest.class);
-            if (autoBidRequest != null && autoBidRequest.getAuctionId() > 0) {
-                Broadcaster.broadcastToAuction(
-                        autoBidRequest.getAuctionId(),
-                        new Response<>(
-                                MessageType.NOTIFICATION,
-                                true,
-                                "Auto bid configured",
-                                Map.of(
-                                        "auctionId", autoBidRequest.getAuctionId(),
-                                        "bidderAccountname", currentUser.getAccountname()
-                                )
-                        )
-                );
-            }
+                autoBidRequest, currentUser.getAccountname());
+                
+        if (response.isSuccess() && autoBidRequest != null && autoBidRequest.getAuctionId() > 0) {
+            Broadcaster.broadcastToAuction(
+                    autoBidRequest.getAuctionId(),
+                    new Response<>(
+                            MessageType.NOTIFICATION,
+                            true,
+                            "Auto bid configured",
+                            Map.of(
+                                    "auctionId", autoBidRequest.getAuctionId(),
+                                    "bidderAccountname", currentUser.getAccountname()
+                            )
+                    )
+            );
         }
         return response;
     }

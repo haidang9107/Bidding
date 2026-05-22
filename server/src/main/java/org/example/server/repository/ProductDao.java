@@ -6,6 +6,7 @@ import org.example.model.product.Art;
 import org.example.model.product.Electronics;
 import org.example.model.product.Item;
 import org.example.model.product.Vehicle;
+import org.example.server.repository.mapper.ResultSetMapper;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -39,7 +40,7 @@ public class ProductDao {
             ps.setInt(2, offset);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    products.add(mapResultSetToItem(rs));
+                    products.add(ResultSetMapper.mapToItem(rs));
                 }
             }
         }
@@ -64,7 +65,7 @@ public class ProductDao {
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                products.add(mapResultSetToItem(rs));
+                products.add(ResultSetMapper.mapToItem(rs));
             }
         }
         return products;
@@ -77,7 +78,7 @@ public class ProductDao {
             ps.setInt(1, productId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return mapResultSetToItem(rs);
+                    return ResultSetMapper.mapToItem(rs);
                 }
             }
         }
@@ -91,7 +92,7 @@ public class ProductDao {
             ps.setInt(1, auctionId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return mapResultSetToItem(rs);
+                    return ResultSetMapper.mapToItem(rs);
                 }
             }
         }
@@ -105,7 +106,7 @@ public class ProductDao {
             ps.setInt(1, auctionId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return mapResultSetToItem(rs);
+                    return ResultSetMapper.mapToItem(rs);
                 }
             }
         }
@@ -194,7 +195,7 @@ public class ProductDao {
         try (PreparedStatement ps = connection.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                products.add(mapResultSetToItem(rs));
+                products.add(ResultSetMapper.mapToItem(rs));
             }
         }
         return products;
@@ -290,45 +291,5 @@ public class ProductDao {
             ps.setNull(10, Types.VARCHAR);
             ps.setNull(11, Types.INTEGER);
         }
-    }
-
-    private Item mapResultSetToItem(ResultSet rs) throws SQLException {
-        int productId = rs.getInt("product_id");
-        String name = rs.getString("name");
-        String description = rs.getString("description");
-        String imageUrl = rs.getString("image_url");
-        long startingPrice = rs.getLong("start_price");
-        long currentPrice = rs.getLong("current_price");
-        long stepPrice = rs.getLong("step_price");
-        String sellerAccountname = rs.getString("seller_accountname");
-        String winnerAccountname = rs.getString("winner_accountname");
-        ItemCategory category = ItemCategory.fromInt(rs.getInt("category"));
-        AuctionStatus status = AuctionStatus.fromInt(rs.getInt("status"));
-        Timestamp startTime = rs.getTimestamp("start_time");
-        Timestamp endTime = rs.getTimestamp("end_time");
-        int version = rs.getInt("version");
-
-        Item item;
-        if (category == ItemCategory.ELECTRONICS) {
-            item = new Electronics(productId, name, description, imageUrl, startingPrice, currentPrice,
-                    stepPrice, sellerAccountname, winnerAccountname, status, startTime, endTime,
-                    version, rs.getString("brand"), rs.getInt("warranty_months"));
-        } else if (category == ItemCategory.ART) {
-            item = new Art(productId, name, description, imageUrl, startingPrice, currentPrice,
-                    stepPrice, sellerAccountname, winnerAccountname, status, startTime, endTime,
-                    version, rs.getString("artist"), rs.getString("art_type"));
-        } else {
-            item = new Vehicle(productId, name, description, imageUrl, startingPrice, currentPrice,
-                    stepPrice, sellerAccountname, winnerAccountname, status, startTime, endTime,
-                    version, rs.getString("brand"), rs.getString("model"), rs.getInt("manufacture_year"));
-        }
-
-        item.setAuctionId(rs.getInt("auction_id"));
-        item.setOwnerAccountname(rs.getString("owner_accountname"));
-        item.setInAuction(rs.getBoolean("is_in_auction"));
-        item.setWithdrawnAt(rs.getTimestamp("withdrawn_at"));
-        long buyNowPrice = rs.getLong("buy_now_price");
-        item.setBuyNowPrice(rs.wasNull() ? null : buyNowPrice);
-        return item;
     }
 }

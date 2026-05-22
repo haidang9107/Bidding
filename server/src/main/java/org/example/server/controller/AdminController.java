@@ -29,14 +29,10 @@ public class AdminController {
     /**
      * Retrieves users in the system with pagination.
      */
-    public Response<?> handleGetAllUsers(Object payload) {
+    public Response<?> handleGetAllUsers(PaginationRequest pagReq) {
         try {
-            PaginationRequest pagReq;
-            if (payload == null) {
+            if (pagReq == null) {
                 pagReq = new PaginationRequest(1, 10);
-            } else {
-                pagReq = JsonConverter.fromJson(JsonConverter.toJson(payload), PaginationRequest.class);
-                if (pagReq == null) pagReq = new PaginationRequest(1, 10);
             }
 
             PagedResponse<User> pagedUsers = adminService.getUsersPaged(pagReq.getPage(), pagReq.getPageSize());
@@ -63,12 +59,10 @@ public class AdminController {
      * Bans or unbans a user.
      * Expects an AdminUserControlRequest DTO.
      */
-    public Response<String> handleBanUser(Object payload) {
-        if (payload == null) return new Response<>(MessageType.ERROR, false, "AdminUserControlRequest required", null);
+    public Response<String> handleBanUser(AdminUserControlRequest request) {
+        if (request == null) return new Response<>(MessageType.ERROR, false, "AdminUserControlRequest required", null);
         
         try {
-            AdminUserControlRequest request = JsonConverter.fromJson(JsonConverter.toJson(payload), AdminUserControlRequest.class);
-            
             String accountname = request.getTargetAccountname();
             int status = request.getStatus();
 
@@ -90,11 +84,10 @@ public class AdminController {
      * Cancels an ongoing auction.
      * Expects an AuctionCancelRequest DTO.
      */
-    public Response<String> handleCancelAuction(Object payload) {
-        if (payload == null) return new Response<>(MessageType.ERROR, false, "AuctionCancelRequest required", null);
+    public Response<String> handleCancelAuction(AuctionCancelRequest request) {
+        if (request == null) return new Response<>(MessageType.ERROR, false, "AuctionCancelRequest required", null);
 
         try {
-            AuctionCancelRequest request = JsonConverter.fromJson(JsonConverter.toJson(payload), AuctionCancelRequest.class);
             int auctionId = request.getAuctionId();
             
             // Delegate to Service

@@ -9,6 +9,7 @@ import org.example.server.controller.FinanceController;
 import org.example.server.network.AuctionMonitor;
 import org.example.server.network.SocketServer;
 import org.example.server.network.command.*;
+import org.example.server.repository.DatabaseManager;
 import org.example.server.service.bid.BidService;
 import org.example.server.service.product.ProductService;
 import org.example.server.service.user.auth.AuthService;
@@ -26,6 +27,9 @@ public class ServerApp {
 
     public static void main(String[] args) {
         FileLogger.info("Starting Bidding Server...");
+
+        // 0. Initialize Database
+        DatabaseManager.init();
 
         // 1. Initialize Services
         AuthService authService = new AuthService();

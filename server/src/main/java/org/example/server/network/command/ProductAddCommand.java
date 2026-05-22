@@ -1,9 +1,6 @@
 package org.example.server.network.command;
 
 import org.example.dto.ProductAddRequest;
-import org.example.model.product.*;
-import org.example.model.enums.ItemCategory;
-import org.example.model.enums.AuctionStatus;
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
 import org.example.payload.Request;
@@ -13,7 +10,6 @@ import org.example.server.network.SessionManager;
 import org.example.util.JsonConverter;
 
 import java.nio.channels.SocketChannel;
-import java.sql.Timestamp;
 
 public class ProductAddCommand implements Command {
     private final ProductController productController;
@@ -29,6 +25,7 @@ public class ProductAddCommand implements Command {
             return new Response<>(MessageType.ERROR, false, "Unauthorized", null);
         }
         
-        return productController.handleCreateAuction(request.getPayload(), currentUser.getAccountname());
+        ProductAddRequest addReq = JsonConverter.convert(request.getPayload(), ProductAddRequest.class);
+        return productController.handleCreateAuction(addReq, currentUser.getAccountname());
     }
 }

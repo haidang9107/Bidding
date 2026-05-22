@@ -27,30 +27,30 @@ public class BidPlaceCommand implements Command {
         if (currentUser == null) {
             return new Response<>(MessageType.ERROR, false, "Unauthorized", null);
         }
-        Response<?> response = bidController.handlePlaceBid(request.getPayload(), currentUser.getAccountname());
-        if (response.isSuccess()) {
-            BidRequest bidRequest = JsonConverter.fromJson(
-                    JsonConverter.toJson(request.getPayload()), BidRequest.class);
-            if (bidRequest != null && bidRequest.getAuctionId() > 0) {
-                BidResult result = response.getData() instanceof BidResult bidResult ? bidResult : null;
-                long amount = result == null ? bidRequest.getAmount() : result.getCurrentPrice();
-                String winner = result == null ? currentUser.getAccountname() : result.getWinnerAccountname();
-                boolean autoBidApplied = result != null && result.isAutoBidApplied();
-                Broadcaster.broadcastToAuction(
-                        bidRequest.getAuctionId(),
-                        new Response<>(
-                                MessageType.BID_UPDATE,
-                                true,
-                                "New highest bid",
-                                Map.of(
-                                        "auctionId", bidRequest.getAuctionId(),
-                                        "bidderAccountname", winner,
-                                        "amount", amount,
-                                        "autoBidApplied", autoBidApplied
-                                )
-                        )
-                );
-            }
+
+        BidRequest bidRequest = JsonConverter.convert(request.getPayload(), BidRequest.class);
+        Response<?> response = bidController.handlePlaceBid(bidRequest, currentUser.getAccountname());
+
+        if (response.isSuccess() && bidRequest != null) {
+            BidResult result = response.getData() instanceof BidResult bidResult ? bidResult : null;
+            long amount = result == null ? bidRequest.getAmount() : result.getCurrentPrice();
+            String winner = result == null ? currentUser.getAccountname() : result.getWinnerAccountname();
+            boolean autoBidApplied = result != null && result.isAutoBidApplied();
+
+            Broadcaster.broadcastToAuction(
+                    bidRequest.getAuctionId(),
+                    new Response<>(
+                            MessageType.BID_UPDATE,
+                            true,
+                            "New highest bid",
+                            Map.of(
+                                    "auctionId", bidRequest.getAuctionId(),
+                                    "bidderAccountname", winner,
+                                    "amount", amount,
+                                    "autoBidApplied", autoBidApplied
+                            )
+                    )
+            );
         }
         return response;
     }

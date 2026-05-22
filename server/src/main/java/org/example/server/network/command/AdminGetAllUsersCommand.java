@@ -1,8 +1,10 @@
 package org.example.server.network.command;
 
+import org.example.dto.PaginationRequest;
 import org.example.payload.Request;
 import org.example.payload.Response;
 import org.example.server.controller.AdminController;
+import org.example.util.JsonConverter;
 
 import java.nio.channels.SocketChannel;
 
@@ -15,6 +17,7 @@ public class AdminGetAllUsersCommand implements Command {
 
     @Override
     public Response<?> execute(Request request, SocketChannel channel) {
-        return adminController.handleGetAllUsers(request.getPayload());
+        PaginationRequest pagReq = JsonConverter.convert(request.getPayload(), PaginationRequest.class);
+        return adminController.handleGetAllUsers(pagReq);
     }
 }
