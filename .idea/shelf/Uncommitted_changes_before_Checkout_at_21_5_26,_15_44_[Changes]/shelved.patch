@@ -1,0 +1,562 @@
+Index: server/src/main/resources/MySQL/2data.sql
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>-- 1. Xóa dữ liệu cũ\nSET FOREIGN_KEY_CHECKS = 0;\nTRUNCATE TABLE bids;\nTRUNCATE TABLE products;\nTRUNCATE TABLE users;\nSET FOREIGN_KEY_CHECKS = 1;\n\n-- 2. Chèn Người dùng mẫu (Cấu trúc mới: accountname, password, email, avt, balance, blocked_balance, role, status)\n-- Password là 'password123' đã được hash BCrypt\nINSERT INTO users (accountname, password, email, avt, balance, blocked_balance, role, status) VALUES\n('admin_minh', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'admin@bidding.vn', NULL, 0, 0, 0, 0),\n('nam_member', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'nam.member@gmail.com', NULL, 50000000, 0, 1, 0),\n('apple_store', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'contact@apple.com', NULL, 100000000, 0, 1, 0),\n('huong_member', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'huong.bui@yahoo.com', NULL, 20000000, 0, 1, 0);\n\n-- 3. Chèn Sản phẩm mẫu (Cấu trúc mới dùng accountname cho seller và winner)\nINSERT INTO products (name, description, image_url, category, seller_accountname, start_price, step_price, current_price, status, end_time) VALUES\n('iPhone 15 Pro Max', 'Hàng mới 99%', 'https://example.com/iphone15.jpg', 0, 'apple_store', 25000000, 500000, 25000000, 1, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 7 DAY)),\n('Tesla Model 3', 'Xe điện Mỹ', 'https://example.com/tesla.jpg', 1, 'nam_member', 1500000000, 10000000, 1500000000, 1, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 DAY));\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/server/src/main/resources/MySQL/2data.sql b/server/src/main/resources/MySQL/2data.sql
+--- a/server/src/main/resources/MySQL/2data.sql	(revision 390e049ba7a90a77d8483e991485418b3dedb408)
++++ b/server/src/main/resources/MySQL/2data.sql	(date 1779351668260)
+@@ -1,19 +1,33 @@
+--- 1. Xóa dữ liệu cũ
++-- Xóa dữ liệu cũ
+ SET FOREIGN_KEY_CHECKS = 0;
++TRUNCATE TABLE transactions;
+ TRUNCATE TABLE bids;
++TRUNCATE TABLE auctions;
+ TRUNCATE TABLE products;
+ TRUNCATE TABLE users;
+ SET FOREIGN_KEY_CHECKS = 1;
+ 
+--- 2. Chèn Người dùng mẫu (Cấu trúc mới: accountname, password, email, avt, balance, blocked_balance, role, status)
+--- Password là 'password123' đã được hash BCrypt
+-INSERT INTO users (accountname, password, email, avt, balance, blocked_balance, role, status) VALUES
+-('admin_minh', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'admin@bidding.vn', NULL, 0, 0, 0, 0),
+-('nam_member', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'nam.member@gmail.com', NULL, 50000000, 0, 1, 0),
+-('apple_store', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'contact@apple.com', NULL, 100000000, 0, 1, 0),
+-('huong_member', '$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52', 'huong.bui@yahoo.com', NULL, 20000000, 0, 1, 0);
++-- 1. Insert Users
++INSERT INTO users (accountname, fullname, password, email, avt, balance, role, status) VALUES 
++('admin', 'Hệ Thống Admin', '$2a$12$K.zW0v7Z7yYkX0x3x3x3x.x3x3x3x3x3x3x3x3x3x3x3x3x3x3x3x', 'admin@bidding.com', 'admin_avt.png', 0, 0, 0),
++('nam_member', 'Nguyễn Văn Nam', '$2a$12$K.zW0v7Z7yYkX0x3x3x3x.x3x3x3x3x3x3x3x3x3x3x3x3x3x3x3x', 'nam@gmail.com', 'nam_avt.jpg', 50000000, 1, 0),
++('huong_member', 'Trần Thị Hương', '$2a$12$K.zW0v7Z7yYkX0x3x3x3x.x3x3x3x3x3x3x3x3x3x3x3x3x3x3x3x', 'huong@gmail.com', 'huong_avt.jpg', 100000000, 1, 0);
++
++-- 2. Insert Products
++INSERT INTO products (product_id, name, description, image_url, category, owner, is_in_auction) VALUES 
++(1, 'iPhone 15 Pro Max', 'Hàng mới 99%', 'iphone15.jpg', 0, 'nam_member', TRUE),
++(2, 'Bức tranh Mùa Thu', 'Tác phẩm sơn dầu', 'painting.jpg', 2, 'huong_member', TRUE);
+ 
+--- 3. Chèn Sản phẩm mẫu (Cấu trúc mới dùng accountname cho seller và winner)
+-INSERT INTO products (name, description, image_url, category, seller_accountname, start_price, step_price, current_price, status, end_time) VALUES
+-('iPhone 15 Pro Max', 'Hàng mới 99%', 'https://example.com/iphone15.jpg', 0, 'apple_store', 25000000, 500000, 25000000, 1, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 7 DAY)),
+-('Tesla Model 3', 'Xe điện Mỹ', 'https://example.com/tesla.jpg', 1, 'nam_member', 1500000000, 10000000, 1500000000, 1, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 DAY));
++-- 3. Ghi nhận giao dịch khởi tạo (Tích hợp Ownership History)
++INSERT INTO transactions (receiver, type, product_id, amount, description) VALUES 
++('nam_member', 4, 1, 0, 'Initial registration of iPhone 15 Pro Max'),
++('huong_member', 4, 2, 0, 'Initial registration of Bức tranh Mùa Thu');
++
++-- 4. Insert Auctions
++INSERT INTO auctions (auction_id, product_id, seller, start_price, step_price, current_price, end_time, status) VALUES 
++(1, 1, 'nam_member', 25000000, 500000, 25000000, '2026-12-31 23:59:59', 1),
++(2, 2, 'huong_member', 10000000, 1000000, 10000000, '2026-12-31 23:59:59', 1);
++
++-- 5. Insert Sample Money Transfer
++INSERT INTO transactions (sender, receiver, type, amount, description) VALUES 
++('nam_member', 'huong_member', 2, 5000000, 'Nam transferred money to Huong');
+Index: common/pom.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project xmlns=\"http://maven.apache.org/POM/4.0.0\"\n         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n         xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n    <modelVersion>4.0.0</modelVersion>\n\n    <parent>\n        <groupId>org.example</groupId>\n        <artifactId>bidding</artifactId>\n        <version>1.0-SNAPSHOT</version>\n    </parent>\n\n    <artifactId>common</artifactId>\n    <version>1.0-SNAPSHOT</version>\n\n    <dependencies>\n        <dependency>\n            <groupId>com.google.code.gson</groupId>\n            <artifactId>gson</artifactId>\n            <version>${gson.version}</version>\n        </dependency>\n        <dependency>\n            <groupId>io.github.cdimascio</groupId>\n            <artifactId>dotenv-java</artifactId>\n            <version>3.0.0</version>\n        </dependency>\n    </dependencies>\n\n</project>\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/pom.xml b/common/pom.xml
+--- a/common/pom.xml	(revision 390e049ba7a90a77d8483e991485418b3dedb408)
++++ b/common/pom.xml	(date 1779351628680)
+@@ -12,12 +12,18 @@
+ 
+     <artifactId>common</artifactId>
+     <version>1.0-SNAPSHOT</version>
++    <packaging>jar</packaging>
++
++    <properties>
++        <maven.compiler.source>25</maven.compiler.source>
++        <maven.compiler.target>25</maven.compiler.target>
++    </properties>
+ 
+     <dependencies>
+         <dependency>
+             <groupId>com.google.code.gson</groupId>
+             <artifactId>gson</artifactId>
+-            <version>${gson.version}</version>
++            <version>2.10.1</version>
+         </dependency>
+         <dependency>
+             <groupId>io.github.cdimascio</groupId>
+@@ -25,5 +31,4 @@
+             <version>3.0.0</version>
+         </dependency>
+     </dependencies>
+-
+ </project>
+Index: .env
+===================================================================
+diff --git a/.env b/.env
+new file mode 100644
+--- /dev/null	(date 1779351611560)
++++ b/.env	(date 1779351611560)
+@@ -0,0 +1,13 @@
++# --- COMMON NETWORK CONFIG ---
++SERVER_HOST=localhost
++SERVER_PORT=9997
++
++# --- DATABASE CONFIG ---
++DB_URL=jdbc:mysql://localhost:3306/MySQL-DB?createDatabaseIfNotExist=true
++DB_USER=HaiDang91
++DB_PASSWORD=9107
++
++# --- DOCKER CONFIG ---
++MYSQL_DATABASE=MySQL-DB
++MYSQL_ROOT_PASSWORD=9107
++DB_PORT=3306
+Index: common/src/main/java/org/example/model/Auction.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package org.example.model;\n\nimport java.sql.Timestamp;\n\n/**\n * Represents an auction record (bid history) in the system.\n */\npublic class Auction {\n\n    private int auctionId;\n    private int productId;\n    private String bidderAccountname;\n    private long bidAmount;\n    private Timestamp bidTime;\n\n    public Auction() {\n    }\n\n    public Auction(int auctionId, int productId, String bidderAccountname, long bidAmount, Timestamp bidTime) {\n        this.auctionId = auctionId;\n        this.productId = productId;\n        this.bidderAccountname = bidderAccountname;\n        this.bidAmount = bidAmount;\n        this.bidTime = bidTime;\n    }\n\n    // Getters and Setters\n    public int getAuctionId() { return auctionId; }\n    public void setAuctionId(int auctionId) { this.auctionId = auctionId; }\n\n    public int getProductId() { return productId; }\n    public void setProductId(int productId) { this.productId = productId; }\n\n    public String getBidderAccountname() { return bidderAccountname; }\n    public void setBidderAccountname(String bidderAccountname) { this.bidderAccountname = bidderAccountname; }\n\n    public long getBidAmount() { return bidAmount; }\n    public void setBidAmount(long bidAmount) { this.bidAmount = bidAmount; }\n\n    public Timestamp getBidTime() { return bidTime; }\n    public void setBidTime(Timestamp bidTime) { this.bidTime = bidTime; }\n}\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/java/org/example/model/Auction.java b/common/src/main/java/org/example/model/Auction.java
+--- a/common/src/main/java/org/example/model/Auction.java	(revision 390e049ba7a90a77d8483e991485418b3dedb408)
++++ b/common/src/main/java/org/example/model/Auction.java	(date 1779351641137)
+@@ -1,27 +1,44 @@
+ package org.example.model;
+ 
++import org.example.model.enums.AuctionStatus;
+ import java.sql.Timestamp;
+ 
+ /**
+- * Represents an auction record (bid history) in the system.
++ * Represents an Auction Session in the system.
+  */
+ public class Auction {
+ 
+     private int auctionId;
+     private int productId;
+-    private String bidderAccountname;
+-    private long bidAmount;
+-    private Timestamp bidTime;
++    private String seller; // accountname
++    private String winner; // accountname
++    private long startPrice;
++    private long currentPrice;
++    private long stepPrice;
++    private Long buyNowPrice;
++    private Timestamp startTime;
++    private Timestamp endTime;
++    private AuctionStatus status;
++    private int version;
+ 
+     public Auction() {
+     }
+ 
+-    public Auction(int auctionId, int productId, String bidderAccountname, long bidAmount, Timestamp bidTime) {
++    public Auction(int auctionId, int productId, String seller, String winner, 
++                   long startPrice, long currentPrice, long stepPrice, Long buyNowPrice,
++                   Timestamp startTime, Timestamp endTime, AuctionStatus status, int version) {
+         this.auctionId = auctionId;
+         this.productId = productId;
+-        this.bidderAccountname = bidderAccountname;
+-        this.bidAmount = bidAmount;
+-        this.bidTime = bidTime;
++        this.seller = seller;
++        this.winner = winner;
++        this.startPrice = startPrice;
++        this.currentPrice = currentPrice;
++        this.stepPrice = stepPrice;
++        this.buyNowPrice = buyNowPrice;
++        this.startTime = startTime;
++        this.endTime = endTime;
++        this.status = status;
++        this.version = version;
+     }
+ 
+     // Getters and Setters
+@@ -31,12 +48,33 @@
+     public int getProductId() { return productId; }
+     public void setProductId(int productId) { this.productId = productId; }
+ 
+-    public String getBidderAccountname() { return bidderAccountname; }
+-    public void setBidderAccountname(String bidderAccountname) { this.bidderAccountname = bidderAccountname; }
++    public String getSeller() { return seller; }
++    public void setSeller(String seller) { this.seller = seller; }
++
++    public String getWinner() { return winner; }
++    public void setWinner(String winner) { this.winner = winner; }
++
++    public long getStartPrice() { return startPrice; }
++    public void setStartPrice(long startPrice) { this.startPrice = startPrice; }
++
++    public long getCurrentPrice() { return currentPrice; }
++    public void setCurrentPrice(long currentPrice) { this.currentPrice = currentPrice; }
+ 
+-    public long getBidAmount() { return bidAmount; }
+-    public void setBidAmount(long bidAmount) { this.bidAmount = bidAmount; }
++    public long getStepPrice() { return stepPrice; }
++    public void setStepPrice(long stepPrice) { this.stepPrice = stepPrice; }
+ 
+-    public Timestamp getBidTime() { return bidTime; }
+-    public void setBidTime(Timestamp bidTime) { this.bidTime = bidTime; }
++    public Long getBuyNowPrice() { return buyNowPrice; }
++    public void setBuyNowPrice(Long buyNowPrice) { this.buyNowPrice = buyNowPrice; }
++
++    public Timestamp getStartTime() { return startTime; }
++    public void setStartTime(Timestamp startTime) { this.startTime = startTime; }
++
++    public Timestamp getEndTime() { return endTime; }
++    public void setEndTime(Timestamp endTime) { this.endTime = endTime; }
++
++    public AuctionStatus getStatus() { return status; }
++    public void setStatus(AuctionStatus status) { this.status = status; }
++
++    public int getVersion() { return version; }
++    public void setVersion(int version) { this.version = version; }
+ }
+Index: server/src/main/java/org/example/server/repository/TransactionDao.java
+===================================================================
+diff --git a/server/src/main/java/org/example/server/repository/TransactionDao.java b/server/src/main/java/org/example/server/repository/TransactionDao.java
+new file mode 100644
+--- /dev/null	(date 1779351611561)
++++ b/server/src/main/java/org/example/server/repository/TransactionDao.java	(date 1779351611561)
+@@ -0,0 +1,70 @@
++package org.example.server.repository;
++
++import org.example.model.Transaction;
++import java.sql.*;
++import java.util.ArrayList;
++import java.util.List;
++
++/**
++ * Data Access Object for unified transactions (Money + Asset ownership).
++ */
++public class TransactionDao {
++
++    public boolean insertTransaction(Connection connection, Transaction tx) throws SQLException {
++        String sql = """
++                INSERT INTO transactions (sender, receiver, type, product_id, amount, reference_id, description)
++                VALUES (?, ?, ?, ?, ?, ?, ?)
++                """;
++        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
++            ps.setString(1, tx.getSender());
++            ps.setString(2, tx.getReceiver());
++            ps.setInt(3, tx.getType());
++            if (tx.getProductId() != null) ps.setInt(4, tx.getProductId());
++            else ps.setNull(4, Types.INTEGER);
++            ps.setLong(5, tx.getAmount());
++            if (tx.getReferenceId() != null) ps.setInt(6, tx.getReferenceId());
++            else ps.setNull(6, Types.INTEGER);
++            ps.setString(7, tx.getDescription());
++
++            int affectedRows = ps.executeUpdate();
++            if (affectedRows > 0) {
++                try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
++                    if (generatedKeys.next()) {
++                        tx.setTransactionId(generatedKeys.getInt(1));
++                    }
++                }
++                return true;
++            }
++        }
++        return false;
++    }
++
++    public List<Transaction> getHistoryByUser(Connection connection, String accountname) throws SQLException {
++        List<Transaction> list = new ArrayList<>();
++        String sql = "SELECT * FROM transactions WHERE sender = ? OR receiver = ? ORDER BY created_at DESC";
++        try (PreparedStatement ps = connection.prepareStatement(sql)) {
++            ps.setString(1, accountname);
++            ps.setString(2, accountname);
++            try (ResultSet rs = ps.executeQuery()) {
++                while (rs.next()) {
++                    list.add(mapResultSetToTransaction(rs));
++                }
++            }
++        }
++        return list;
++    }
++
++    private Transaction mapResultSetToTransaction(ResultSet rs) throws SQLException {
++        return new Transaction(
++                rs.getInt("transaction_id"),
++                rs.getString("sender"),
++                rs.getString("receiver"),
++                rs.getInt("type"),
++                (Integer) rs.getObject("product_id"),
++                rs.getLong("amount"),
++                (Integer) rs.getObject("reference_id"),
++                rs.getString("description"),
++                rs.getTimestamp("created_at")
++        );
++    }
++}
+Index: common/src/main/java/org/example/model/Transaction.java
+===================================================================
+diff --git a/common/src/main/java/org/example/model/Transaction.java b/common/src/main/java/org/example/model/Transaction.java
+new file mode 100644
+--- /dev/null	(date 1779351611560)
++++ b/common/src/main/java/org/example/model/Transaction.java	(date 1779351611560)
+@@ -0,0 +1,65 @@
++package org.example.model;
++
++import java.sql.Timestamp;
++
++/**
++ * Represents a Unified Transaction in the system.
++ * Handles money flows, asset transfers, and auction finalizations.
++ */
++public class Transaction {
++
++    private int transactionId;
++    private String sender;   // accountname
++    private String receiver; // accountname
++    private int type;        // 0: DEPOSIT, 1: WITHDRAW, 2: TRANSFER, 3: AUCTION_SUCCESS, 4: INITIAL_REGISTRATION
++    private Integer productId;  // Linked asset if any
++    private long amount;
++    private Integer referenceId; // e.g., auctionId
++    private String description;
++    private Timestamp createdAt;
++
++    public Transaction() {
++    }
++
++    public Transaction(int transactionId, String sender, String receiver, int type, 
++                       Integer productId, long amount, Integer referenceId, 
++                       String description, Timestamp createdAt) {
++        this.transactionId = transactionId;
++        this.sender = sender;
++        this.receiver = receiver;
++        this.type = type;
++        this.productId = productId;
++        this.amount = amount;
++        this.referenceId = referenceId;
++        this.description = description;
++        this.createdAt = createdAt;
++    }
++
++    // Getters and Setters
++    public int getTransactionId() { return transactionId; }
++    public void setTransactionId(int transactionId) { this.transactionId = transactionId; }
++
++    public String getSender() { return sender; }
++    public void setSender(String sender) { this.sender = sender; }
++
++    public String getReceiver() { return receiver; }
++    public void setReceiver(String receiver) { this.receiver = receiver; }
++
++    public int getType() { return type; }
++    public void setType(int type) { this.type = type; }
++
++    public Integer getProductId() { return productId; }
++    public void setProductId(Integer productId) { this.productId = productId; }
++
++    public long getAmount() { return amount; }
++    public void setAmount(long amount) { this.amount = amount; }
++
++    public Integer getReferenceId() { return referenceId; }
++    public void setReferenceId(Integer referenceId) { this.referenceId = referenceId; }
++
++    public String getDescription() { return description; }
++    public void setDescription(String description) { this.description = description; }
++
++    public Timestamp getCreatedAt() { return createdAt; }
++    public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
++}
+Index: common/src/main/java/org/example/model/product/Product.java
+===================================================================
+diff --git a/common/src/main/java/org/example/model/product/Product.java b/common/src/main/java/org/example/model/product/Product.java
+new file mode 100644
+--- /dev/null	(date 1779351611560)
++++ b/common/src/main/java/org/example/model/product/Product.java	(date 1779351611560)
+@@ -0,0 +1,65 @@
++package org.example.model.product;
++
++import org.example.model.enums.ItemCategory;
++import java.sql.Timestamp;
++
++/**
++ * Represents a physical Product/Asset in the system.
++ */
++public abstract class Product {
++
++    private int productId;
++    private String name;
++    private String description;
++    private String imageUrl;
++    private ItemCategory category;
++    private String owner; // Current owner's accountname
++    private boolean isInAuction;
++    private Timestamp withdrawnAt;
++    private Timestamp createdAt;
++
++    public Product() {
++    }
++
++    public Product(int productId, String name, String description, String imageUrl, 
++                   ItemCategory category, String owner, boolean isInAuction, 
++                   Timestamp withdrawnAt, Timestamp createdAt) {
++        this.productId = productId;
++        this.name = name;
++        this.description = description;
++        this.imageUrl = imageUrl;
++        this.category = category;
++        this.owner = owner;
++        this.isInAuction = isInAuction;
++        this.withdrawnAt = withdrawnAt;
++        this.createdAt = createdAt;
++    }
++
++    // Getters and Setters
++    public int getProductId() { return productId; }
++    public void setProductId(int productId) { this.productId = productId; }
++
++    public String getName() { return name; }
++    public void setName(String name) { this.name = name; }
++
++    public String getDescription() { return description; }
++    public void setDescription(String description) { this.description = description; }
++
++    public String getImageUrl() { return imageUrl; }
++    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
++
++    public ItemCategory getCategory() { return category; }
++    public void setCategory(ItemCategory category) { this.category = category; }
++
++    public String getOwner() { return owner; }
++    public void setOwner(String owner) { this.owner = owner; }
++
++    public boolean isInAuction() { return isInAuction; }
++    public void setInAuction(boolean inAuction) { isInAuction = inAuction; }
++
++    public Timestamp getWithdrawnAt() { return withdrawnAt; }
++    public void setWithdrawnAt(Timestamp withdrawnAt) { this.withdrawnAt = withdrawnAt; }
++
++    public Timestamp getCreatedAt() { return createdAt; }
++    public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
++}
+Index: common/src/main/java/org/example/dto/UpdateProfileRequest.java
+===================================================================
+diff --git a/common/src/main/java/org/example/dto/UpdateProfileRequest.java b/common/src/main/java/org/example/dto/UpdateProfileRequest.java
+new file mode 100644
+--- /dev/null	(date 1779351611560)
++++ b/common/src/main/java/org/example/dto/UpdateProfileRequest.java	(date 1779351611560)
+@@ -0,0 +1,29 @@
++package org.example.dto;
++
++import org.example.model.enums.Gender;
++
++/**
++ * DTO for updating user profile information.
++ */
++public class UpdateProfileRequest {
++    private String fullname;
++    private String email;
++    private String avt;
++
++    public UpdateProfileRequest() {}
++
++    public UpdateProfileRequest(String fullname, String email, String avt) {
++        this.fullname = fullname;
++        this.email = email;
++        this.avt = avt;
++    }
++
++    public String getFullname() { return fullname; }
++    public void setFullname(String fullname) { this.fullname = fullname; }
++
++    public String getEmail() { return email; }
++    public void setEmail(String email) { this.email = email; }
++
++    public String getAvt() { return avt; }
++    public void setAvt(String avt) { this.avt = avt; }
++}
+Index: server/src/main/java/org/example/server/network/command/ProductDetailCommand.java
+===================================================================
+diff --git a/server/src/main/java/org/example/server/network/command/ProductDetailCommand.java b/server/src/main/java/org/example/server/network/command/ProductDetailCommand.java
+new file mode 100644
+--- /dev/null	(date 1779351611561)
++++ b/server/src/main/java/org/example/server/network/command/ProductDetailCommand.java	(date 1779351611561)
+@@ -0,0 +1,23 @@
++package org.example.server.network.command;
++
++import org.example.payload.Request;
++import org.example.payload.Response;
++import org.example.server.controller.ProductController;
++
++import java.nio.channels.SocketChannel;
++
++/**
++ * Command to retrieve detailed information about a product.
++ */
++public class ProductDetailCommand implements Command {
++    private final ProductController productController;
++
++    public ProductDetailCommand(ProductController productController) {
++        this.productController = productController;
++    }
++
++    @Override
++    public Response<?> execute(Request request, SocketChannel channel) {
++        return productController.handleGetProductDetail(request.getPayload());
++    }
++}
+Index: server/src/main/java/org/example/server/network/command/GetProfileCommand.java
+===================================================================
+diff --git a/server/src/main/java/org/example/server/network/command/GetProfileCommand.java b/server/src/main/java/org/example/server/network/command/GetProfileCommand.java
+new file mode 100644
+--- /dev/null	(date 1779351611560)
++++ b/server/src/main/java/org/example/server/network/command/GetProfileCommand.java	(date 1779351611560)
+@@ -0,0 +1,23 @@
++package org.example.server.network.command;
++
++import org.example.payload.Request;
++import org.example.payload.Response;
++import org.example.server.controller.UserController;
++
++import java.nio.channels.SocketChannel;
++
++/**
++ * Command to retrieve the user's profile.
++ */
++public class GetProfileCommand implements Command {
++    private final UserController userController;
++
++    public GetProfileCommand(UserController userController) {
++        this.userController = userController;
++    }
++
++    @Override
++    public Response<?> execute(Request request, SocketChannel channel) {
++        return userController.handleGetProfile(channel);
++    }
++}
+Index: server/src/main/java/org/example/server/network/command/UpdateProfileCommand.java
+===================================================================
+diff --git a/server/src/main/java/org/example/server/network/command/UpdateProfileCommand.java b/server/src/main/java/org/example/server/network/command/UpdateProfileCommand.java
+new file mode 100644
+--- /dev/null	(date 1779351611561)
++++ b/server/src/main/java/org/example/server/network/command/UpdateProfileCommand.java	(date 1779351611561)
+@@ -0,0 +1,23 @@
++package org.example.server.network.command;
++
++import org.example.payload.Request;
++import org.example.payload.Response;
++import org.example.server.controller.UserController;
++
++import java.nio.channels.SocketChannel;
++
++/**
++ * Command to update the user's profile.
++ */
++public class UpdateProfileCommand implements Command {
++    private final UserController userController;
++
++    public UpdateProfileCommand(UserController userController) {
++        this.userController = userController;
++    }
++
++    @Override
++    public Response<?> execute(Request request, SocketChannel channel) {
++        return userController.handleUpdateProfile(request.getPayload(), channel);
++    }
++}
