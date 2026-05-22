@@ -45,6 +45,3 @@ CLAUDE.md
 # private
 .env
 logs/
-
-#test
-client/
