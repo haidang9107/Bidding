@@ -36,6 +36,10 @@ out/
 .DS_Store
 .AppleDouble
 .LSOverride
+.gitnexus/
+.claude/
+AGENTS.md
+CLAUDE.md
 
 # private
 .env
