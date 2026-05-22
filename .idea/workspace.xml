@@ -6,34 +6,12 @@
   <component name="ChangeListManager">
     <list default="true" id="52ebee56-95b6-4999-a4ad-f10e0a9a9f5f" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common/src/main/java/org/example/util/Config.java" beforeDir="false" afterPath="$PROJECT_DIR$/common/src/main/java/org/example/util/Config.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common/src/main/java/org/example/util/JsonConverter.java" beforeDir="false" afterPath="$PROJECT_DIR$/common/src/main/java/org/example/util/JsonConverter.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/ServerApp.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/ServerApp.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/controller/AdminController.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/controller/AdminController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/controller/AuthController.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/controller/AuthController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/controller/BidController.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/controller/BidController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/controller/FinanceController.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/controller/FinanceController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/controller/ProductController.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/controller/ProductController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/controller/UserController.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/controller/UserController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/AdminBanUserCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/AdminBanUserCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/AdminCancelAuctionCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/AdminCancelAuctionCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/AdminGetAllUsersCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/AdminGetAllUsersCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/AutoBidCancelCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/AutoBidCancelCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/AutoBidSetCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/AutoBidSetCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/BidPlaceCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/BidPlaceCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/DepositCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/DepositCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/LoginCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/LoginCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/ProductAddCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/ProductAddCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/ProductDetailCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/ProductDetailCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/ProductListCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/ProductListCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/SignupCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/SignupCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/TransferCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/TransferCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/UpdateProfileCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/UpdateProfileCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/UserUpdateAvatarCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/UserUpdateAvatarCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/WithdrawCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/network/command/WithdrawCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/repository/DatabaseManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/repository/DatabaseManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/repository/ProductDao.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/repository/ProductDao.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/repository/UserDao.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/repository/UserDao.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/common/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common/src/main/java/org/example/util/FileLogger.java" beforeDir="false" afterPath="$PROJECT_DIR$/common/src/main/java/org/example/util/FileLogger.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/server/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/src/main/resources/logback.xml" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -164,7 +142,7 @@
       <recent name="org.example.sever" />
     </key>
   </component>
-  <component name="RunManager" selected="Application.ServerApp">
+  <component name="RunManager" selected="Application.ClientAppTest">
     <configuration name="ClientAppTest" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="ALTERNATIVE_JRE_PATH" value="temurin-25" />
       <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
@@ -225,9 +203,9 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Application.ClientAppTest" />
         <item itemvalue="Application.ServerApp" />
         <item itemvalue="Docker.compose.yaml: Compose Deployment" />
-        <item itemvalue="Application.ClientAppTest" />
         <item itemvalue="Application.ClientAppTest" />
         <item itemvalue="Application.ServerApp" />
       </list>
