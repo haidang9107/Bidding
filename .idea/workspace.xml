@@ -4,26 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="52ebee56-95b6-4999-a4ad-f10e0a9a9f5f" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/client/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/client/.mvn/wrapper/maven-wrapper.jar" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/client/.mvn/wrapper/maven-wrapper.properties" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/client/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/client/mvnw" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/client/mvnw.cmd" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/client/pom.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/client/src/main/java/org/example/client/ClientApp.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/client/src/main/java/org/example/client/ClientAppTest.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/client/src/main/resources/view/AuctionDetail.fxml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/client/src/main/resources/view/AuctionList.fxml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/client/src/main/resources/view/Login.fxml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/client/src/main/resources/view/Register.fxml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/client/src/main/resources/view/SellerDashboard.fxml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common/src/main/java/org/example/util/Config.java" beforeDir="false" afterPath="$PROJECT_DIR$/common/src/main/java/org/example/util/Config.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/compose.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/compose.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/org/example/server/repository/DatabaseManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/org/example/server/repository/DatabaseManager.java" afterDir="false" />
-    </list>
+    <list default="true" id="52ebee56-95b6-4999-a4ad-f10e0a9a9f5f" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
