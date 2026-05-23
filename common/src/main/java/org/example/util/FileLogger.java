@@ -30,6 +30,7 @@ public class FileLogger {
     // Async Logging Queue
     private static final BlockingQueue<LogEntry> logQueue = new LinkedBlockingQueue<>();
     private static final Thread logWorker;
+    private static final boolean ENABLE_CONSOLE;
 
     static {
         // 1. Locate Log Directory
@@ -43,7 +44,10 @@ public class FileLogger {
             dir.mkdirs();
         }
 
-        // 2. Start Async Log Worker
+        // 2. Read Configuration
+        ENABLE_CONSOLE = Config.getBoolean("LOG_TO_CONSOLE");
+
+        // 3. Start Async Log Worker
         logWorker = new Thread(FileLogger::processQueue);
         logWorker.setDaemon(true);
         logWorker.setName("FileLogger-Worker");
@@ -114,22 +118,24 @@ public class FileLogger {
         }
 
         // 2. Write to Console with Colors
-        String color = switch (entry.level) {
-            case "INFO" -> GREEN;
-            case "WARN" -> YELLOW;
-            case "ERROR" -> RED;
-            case "DEBUG" -> BLUE;
-            default -> RESET;
-        };
+        if (ENABLE_CONSOLE) {
+            String color = switch (entry.level) {
+                case "INFO" -> GREEN;
+                case "WARN" -> YELLOW;
+                case "ERROR" -> RED;
+                case "DEBUG" -> BLUE;
+                default -> RESET;
+            };
 
-        System.out.printf("%s[%s]%s %s[%s]%s %s[%s]%s %s%n", 
-            PURPLE, timeStr, RESET,
-            color, entry.level, RESET,
-            BLUE, entry.threadName, RESET,
-            entry.message);
-            
-        if (entry.throwable != null) {
-            entry.throwable.printStackTrace(System.err);
+            System.out.printf("%s[%s]%s %s[%s]%s %s[%s]%s %s%n",
+                    PURPLE, timeStr, RESET,
+                    color, entry.level, RESET,
+                    BLUE, entry.threadName, RESET,
+                    entry.message);
+
+            if (entry.throwable != null) {
+                entry.throwable.printStackTrace(System.err);
+            }
         }
     }
 

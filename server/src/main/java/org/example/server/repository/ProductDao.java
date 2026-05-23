@@ -2,10 +2,7 @@ package org.example.server.repository;
 
 import org.example.model.enums.AuctionStatus;
 import org.example.model.enums.ItemCategory;
-import org.example.model.product.Art;
-import org.example.model.product.Electronics;
-import org.example.model.product.Item;
-import org.example.model.product.Vehicle;
+import org.example.model.product.*;
 import org.example.server.repository.mapper.ResultSetMapper;
 
 import java.sql.Connection;
@@ -284,6 +281,7 @@ public class ProductDao {
             ps.setString(10, v.getModel());
             ps.setInt(11, v.getManufactureYear());
         } else {
+            // OtherItem or any other generic Item
             ps.setNull(6, Types.VARCHAR);
             ps.setNull(7, Types.INTEGER);
             ps.setNull(8, Types.VARCHAR);

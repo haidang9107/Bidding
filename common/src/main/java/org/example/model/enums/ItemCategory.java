@@ -4,6 +4,7 @@ package org.example.model.enums;
  * Represents the category of an item.
  */
 public enum ItemCategory {
+    OTHER(0),
     ELECTRONICS(1),
     ART(2),
     VEHICLE(3);
@@ -24,6 +25,6 @@ public enum ItemCategory {
                 return category;
             }
         }
-        return ELECTRONICS; // Default
+        return OTHER; // Default
     }
 }

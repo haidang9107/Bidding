@@ -36,8 +36,8 @@ public class DatabaseManager {
             config.addDataSourceProperty("useServerPrepStmts", "true");
 
             // Pool configuration
-            config.setMaximumPoolSize(10);
-            config.setMinimumIdle(5);
+            config.setMaximumPoolSize(5);
+            config.setMinimumIdle(2);
             config.setIdleTimeout(30000);
             config.setConnectionTimeout(20000);
             config.setMaxLifetime(1800000);

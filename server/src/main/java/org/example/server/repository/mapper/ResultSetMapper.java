@@ -3,10 +3,7 @@ package org.example.server.repository.mapper;
 import org.example.model.enums.AuctionStatus;
 import org.example.model.enums.ItemCategory;
 import org.example.model.enums.UserRole;
-import org.example.model.product.Art;
-import org.example.model.product.Electronics;
-import org.example.model.product.Item;
-import org.example.model.product.Vehicle;
+import org.example.model.product.*;
 import org.example.model.user.Admin;
 import org.example.model.user.Member;
 import org.example.model.user.User;
@@ -72,10 +69,13 @@ public class ResultSetMapper {
             item = new Art(productId, name, description, imageUrl, startingPrice, currentPrice,
                     stepPrice, sellerAccountname, winnerAccountname, status, startTime, endTime,
                     version, rs.getString("artist"), rs.getString("art_type"));
-        } else {
+        } else if (category == ItemCategory.VEHICLE) {
             item = new Vehicle(productId, name, description, imageUrl, startingPrice, currentPrice,
                     stepPrice, sellerAccountname, winnerAccountname, status, startTime, endTime,
                     version, rs.getString("brand"), rs.getString("model"), rs.getInt("manufacture_year"));
+        } else {
+            item = new OtherItem(productId, name, description, imageUrl, startingPrice, currentPrice,
+                    stepPrice, sellerAccountname, winnerAccountname, status, startTime, endTime, version);
         }
 
         item.setAuctionId(rs.getInt("auction_id"));

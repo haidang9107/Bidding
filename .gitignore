@@ -41,7 +41,7 @@ out/
 .claude/
 AGENTS.md
 CLAUDE.md
+GEMINI.md
 
 # private
 .env
-logs/

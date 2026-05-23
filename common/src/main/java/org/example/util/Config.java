@@ -55,4 +55,8 @@ public class Config {
             return 0;
         }
     }
+
+    public static boolean getBoolean(String key) {
+        return Boolean.parseBoolean(get(key));
+    }
 }
