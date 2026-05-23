@@ -148,7 +148,7 @@ public class BidService {
     private Item loadActiveAuction(Connection connection, int auctionId) throws SQLException {
         Item item = productDao.getAuctionForUpdate(connection, auctionId);
         if (item == null) return null;
-        if (item.getStatus() != AuctionStatus.ACTIVE) return null;
+        if (item.getStatus() != AuctionStatus.RUNNING) return null;
 
         Timestamp now = new Timestamp(System.currentTimeMillis());
         if (item.getEndTime() == null || !item.getEndTime().after(now)) return null;

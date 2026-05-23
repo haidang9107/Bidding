@@ -4,11 +4,11 @@ package org.example.model.enums;
  * Represents the status of an auction session.
  */
 public enum AuctionStatus {
-    PENDING(0),   // Sắp diễn ra
-    ACTIVE(1),    // Đang diễn ra
+    OPEN(0),      // Mới mở, đang chờ
+    RUNNING(1),   // Đang diễn ra
     FINISHED(2),  // Đã kết thúc
-    CANCELED(3),  // Đã hủy
-    PAID(4);      // Đã thanh toán
+    PAID(3),      // Đã thanh toán
+    CANCELED(4);  // Đã hủy
 
     private final int value;
 
@@ -26,6 +26,6 @@ public enum AuctionStatus {
                 return status;
             }
         }
-        return PENDING; // Default
+        return OPEN; // Default
     }
 }

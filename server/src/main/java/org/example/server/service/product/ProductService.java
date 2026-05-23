@@ -51,7 +51,7 @@ public class ProductService {
             conn.setAutoCommit(false);
             
             Item latestItem = productDao.getAuctionForUpdate(conn, auctionId);
-            if (latestItem == null || latestItem.getStatus() != AuctionStatus.ACTIVE) {
+            if (latestItem == null || latestItem.getStatus() != AuctionStatus.RUNNING) {
                 conn.rollback();
                 return;
             }
@@ -138,7 +138,7 @@ public class ProductService {
             };
 
             item.setSellerAccountname(sellerAccount);
-            item.setStatus(AuctionStatus.ACTIVE);
+            item.setStatus(AuctionStatus.RUNNING);
             item.setCurrentPrice(item.getStartingPrice());
             item.setStepPrice(Math.max(1, item.getStartingPrice() / 10));
 
