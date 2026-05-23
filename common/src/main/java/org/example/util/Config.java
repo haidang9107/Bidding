@@ -24,6 +24,11 @@ public class Config {
         DEFAULTS.put("DB_DRIVER", "com.mysql.cj.jdbc.Driver");
         DEFAULTS.put("DB_USER", "root");
         DEFAULTS.put("DB_PASSWORD", "root");
+        
+        // Advanced performance & logic defaults
+        DEFAULTS.put("DB_MAX_POOL_SIZE", "10");
+        DEFAULTS.put("ANTI_SNIP_WINDOW_MS", "60000"); // 1 minute
+        DEFAULTS.put("ANTI_SNIP_EXTENSION_MS", "300000"); // 5 minutes
 
         // Logic to find the .env at project root
         String userDir = System.getProperty("user.dir");
@@ -44,16 +49,27 @@ public class Config {
 
     public static String get(String key) {
         String value = dotenv.get(key);
-        return (value != null) ? value : DEFAULTS.getOrDefault(key, null);
+        return (value != null && !value.isBlank()) ? value : DEFAULTS.getOrDefault(key, null);
     }
 
     public static int getInt(String key) {
-        String value = get(key);
-        try {
-            return (value != null) ? Integer.parseInt(value) : 0;
-        } catch (NumberFormatException e) {
-            return 0;
+        String envValue = dotenv.get(key);
+        if (envValue != null && !envValue.isBlank()) {
+            try {
+                return Integer.parseInt(envValue.trim());
+            } catch (NumberFormatException ignored) {
+                // Ignore parse error, fallback to default
+            }
         }
+        
+        String defValue = DEFAULTS.get(key);
+        if (defValue != null) {
+            try {
+                return Integer.parseInt(defValue.trim());
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return 0;
     }
 
     public static boolean getBoolean(String key) {

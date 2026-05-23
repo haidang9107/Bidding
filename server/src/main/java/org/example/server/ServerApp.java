@@ -58,7 +58,7 @@ public class ServerApp {
 
         // 3. Initialize Command Registry
         CommandRegistry registry = new CommandRegistry();
-        registerCommands(registry, authController, productController, bidController, adminController, userController, financeController);
+        registerCommands(registry, authController, productController, bidController, adminController, userController, financeController, productService);
 
         // 4. Start Background Tasks
         AuctionMonitor auctionMonitor = new AuctionMonitor(productService);
@@ -79,7 +79,7 @@ public class ServerApp {
 
     private static void registerCommands(CommandRegistry registry, AuthController auth, ProductController product,
                                          BidController bid, AdminController admin, UserController user, 
-                                         FinanceController finance) {
+                                         FinanceController finance, ProductService productService) {
         // Auth Commands
         registry.register(MessageType.LOGIN, new LoginCommand(auth));
         registry.register(MessageType.SIGNUP, new SignupCommand(auth));
@@ -90,7 +90,7 @@ public class ServerApp {
         registry.register(MessageType.PRODUCT_LIST, new ProductListCommand(product));
         registry.register(MessageType.PRODUCT_DETAIL, new ProductDetailCommand(product));
         registry.register(MessageType.PRODUCT_ADD, new ProductAddCommand(product));
-        registry.register(MessageType.JOIN_AUCTION_ROOM, new JoinAuctionRoomCommand());
+        registry.register(MessageType.JOIN_AUCTION_ROOM, new JoinAuctionRoomCommand(productService));
         registry.register(MessageType.LEAVE_AUCTION_ROOM, new LeaveAuctionRoomCommand());
 
         // Bidding Commands

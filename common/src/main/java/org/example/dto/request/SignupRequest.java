@@ -1,4 +1,4 @@
-package org.example.dto;
+package org.example.dto.request;
 
 /**
  * DTO for user registration requests.

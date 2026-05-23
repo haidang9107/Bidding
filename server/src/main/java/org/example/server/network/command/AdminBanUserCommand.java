@@ -1,6 +1,6 @@
 package org.example.server.network.command;
 
-import org.example.dto.AdminUserControlRequest;
+import org.example.dto.request.AdminUserControlRequest;
 import org.example.payload.Request;
 import org.example.payload.Response;
 import org.example.server.controller.AdminController;

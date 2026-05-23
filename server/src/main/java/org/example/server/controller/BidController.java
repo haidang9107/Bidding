@@ -1,12 +1,11 @@
 package org.example.server.controller;
 
-import org.example.dto.AutoBidRequest;
-import org.example.dto.BidRequest;
-import org.example.dto.BidResult;
+import org.example.dto.request.AutoBidRequest;
+import org.example.dto.request.BidRequest;
+import org.example.dto.response.BidResult;
 import org.example.model.enums.MessageType;
 import org.example.payload.Response;
 import org.example.server.service.bid.BidService;
-import org.example.util.JsonConverter;
 
 /**
  * Controller for handling bidding requests.
@@ -25,51 +24,31 @@ public class BidController {
         if (bidReq == null) {
             return new Response<>(MessageType.ERROR, false, "Bid data required", null);
         }
-        if (authenticatedAccountname == null || authenticatedAccountname.isBlank()) {
-            return new Response<>(MessageType.ERROR, false, "Unauthorized", null);
-        }
-
-        BidResult result = bidService.placeBid(bidReq.getAuctionId(), authenticatedAccountname, bidReq.getAmount());
         
-        if (result != null && result.getCurrentPrice() > 0) {
-            return new Response<>(MessageType.SUCCESS, true, "Bid placed successfully", result);
-        } else {
-            return new Response<>(MessageType.ERROR, false, "Bid rejected", null);
-        }
+        BidResult result = bidService.placeBid(bidReq.getAuctionId(), authenticatedAccountname, bidReq.getAmount());
+        return new Response<>(MessageType.SUCCESS, true, "Bid placed successfully", result);
     }
 
     public Response<String> handleConfigureAutoBid(AutoBidRequest autoBidReq, String authenticatedAccountname) {
         if (autoBidReq == null) {
             return new Response<>(MessageType.ERROR, false, "Auto bid data required", null);
         }
-        if (authenticatedAccountname == null || authenticatedAccountname.isBlank()) {
-            return new Response<>(MessageType.ERROR, false, "Unauthorized", null);
-        }
 
-        String result = bidService.configureAutoBid(
+        bidService.configureAutoBid(
                 autoBidReq.getAuctionId(),
                 authenticatedAccountname,
                 autoBidReq.getMaxBid(),
                 autoBidReq.getIncrementAmount()
         );
-        if ("SUCCESS".equals(result)) {
-            return new Response<>(MessageType.SUCCESS, true, "Auto bid configured successfully", null);
-        }
-        return new Response<>(MessageType.ERROR, false, result, null);
+        return new Response<>(MessageType.SUCCESS, true, "Auto bid configured successfully", null);
     }
 
     public Response<String> handleCancelAutoBid(AutoBidRequest autoBidReq, String authenticatedAccountname) {
         if (autoBidReq == null) {
             return new Response<>(MessageType.ERROR, false, "Auto bid data required", null);
         }
-        if (authenticatedAccountname == null || authenticatedAccountname.isBlank()) {
-            return new Response<>(MessageType.ERROR, false, "Unauthorized", null);
-        }
 
-        String result = bidService.cancelAutoBid(autoBidReq.getAuctionId(), authenticatedAccountname);
-        if ("SUCCESS".equals(result)) {
-            return new Response<>(MessageType.SUCCESS, true, "Auto bid canceled successfully", null);
-        }
-        return new Response<>(MessageType.ERROR, false, result, null);
+        bidService.cancelAutoBid(autoBidReq.getAuctionId(), authenticatedAccountname);
+        return new Response<>(MessageType.SUCCESS, true, "Auto bid canceled successfully", null);
     }
 }

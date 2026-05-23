@@ -1,4 +1,4 @@
-package org.example.dto;
+package org.example.dto.response;
 
 import org.example.model.enums.AuctionStatus;
 import org.example.model.enums.ItemCategory;

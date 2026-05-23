@@ -101,6 +101,18 @@ public class UserDao {
     }
 
     /**
+     * Updates the user's email.
+     */
+    public boolean updateEmail(Connection connection, String accountname, String email) throws SQLException {
+        String sql = "UPDATE users SET email = ? WHERE accountname = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, email);
+            pstmt.setString(2, accountname);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
      * Updates the user's status (e.g., Active/Banned).
      */
     public boolean updateUserStatus(Connection connection, String accountname, int status) throws SQLException {

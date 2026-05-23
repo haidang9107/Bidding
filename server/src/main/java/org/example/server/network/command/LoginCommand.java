@@ -1,7 +1,7 @@
 package org.example.server.network.command;
 
-import org.example.dto.LoginRequest;
-import org.example.dto.UserResponse;
+import org.example.dto.request.LoginRequest;
+import org.example.dto.response.UserResponse;
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
 import org.example.payload.Request;
@@ -23,13 +23,11 @@ public class LoginCommand implements Command {
     public Response<?> execute(Request request, SocketChannel channel) {
         LoginRequest loginReq = JsonConverter.convert(request.getPayload(), LoginRequest.class);
         
-        Object result = authController.authenticateAndGetUser(loginReq);
+        User user = authController.authenticateAndGetUser(loginReq);
         
-        if (result instanceof User user) {
+        if (user != null) {
             SessionManager.login(channel, user);
             return new Response<>(MessageType.SUCCESS, true, "Login successful", new UserResponse(user));
-        } else if (result instanceof Response<?> errorResponse) {
-            return errorResponse;
         }
         
         return new Response<>(MessageType.ERROR, false, "Invalid login credentials", null);

@@ -7,8 +7,8 @@ import org.example.server.network.SessionManager;
 import org.example.server.service.user.UserService;
 import org.example.util.FileLogger;
 
-import org.example.dto.UserProfileUpdateRequest;
-import org.example.dto.UserResponse;
+import org.example.dto.request.UserProfileUpdateRequest;
+import org.example.dto.response.UserResponse;
 import org.example.util.JsonConverter;
 
 import java.nio.channels.SocketChannel;
@@ -45,7 +45,12 @@ public class UserController {
 
         try {
             boolean success = true;
-            if (request.getAvt() != null) {
+            if (request.getEmail() != null && !request.getEmail().isBlank()) {
+                success = userService.updateEmail(currentUser.getAccountname(), request.getEmail());
+                if (success) currentUser.setEmail(request.getEmail());
+            }
+            
+            if (success && request.getAvt() != null) {
                 success = userService.updateAvatar(currentUser.getAccountname(), request.getAvt());
                 if (success) currentUser.setAvt(request.getAvt());
             }

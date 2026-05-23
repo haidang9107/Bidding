@@ -1,4 +1,4 @@
-package org.example.dto;
+package org.example.dto.request;
 
 public class BidRequest {
     private int auctionId;
@@ -11,10 +11,12 @@ public class BidRequest {
         this.amount = amount;
     }
 
-    public int getAuctionId() { return auctionId > 0 ? auctionId : productId; }
+    public int getAuctionId() { return auctionId; }
     public void setAuctionId(int auctionId) { this.auctionId = auctionId; }
 
     public int getProductId() { return productId; }
+    public void setProductId(int productId) { this.productId = productId; }
     public String getBidderAccountname() { return null; }
     public long getAmount() { return amount; }
+    public void setAmount(long amount) { this.amount = amount; }
 }

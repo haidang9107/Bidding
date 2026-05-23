@@ -1,6 +1,6 @@
 package org.example.server.network.command;
 
-import org.example.dto.PaginationRequest;
+import org.example.dto.request.PaginationRequest;
 import org.example.payload.Request;
 import org.example.payload.Response;
 import org.example.server.controller.AdminController;

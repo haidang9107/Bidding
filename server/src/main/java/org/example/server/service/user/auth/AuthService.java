@@ -1,17 +1,15 @@
 package org.example.server.service.user.auth;
 
-import org.example.model.enums.Gender;
-import org.example.model.enums.UserRole;
-import org.example.model.user.Admin;
 import org.example.model.user.Member;
 import org.example.model.user.User;
+import org.example.server.exception.AuthException;
+import org.example.server.exception.ValidationException;
 import org.example.server.repository.DatabaseManager;
 import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 
 /**
  * Unified service for handling authentication-related tasks (Login, Signup).
@@ -27,57 +25,53 @@ public class AuthService {
      * Authenticates a user.
      * @param accountname The accountname provided.
      * @param plainPassword The plain text password provided.
-     * @return The User object if authenticated, null otherwise.
+     * @return The User object if authenticated.
      */
-    public User authenticate(String accountname, String plainPassword) throws org.example.server.exception.AuthException {
+    public User authenticate(String accountname, String plainPassword) {
         try (Connection conn = DatabaseManager.getConnection()) {
             User user = userDao.findByAccountname(conn, accountname);
             if (user != null && PasswordHashing.checkPassword(plainPassword, user.getPassword())) {
                 if (user.getStatus() == 1) {
-                    throw new org.example.server.exception.AuthException("Your account has been BANNED.");
+                    throw new AuthException("Your account has been BANNED.");
                 }
                 FileLogger.info("User authenticated: " + accountname);
-                // Security: Remove sensitive password hash before returning
-                user.setPassword(null);
+                user.setPassword(null); // Security
                 return user;
             }
+            throw new AuthException("Invalid account name or password");
         } catch (SQLException e) {
             FileLogger.error("Authentication error for user: " + accountname, e);
-            throw new org.example.server.exception.AuthException("Internal server error during authentication");
+            throw new AuthException("Internal server error during authentication");
         }
-        return null;
     }
 
     /**
      * Registers a new user in the system.
      */
-    public boolean register(String accountname, String plainPassword, String email) {
+    public void register(String accountname, String plainPassword, String email) {
         try (Connection conn = DatabaseManager.getConnection()) {
             if (userDao.findByAccountname(conn, accountname) != null) {
-                FileLogger.info("Registration failed: Account name '" + accountname + "' already exists.");
-                return false;
+                throw new ValidationException("Account name '" + accountname + "' already exists.");
             }
 
             String hashedPassword = PasswordHashing.hashPassword(plainPassword);
             User newUser = new Member(accountname, hashedPassword, email, null, 0, 0, 0);
 
             boolean success = userDao.createUser(conn, newUser);
-            if (success) {
-                FileLogger.info("User registered successfully as MEMBER: " + accountname);
+            if (!success) {
+                throw new AuthException("Failed to create user account");
             }
-            return success;
+            FileLogger.info("User registered successfully: " + accountname);
         } catch (SQLException e) {
             FileLogger.error("Registration error for user: " + accountname, e);
+            throw new AuthException("Internal error during registration");
         }
-        return false;
     }
 
     /**
      * Checks if a user has permission to perform a specific action.
-     * Centralizes RBAC logic in the service layer.
      */
     public boolean canAccess(org.example.model.enums.MessageType type, User user) {
-        // Public routes
         if (type == org.example.model.enums.MessageType.LOGIN || 
             type == org.example.model.enums.MessageType.SIGNUP || 
             type == org.example.model.enums.MessageType.PING) {
@@ -92,8 +86,6 @@ public class AuthService {
             case BID_PLACE, AUTO_BID_SET, AUTO_BID_CANCEL, PRODUCT_ADD, DEPOSIT, WITHDRAW, TRANSFER,
                  JOIN_AUCTION_ROOM, LEAVE_AUCTION_ROOM -> 
                 user.getRole() == org.example.model.enums.UserRole.MEMBER;
-            case USER_UPDATE_AVATAR, UPDATE_PROFILE, GET_PROFILE, PRODUCT_DETAIL, PRODUCT_LIST -> 
-                true; 
             default -> true; 
         };
     }

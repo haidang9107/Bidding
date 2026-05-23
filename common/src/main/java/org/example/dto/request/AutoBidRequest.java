@@ -1,4 +1,4 @@
-package org.example.dto;
+package org.example.dto.request;
 
 /**
  * DTO for configuring automatic bidding on an auction.

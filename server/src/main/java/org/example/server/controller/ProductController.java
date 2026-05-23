@@ -1,16 +1,16 @@
 package org.example.server.controller;
 
-import org.example.dto.PagedResponse;
-import org.example.dto.PaginationRequest;
-import org.example.dto.ProductResponse;
+import org.example.dto.response.PagedResponse;
+import org.example.dto.request.PaginationRequest;
+import org.example.dto.response.ProductResponse;
+import org.example.dto.request.ProductAddRequest;
 import org.example.model.product.Item;
 import org.example.model.enums.MessageType;
 import org.example.payload.Response;
+import org.example.server.exception.NotFoundException;
 import org.example.server.service.product.ProductService;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import org.example.util.FileLogger;
 
 /**
  * Controller for handling product and auction session requests.
@@ -27,7 +27,7 @@ public class ProductController {
      */
     public Response<?> handleGetAllAuctions(PaginationRequest pagReq) {
         if (pagReq == null) {
-            pagReq = new PaginationRequest(1, 10); // Default
+            pagReq = new PaginationRequest(1, 10);
         }
 
         PagedResponse<Item> pagedItems = productService.getAuctionsPaged(pagReq.getPage(), pagReq.getPageSize());
@@ -47,37 +47,15 @@ public class ProductController {
     }
 
     public Response<ProductResponse> handleGetAuctionDetail(Integer productId) {
-        if (productId == null || productId <= 0) {
-            return new Response<>(MessageType.ERROR, false, "Valid Product ID required", null);
+        Item item = productService.getAuctionById(productId);
+        if (item == null) {
+            throw new NotFoundException("Product not found with ID: " + productId);
         }
-        try {
-            Item item = productService.getAuctionById(productId);
-            if (item != null) {
-                return new Response<>(MessageType.PRODUCT_DETAIL, true, "Product found", new ProductResponse(item));
-            } else {
-                return new Response<>(MessageType.ERROR, false, "Product not found", null);
-            }
-        } catch (Exception e) {
-            FileLogger.error("Failed to fetch product detail", e);
-            return new Response<>(MessageType.ERROR, false, "Internal error fetching detail", null);
-        }
+        return new Response<>(MessageType.PRODUCT_DETAIL, true, "Product found", new ProductResponse(item));
     }
 
-    public Response<String> handleCreateAuction(org.example.dto.ProductAddRequest addReq, String sellerAccount) {
-        if (addReq == null) {
-            return new Response<>(MessageType.ERROR, false, "Invalid product data", null);
-        }
-
-        try {
-            boolean success = productService.createAuction(addReq, sellerAccount);
-            if (success) {
-                return new Response<>(MessageType.SUCCESS, true, "Product added successfully", null);
-            } else {
-                return new Response<>(MessageType.ERROR, false, "Failed to create auction", null);
-            }
-        } catch (Exception e) {
-            FileLogger.error("Error in handleCreateAuction", e);
-            return new Response<>(MessageType.ERROR, false, "Internal error creating auction", null);
-        }
+    public Response<String> handleCreateAuction(ProductAddRequest addReq, String sellerAccount) {
+        productService.createAuction(addReq, sellerAccount);
+        return new Response<>(MessageType.SUCCESS, true, "Product added successfully", null);
     }
 }

@@ -1,6 +1,6 @@
 package org.example.server.network.command;
 
-import org.example.dto.AuctionRoomRequest;
+import org.example.dto.request.AuctionRoomRequest;
 import org.example.model.enums.MessageType;
 import org.example.payload.Request;
 import org.example.payload.Response;

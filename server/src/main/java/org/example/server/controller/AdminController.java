@@ -1,10 +1,10 @@
 package org.example.server.controller;
 
-import org.example.dto.AdminUserControlRequest;
-import org.example.dto.AuctionCancelRequest;
-import org.example.dto.PagedResponse;
-import org.example.dto.PaginationRequest;
-import org.example.dto.UserResponse;
+import org.example.dto.request.AdminUserControlRequest;
+import org.example.dto.request.AuctionCancelRequest;
+import org.example.dto.response.PagedResponse;
+import org.example.dto.request.PaginationRequest;
+import org.example.dto.response.UserResponse;
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
 import org.example.payload.Response;

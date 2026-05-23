@@ -25,4 +25,13 @@ public class UserService {
             return userDao.updateAvatar(conn, accountname, avatarPath);
         }
     }
+
+    /**
+     * Updates the email of a user.
+     */
+    public boolean updateEmail(String accountname, String email) throws SQLException {
+        try (Connection conn = DatabaseManager.getConnection()) {
+            return userDao.updateEmail(conn, accountname, email);
+        }
+    }
 }

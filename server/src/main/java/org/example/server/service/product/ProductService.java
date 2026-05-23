@@ -1,20 +1,25 @@
 package org.example.server.service.product;
 
-import org.example.dto.PagedResponse;
-import org.example.dto.ProductResponse;
+import org.example.dto.response.PagedResponse;
+import org.example.dto.response.ProductResponse;
+import org.example.dto.request.ProductAddRequest;
+import org.example.dto.notify.AuctionEndNotify;
+import org.example.dto.notify.ProductUpdateNotify;
 import org.example.model.enums.AuctionStatus;
 import org.example.model.enums.MessageType;
 import org.example.model.product.Item;
 import org.example.payload.Response;
+import org.example.server.exception.AuctionException;
+import org.example.server.exception.NotFoundException;
+import org.example.server.exception.ValidationException;
 import org.example.server.network.Broadcaster;
 import org.example.server.repository.DatabaseManager;
 import org.example.server.repository.ProductDao;
-import org.example.server.repository.TransactionDao;
-import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.List;
 
 /**
@@ -22,66 +27,71 @@ import java.util.List;
  */
 public class ProductService {
     private final ProductDao productDao;
-    private final UserDao userDao;
-    private final TransactionDao transactionDao;
 
     public ProductService() {
         this.productDao = new ProductDao();
-        this.userDao = new UserDao();
-        this.transactionDao = new TransactionDao();
     }
 
     /**
-     * Periodically called to close auctions that have reached their end time.
+     * Periodically called by AuctionMonitor to close expired auctions.
      */
     public void processExpiredAuctions() {
         try (Connection conn = DatabaseManager.getConnection()) {
-            conn.setAutoCommit(false);
-            List<Item> expired = productDao.getExpiredProducts(conn);
-            for (Item item : expired) {
-                // We re-fetch each auction with FOR UPDATE inside finishAuction
-                finishAuction(conn, item.getAuctionId());
+            List<Item> expiredItems = productDao.getExpiredProducts(conn);
+            for (Item item : expiredItems) {
+                finishAuction(item.getAuctionId());
             }
-            conn.commit();
         } catch (SQLException e) {
             FileLogger.error("Error processing expired auctions", e);
         }
     }
 
-    private boolean finishAuction(Connection conn, int auctionId) throws SQLException {
-        // Lock the row to prevent last-second bids while settling
-        Item latestItem = productDao.getAuctionForUpdate(conn, auctionId);
-        if (latestItem == null || latestItem.getStatus() != AuctionStatus.ACTIVE) {
-            return false;
-        }
-
-        boolean success = productDao.updateStatus(conn, auctionId, AuctionStatus.FINISHED);
-        productDao.updateProductAuctionFlag(conn, latestItem.getProductId(), false);
-
-        String winner = latestItem.getWinnerAccountname();
-        if (success && winner != null) {
-            userDao.addBlockedBalance(conn, winner, -latestItem.getCurrentPrice());
-            userDao.addBalance(conn, winner, -latestItem.getCurrentPrice());
-            userDao.addBalance(conn, latestItem.getSellerAccountname(), latestItem.getCurrentPrice());
-            productDao.updateProductOwner(conn, latestItem.getProductId(), winner);
-            transactionDao.insertTransaction(conn, winner, latestItem.getSellerAccountname(), 3,
-                    latestItem.getProductId(), latestItem.getCurrentPrice(), auctionId,
-                    "Auction success for product " + latestItem.getProductId());
+    public void finishAuction(int auctionId) {
+        try (Connection conn = DatabaseManager.getConnection()) {
+            conn.setAutoCommit(false);
             
-            FileLogger.info("Auction CLOSED: Auction ID " + auctionId + ", Winner: " + winner);
+            Item latestItem = productDao.getAuctionForUpdate(conn, auctionId);
+            if (latestItem == null || latestItem.getStatus() != AuctionStatus.ACTIVE) {
+                conn.rollback();
+                return;
+            }
+
+            String winner = latestItem.getWinnerAccountname();
+            boolean success = productDao.updateStatus(conn, auctionId, AuctionStatus.FINISHED);
             
-            // Broadcast notification
-            Response<ProductResponse> notification = new Response<>(
-                MessageType.AUCTION_END,
-                true,
-                "Auction for '" + latestItem.getName() + "' has ended!",
-                new ProductResponse(latestItem)
-            );
-            Broadcaster.broadcastToAuction(auctionId, notification);
-        } else if (success) {
-            FileLogger.info("Auction CLOSED: Auction ID " + auctionId + " (No winner)");
+            if (winner != null) {
+                productDao.updateProductOwner(conn, latestItem.getProductId(), winner);
+            }
+
+            if (!success) {
+                conn.rollback();
+                return;
+            }
+
+            conn.commit();
+            
+            if (winner != null) {
+                FileLogger.info("Auction FINISHED: Auction ID " + auctionId + ", Winner: " + winner);
+                ProductResponse productDetail = new ProductResponse(latestItem);
+                Response<AuctionEndNotify> notification = new Response<>(
+                    MessageType.AUCTION_END,
+                    true,
+                    "Auction for '" + latestItem.getName() + "' has ended!",
+                    new AuctionEndNotify(
+                        auctionId,
+                        winner,
+                        latestItem.getCurrentPrice(),
+                        latestItem.getName(),
+                        productDetail
+                    )
+                );
+                Broadcaster.broadcastToAuction(auctionId, notification);
+            } else {
+                FileLogger.info("Auction FINISHED: Auction ID " + auctionId + " (No winner)");
+            }
+        } catch (SQLException e) {
+            FileLogger.error("Error finalizing auction: " + auctionId, e);
         }
-        return success;
     }
 
     public List<Item> getAllAuctions() {
@@ -93,14 +103,14 @@ public class ProductService {
         }
     }
 
-    public org.example.dto.PagedResponse<Item> getAuctionsPaged(int page, int pageSize) {
+    public PagedResponse<Item> getAuctionsPaged(int page, int pageSize) {
         try (Connection conn = DatabaseManager.getConnection()) {
             long totalItems = productDao.getTotalProductsCount(conn);
             List<Item> items = productDao.getProductsPaged(conn, pageSize, (page - 1) * pageSize);
-            return new org.example.dto.PagedResponse<>(items, totalItems, page, pageSize);
+            return new PagedResponse<>(items, totalItems, page, pageSize);
         } catch (SQLException e) {
             FileLogger.error("Error fetching paged products", e);
-            return new org.example.dto.PagedResponse<>(List.of(), 0, page, pageSize);
+            return new PagedResponse<>(List.of(), 0, page, pageSize);
         }
     }
 
@@ -110,11 +120,13 @@ public class ProductService {
             return item != null ? item : productDao.getProductById(conn, id);
         } catch (SQLException e) {
             FileLogger.error("Error fetching auction/product by ID: " + id, e);
-            return null;
+            throw new AuctionException("Database error fetching product");
         }
     }
 
-    public boolean createAuction(org.example.dto.ProductAddRequest addReq, String sellerAccount) {
+    public void createAuction(ProductAddRequest addReq, String sellerAccount) {
+        if (addReq == null) throw new ValidationException("Product data is required");
+
         try (Connection conn = DatabaseManager.getConnection()) {
             conn.setAutoCommit(false);
 
@@ -125,36 +137,34 @@ public class ProductService {
                 case OTHER -> org.example.util.JsonConverter.fromJson(org.example.util.JsonConverter.toJson(addReq), org.example.model.product.OtherItem.class);
             };
 
-            // Initialize mandatory auction fields
             item.setSellerAccountname(sellerAccount);
-            item.setOwnerAccountname(sellerAccount);
-            item.setStatus(org.example.model.enums.AuctionStatus.ACTIVE);
+            item.setStatus(AuctionStatus.ACTIVE);
             item.setCurrentPrice(item.getStartingPrice());
             item.setStepPrice(Math.max(1, item.getStartingPrice() / 10));
 
             if (item.getStartTime() == null) {
-                item.setStartTime(new java.sql.Timestamp(System.currentTimeMillis()));
+                item.setStartTime(new Timestamp(System.currentTimeMillis()));
             }
             if (item.getEndTime() == null) {
-                // Default end time: 7 days from now
-                item.setEndTime(new java.sql.Timestamp(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000L));
+                item.setEndTime(new Timestamp(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000L));
             }
 
             boolean success = productDao.insertProduct(conn, item);
             if (success) {
                 conn.commit();
-                // Real-time broadcast: Inform everyone about the new product
-                org.example.payload.Response<Item> broadcastResponse = new org.example.payload.Response<>(
-                    org.example.model.enums.MessageType.PRODUCT_LIST, true, "New product added!", item
+                ProductResponse productResp = new ProductResponse(item);
+                Response<ProductUpdateNotify> broadcastResponse = new Response<>(
+                    MessageType.PRODUCT_LIST, true, "New product added!", 
+                    new ProductUpdateNotify(productResp)
                 );
-                org.example.server.network.Broadcaster.broadcast(broadcastResponse);
+                Broadcaster.broadcast(broadcastResponse);
             } else {
                 conn.rollback();
+                throw new AuctionException("Failed to insert product into database");
             }
-            return success;
         } catch (SQLException e) {
             FileLogger.error("Error creating auction for: " + addReq.getName(), e);
-            return false;
+            throw new AuctionException("Database error during product creation");
         }
     }
 }

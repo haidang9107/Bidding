@@ -2,6 +2,7 @@ package org.example.server.service.bid;
 
 import org.example.model.product.Item;
 import org.example.server.repository.ProductDao;
+import org.example.util.Config;
 import org.example.util.FileLogger;
 
 import java.sql.Connection;
@@ -13,8 +14,8 @@ import java.sql.Timestamp;
  * when a bid is placed near the deadline.
  */
 public class AntiSnipping {
-    private static final long SNIP_WINDOW_MS = 60 * 1000; // 1 minute
-    private static final long EXTENSION_MS = 5 * 60 * 1000; // 5 minutes
+    private static final long SNIP_WINDOW_MS = Config.getInt("ANTI_SNIP_WINDOW_MS");
+    private static final long EXTENSION_MS = Config.getInt("ANTI_SNIP_EXTENSION_MS");
 
     /**
      * Checks if the bid was placed within the snipping window and extends the auction end time if so.

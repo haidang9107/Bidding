@@ -1,6 +1,6 @@
 package org.example.server.service.user.admin;
 
-import org.example.dto.PagedResponse;
+import org.example.dto.response.PagedResponse;
 import org.example.model.enums.AuctionStatus;
 import org.example.model.product.Item;
 import org.example.model.user.User;

@@ -2,8 +2,9 @@ package org.example.server.network.command;
 
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
-import org.example.dto.BidRequest;
-import org.example.dto.BidResult;
+import org.example.dto.request.BidRequest;
+import org.example.dto.response.BidResult;
+import org.example.dto.notify.BidUpdateNotify;
 import org.example.payload.Request;
 import org.example.payload.Response;
 import org.example.server.network.Broadcaster;
@@ -12,7 +13,7 @@ import org.example.server.network.SessionManager;
 import org.example.util.JsonConverter;
 
 import java.nio.channels.SocketChannel;
-import java.util.Map;
+import java.sql.Timestamp;
 
 public class BidPlaceCommand implements Command {
     private final BidController bidController;
@@ -36,7 +37,7 @@ public class BidPlaceCommand implements Command {
             long amount = result == null ? bidRequest.getAmount() : result.getCurrentPrice();
             String winner = result == null ? currentUser.getAccountname() : result.getWinnerAccountname();
             boolean autoBidApplied = result != null && result.isAutoBidApplied();
-            Object newEndTime = result == null ? null : result.getNewEndTime();
+            Timestamp newEndTime = result == null ? null : (Timestamp) result.getNewEndTime();
 
             Broadcaster.broadcastToAuction(
                     bidRequest.getAuctionId(),
@@ -44,12 +45,12 @@ public class BidPlaceCommand implements Command {
                             MessageType.BID_UPDATE,
                             true,
                             "New highest bid",
-                            Map.of(
-                                    "auctionId", bidRequest.getAuctionId(),
-                                    "bidderAccountname", winner,
-                                    "amount", amount,
-                                    "autoBidApplied", autoBidApplied,
-                                    "newEndTime", newEndTime != null ? newEndTime : ""
+                            new BidUpdateNotify(
+                                    bidRequest.getAuctionId(),
+                                    winner,
+                                    amount,
+                                    autoBidApplied,
+                                    newEndTime
                             )
                     )
             );

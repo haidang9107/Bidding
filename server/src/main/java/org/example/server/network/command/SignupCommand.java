@@ -1,7 +1,7 @@
 package org.example.server.network.command;
 
 import org.example.model.enums.MessageType;
-import org.example.dto.SignupRequest;
+import org.example.dto.request.SignupRequest;
 import org.example.payload.Request;
 import org.example.payload.Response;
 import org.example.server.controller.AuthController;

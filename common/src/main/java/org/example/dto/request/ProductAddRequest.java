@@ -1,4 +1,4 @@
-package org.example.dto;
+package org.example.dto.request;
 
 import org.example.model.enums.ItemCategory;
 

@@ -1,6 +1,7 @@
 package org.example.server.network.command;
 
-import org.example.dto.AutoBidRequest;
+import org.example.dto.request.AutoBidRequest;
+import org.example.dto.notify.AutoBidNotify;
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
 import org.example.payload.Request;
@@ -11,7 +12,6 @@ import org.example.server.network.SessionManager;
 import org.example.util.JsonConverter;
 
 import java.nio.channels.SocketChannel;
-import java.util.Map;
 
 public class AutoBidSetCommand implements Command {
     private final BidController bidController;
@@ -38,9 +38,9 @@ public class AutoBidSetCommand implements Command {
                             MessageType.NOTIFICATION,
                             true,
                             "Auto bid configured",
-                            Map.of(
-                                    "auctionId", autoBidRequest.getAuctionId(),
-                                    "bidderAccountname", currentUser.getAccountname()
+                            new AutoBidNotify(
+                                    autoBidRequest.getAuctionId(),
+                                    currentUser.getAccountname()
                             )
                     )
             );

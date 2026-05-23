@@ -1,6 +1,6 @@
 package org.example.server.network.command;
 
-import org.example.dto.AutoBidRequest;
+import org.example.dto.request.AutoBidRequest;
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
 import org.example.payload.Request;

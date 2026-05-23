@@ -8,11 +8,7 @@ public enum AuctionStatus {
     ACTIVE(1),    // Đang diễn ra
     FINISHED(2),  // Đã kết thúc
     CANCELED(3),  // Đã hủy
-    PAID(4),      // Đã thanh toán
-
-    // Backward-compatible aliases used by older service code.
-    OPEN(0),
-    RUNNING(1);
+    PAID(4);      // Đã thanh toán
 
     private final int value;
 
@@ -30,6 +26,6 @@ public enum AuctionStatus {
                 return status;
             }
         }
-        return OPEN; // Default
+        return PENDING; // Default
     }
 }

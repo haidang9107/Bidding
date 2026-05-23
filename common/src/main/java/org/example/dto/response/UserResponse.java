@@ -1,4 +1,4 @@
-package org.example.dto;
+package org.example.dto.response;
 
 import org.example.model.enums.UserRole;
 import org.example.model.user.User;

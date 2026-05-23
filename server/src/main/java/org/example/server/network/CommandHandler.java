@@ -2,14 +2,16 @@ package org.example.server.network;
 
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
+import org.example.payload.ErrorDetail;
 import org.example.payload.Request;
 import org.example.payload.Response;
+import org.example.server.exception.BaseAppException;
 import org.example.server.network.command.Command;
 import org.example.server.network.command.CommandRegistry;
 import org.example.util.FileLogger;
 import org.example.util.JsonConverter;
-
 import org.example.server.repository.DatabaseManager;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
@@ -46,14 +48,12 @@ public class CommandHandler implements Runnable {
             Response<?> response = handleRequest(request);
             sendResponse(response);
             
-            // Notification Broadcast for Bids
-            if (request.getType() == MessageType.BID_PLACE && response.isSuccess()) {
-                FileLogger.info("Bid placed successfully. (Broadcasting logic is handled within the command/service if implemented)");
-            }
-            
+        } catch (BaseAppException e) {
+            FileLogger.warn("Application error handling command: " + e.getMessage() + " [" + e.getErrorCode() + "]");
+            sendResponse(new Response<>(MessageType.ERROR, false, e.getMessage(), new ErrorDetail(e.getErrorCode(), e.getMessage())));
         } catch (Exception e) {
-            FileLogger.error("Error handling command: " + message, e);
-            sendResponse(new Response<>(MessageType.ERROR, false, "Internal Server Error", null));
+            FileLogger.error("Critical error handling command: " + message, e);
+            sendResponse(new Response<>(MessageType.ERROR, false, "Internal Server Error", new ErrorDetail("INTERNAL_SERVER_ERROR", e.getMessage())));
         }
     }
 
