@@ -65,7 +65,7 @@ public class BidService {
                         + ", winner " + item.getWinnerAccountname()
                         + ", price " + item.getCurrentPrice());
                 return new BidResult(auctionId, item.getWinnerAccountname(),
-                        item.getCurrentPrice(), autoBidApplied);
+                        item.getCurrentPrice(), autoBidApplied, item.getEndTime());
             } catch (SQLException e) {
                 try {
                     connection.rollback();
@@ -195,6 +195,9 @@ public class BidService {
 
         item.setCurrentPrice(bidAmount);
         item.setWinnerAccountname(bidderAccountname);
+
+        AntiSnipping.process(connection, item, productDao);
+
         return null;
     }
 

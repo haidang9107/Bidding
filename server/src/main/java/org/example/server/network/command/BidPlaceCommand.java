@@ -36,6 +36,7 @@ public class BidPlaceCommand implements Command {
             long amount = result == null ? bidRequest.getAmount() : result.getCurrentPrice();
             String winner = result == null ? currentUser.getAccountname() : result.getWinnerAccountname();
             boolean autoBidApplied = result != null && result.isAutoBidApplied();
+            Object newEndTime = result == null ? null : result.getNewEndTime();
 
             Broadcaster.broadcastToAuction(
                     bidRequest.getAuctionId(),
@@ -47,7 +48,8 @@ public class BidPlaceCommand implements Command {
                                     "auctionId", bidRequest.getAuctionId(),
                                     "bidderAccountname", winner,
                                     "amount", amount,
-                                    "autoBidApplied", autoBidApplied
+                                    "autoBidApplied", autoBidApplied,
+                                    "newEndTime", newEndTime != null ? newEndTime : ""
                             )
                     )
             );

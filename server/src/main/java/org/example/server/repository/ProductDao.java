@@ -258,6 +258,16 @@ public class ProductDao {
         }
     }
 
+    public boolean updateAuctionEndTime(Connection connection, int auctionId, Timestamp newEndTime)
+            throws SQLException {
+        String sql = "UPDATE auctions SET end_time = ? WHERE auction_id = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setTimestamp(1, newEndTime);
+            ps.setInt(2, auctionId);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
     private void bindCategoryFields(PreparedStatement ps, Item item) throws SQLException {
         if (item instanceof Electronics e) {
             ps.setString(6, e.getBrand());
