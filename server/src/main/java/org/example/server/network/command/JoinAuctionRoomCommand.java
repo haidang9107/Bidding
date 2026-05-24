@@ -10,13 +10,28 @@ import org.example.util.JsonConverter;
 
 import java.nio.channels.SocketChannel;
 
+/**
+ * Command for a user to join a specific auction room to receive updates.
+ */
 public class JoinAuctionRoomCommand implements Command {
     private final ProductService productService;
 
+    /**
+     * Constructs a JoinAuctionRoomCommand with the specified ProductService.
+     *
+     * @param productService the service for product and auction data
+     */
     public JoinAuctionRoomCommand(ProductService productService) {
         this.productService = productService;
     }
 
+    /**
+     * Executes the join auction room command.
+     *
+     * @param request the request containing AuctionRoomRequest
+     * @param channel the socket channel of the user
+     * @return the response indicating success or failure of joining the room
+     */
     @Override
     public Response<?> execute(Request request, SocketChannel channel) {
         AuctionRoomRequest roomRequest = JsonConverter.fromJson(

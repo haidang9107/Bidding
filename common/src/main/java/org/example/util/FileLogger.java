@@ -61,22 +61,43 @@ public class FileLogger {
         return findProjectRoot(currentDir.getParentFile());
     }
 
+    /**
+     * Logs an informational message.
+     * @param message The message to log.
+     */
     public static void info(String message) {
         enqueue("INFO", message, null);
     }
 
+    /**
+     * Logs a warning message.
+     * @param message The message to log.
+     */
     public static void warn(String message) {
         enqueue("WARN", message, null);
     }
 
+    /**
+     * Logs an error message.
+     * @param message The message to log.
+     */
     public static void error(String message) {
         enqueue("ERROR", message, null);
     }
 
+    /**
+     * Logs an error message with an associated throwable.
+     * @param message The message to log.
+     * @param throwable The exception or error to log.
+     */
     public static void error(String message, Throwable throwable) {
         enqueue("ERROR", message, throwable);
     }
 
+    /**
+     * Logs a debug message.
+     * @param message The message to log.
+     */
     public static void debug(String message) {
         enqueue("DEBUG", message, null);
     }

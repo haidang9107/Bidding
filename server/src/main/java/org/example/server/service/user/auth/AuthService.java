@@ -4,31 +4,36 @@ import org.example.model.user.Member;
 import org.example.model.user.User;
 import org.example.server.exception.AuthException;
 import org.example.server.exception.ValidationException;
-import org.example.server.repository.DatabaseManager;
+import org.example.server.repository.TransactionManager;
 import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-
 /**
  * Unified service for handling authentication-related tasks (Login, Signup).
+ * Refactored to use TransactionManager.
  */
 public class AuthService {
     private final UserDao userDao;
+    private final TransactionManager txManager;
 
-    public AuthService() {
+    /**
+     * Constructs a new AuthService.
+     * @param txManager The transaction manager to use for database operations.
+     */
+    public AuthService(TransactionManager txManager) {
         this.userDao = new UserDao();
+        this.txManager = txManager;
     }
 
     /**
-     * Authenticates a user.
-     * @param accountname The accountname provided.
-     * @param plainPassword The plain text password provided.
-     * @return The User object if authenticated.
+     * Authenticates a user by account name and password.
+     * @param accountname The account name.
+     * @param plainPassword The plain text password.
+     * @return The authenticated user object (with password removed).
+     * @throws AuthException If authentication fails or account is banned.
      */
     public User authenticate(String accountname, String plainPassword) {
-        try (Connection conn = DatabaseManager.getConnection()) {
+        return txManager.query(conn -> {
             User user = userDao.findByAccountname(conn, accountname);
             if (user != null && PasswordHashing.checkPassword(plainPassword, user.getPassword())) {
                 if (user.getStatus() == 1) {
@@ -39,17 +44,19 @@ public class AuthService {
                 return user;
             }
             throw new AuthException("Invalid account name or password");
-        } catch (SQLException e) {
-            FileLogger.error("Authentication error for user: " + accountname, e);
-            throw new AuthException("Internal server error during authentication");
-        }
+        });
     }
 
     /**
-     * Registers a new user in the system.
+     * Registers a new member user.
+     * @param accountname The desired account name.
+     * @param plainPassword The plain text password.
+     * @param email The email address.
+     * @throws ValidationException If the account name already exists.
+     * @throws AuthException If registration fails.
      */
     public void register(String accountname, String plainPassword, String email) {
-        try (Connection conn = DatabaseManager.getConnection()) {
+        txManager.run(conn -> {
             if (userDao.findByAccountname(conn, accountname) != null) {
                 throw new ValidationException("Account name '" + accountname + "' already exists.");
             }
@@ -57,19 +64,18 @@ public class AuthService {
             String hashedPassword = PasswordHashing.hashPassword(plainPassword);
             User newUser = new Member(accountname, hashedPassword, email, null, 0, 0, 0);
 
-            boolean success = userDao.createUser(conn, newUser);
-            if (!success) {
+            if (!userDao.createUser(conn, newUser)) {
                 throw new AuthException("Failed to create user account");
             }
             FileLogger.info("User registered successfully: " + accountname);
-        } catch (SQLException e) {
-            FileLogger.error("Registration error for user: " + accountname, e);
-            throw new AuthException("Internal error during registration");
-        }
+        });
     }
 
     /**
-     * Checks if a user has permission to perform a specific action.
+     * Checks if a user has permission to perform a specific action based on message type.
+     * @param type The message type representing the action.
+     * @param user The user performing the action.
+     * @return True if access is granted.
      */
     public boolean canAccess(org.example.model.enums.MessageType type, User user) {
         if (type == org.example.model.enums.MessageType.LOGIN || 

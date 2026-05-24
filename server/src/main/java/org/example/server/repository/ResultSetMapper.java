@@ -1,5 +1,8 @@
-package org.example.server.repository.mapper;
+package org.example.server.repository;
 
+import org.example.model.Auction;
+import org.example.model.AutoBid;
+import org.example.model.Bid;
 import org.example.model.enums.AuctionStatus;
 import org.example.model.enums.ItemCategory;
 import org.example.model.enums.UserRole;
@@ -18,6 +21,12 @@ import java.sql.Timestamp;
  */
 public class ResultSetMapper {
 
+    /**
+     * Maps a ResultSet row to a User object (either Admin or Member).
+     * @param rs The ResultSet.
+     * @return The mapped User object.
+     * @throws SQLException If a database error occurs.
+     */
     public static User mapToUser(ResultSet rs) throws SQLException {
         int roleValue = rs.getInt("role");
         UserRole role = UserRole.fromInt(roleValue);
@@ -44,6 +53,12 @@ public class ResultSetMapper {
         return user;
     }
 
+    /**
+     * Maps a ResultSet row to an Item object of the appropriate subclass (Art, Electronics, etc.).
+     * @param rs The ResultSet.
+     * @return The mapped Item object.
+     * @throws SQLException If a database error occurs.
+     */
     public static Item mapToItem(ResultSet rs) throws SQLException {
         int productId = rs.getInt("product_id");
         String name = rs.getString("name");
@@ -87,5 +102,55 @@ public class ResultSetMapper {
         item.setBuyNowPrice(rs.wasNull() ? null : buyNowPrice);
         
         return item;
+    }
+
+    /**
+     * Maps a ResultSet row to an Auction object.
+     * @param rs The ResultSet.
+     * @return The mapped Auction object.
+     * @throws SQLException If a database error occurs.
+     */
+    public static Auction mapToAuction(ResultSet rs) throws SQLException {
+        return new Auction(
+                rs.getInt("bid_id"),
+                rs.getInt("auction_id"),
+                rs.getString("bidder_accountname"),
+                rs.getLong("bid_amount"),
+                rs.getTimestamp("bid_time")
+        );
+    }
+
+    /**
+     * Maps a ResultSet row to a Bid object.
+     * @param rs The ResultSet.
+     * @return The mapped Bid object.
+     * @throws SQLException If a database error occurs.
+     */
+    public static Bid mapToBid(ResultSet rs) throws SQLException {
+        return new Bid(
+                rs.getInt("auction_id"),
+                rs.getString("bidder_accountname"),
+                rs.getLong("bid_amount"),
+                rs.getTimestamp("bid_time")
+        );
+    }
+
+    /**
+     * Maps a ResultSet row to an AutoBid object.
+     * @param rs The ResultSet.
+     * @return The mapped AutoBid object.
+     * @throws SQLException If a database error occurs.
+     */
+    public static AutoBid mapToAutoBid(ResultSet rs) throws SQLException {
+        return new AutoBid(
+                rs.getInt("auto_bid_id"),
+                rs.getInt("auction_id"),
+                rs.getString("bidder_accountname"),
+                rs.getLong("max_bid"),
+                rs.getLong("increment_amount"),
+                rs.getBoolean("active"),
+                rs.getTimestamp("created_at"),
+                rs.getTimestamp("updated_at")
+        );
     }
 }

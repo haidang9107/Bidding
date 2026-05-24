@@ -1,8 +1,6 @@
 package org.example.server.repository;
 
-import org.example.model.enums.UserRole;
 import org.example.model.user.*;
-import org.example.server.repository.mapper.ResultSetMapper;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -14,6 +12,9 @@ import java.util.List;
  */
 public class UserDao {
 
+    /**
+     * Constructs a new UserDao.
+     */
     public UserDao() {
     }
 

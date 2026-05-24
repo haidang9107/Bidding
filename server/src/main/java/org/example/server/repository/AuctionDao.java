@@ -16,6 +16,13 @@ import java.util.List;
  */
 public class AuctionDao {
 
+    /**
+     * Retrieves all auction bid records for a specific auction.
+     * @param connection The database connection.
+     * @param auctionId The ID of the auction.
+     * @return A list of auction bid history records.
+     * @throws SQLException If a database error occurs.
+     */
     public List<Auction> getAuctionsByProduct(Connection connection, int auctionId) throws SQLException {
         List<Auction> auctions = new ArrayList<>();
         String sql = """
@@ -29,19 +36,20 @@ public class AuctionDao {
             ps.setInt(1, auctionId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    auctions.add(new Auction(
-                            rs.getInt("bid_id"),
-                            rs.getInt("auction_id"),
-                            rs.getString("bidder_accountname"),
-                            rs.getLong("bid_amount"),
-                            rs.getTimestamp("bid_time")
-                    ));
+                    auctions.add(ResultSetMapper.mapToAuction(rs));
                 }
             }
         }
         return auctions;
     }
 
+    /**
+     * Retrieves a list of bids formatted for display.
+     * @param connection The database connection.
+     * @param auctionId The ID of the auction.
+     * @return A list of bids.
+     * @throws SQLException If a database error occurs.
+     */
     public List<Bid> getBidsForDisplay(Connection connection, int auctionId) throws SQLException {
         List<Bid> bids = new ArrayList<>();
         String sql = """
@@ -55,23 +63,35 @@ public class AuctionDao {
             ps.setInt(1, auctionId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    bids.add(new Bid(
-                            rs.getInt("auction_id"),
-                            rs.getString("bidder_accountname"),
-                            rs.getLong("bid_amount"),
-                            rs.getTimestamp("bid_time")
-                    ));
+                    bids.add(ResultSetMapper.mapToBid(rs));
                 }
             }
         }
         return bids;
     }
 
+    /**
+     * Inserts an auction history record.
+     * @param connection The database connection.
+     * @param auction The auction record to insert.
+     * @return True if successful.
+     * @throws SQLException If a database error occurs.
+     */
     public boolean insertAuction(Connection connection, Auction auction) throws SQLException {
         return insertBid(connection, auction.getProductId(), auction.getBidderAccountname(),
                 auction.getBidAmount(), false);
     }
 
+    /**
+     * Inserts a new bid into the database.
+     * @param connection The database connection.
+     * @param auctionId The ID of the auction.
+     * @param bidderAccountname The account name of the bidder.
+     * @param bidAmount The amount of the bid.
+     * @param autoBid Whether this was an automatic bid.
+     * @return True if successful.
+     * @throws SQLException If a database error occurs.
+     */
     public boolean insertBid(Connection connection, int auctionId, String bidderAccountname,
                              long bidAmount, boolean autoBid) throws SQLException {
         String sql = """

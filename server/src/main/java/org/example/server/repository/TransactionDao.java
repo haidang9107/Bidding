@@ -10,6 +10,19 @@ import java.sql.Types;
  */
 public class TransactionDao {
 
+    /**
+     * Inserts a new financial transaction record.
+     * @param connection The database connection.
+     * @param senderAccountname The sender's account name.
+     * @param receiverAccountname The receiver's account name.
+     * @param type The transaction type.
+     * @param productId Optional product ID related to the transaction.
+     * @param amount The transaction amount.
+     * @param referenceId Optional reference ID (e.g., auction ID).
+     * @param description A brief description of the transaction.
+     * @return True if successful.
+     * @throws SQLException If a database error occurs.
+     */
     public boolean insertTransaction(Connection connection, String senderAccountname,
                                      String receiverAccountname, int type, Integer productId,
                                      long amount, Integer referenceId, String description)

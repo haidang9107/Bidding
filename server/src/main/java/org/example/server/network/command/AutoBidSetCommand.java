@@ -13,13 +13,28 @@ import org.example.util.JsonConverter;
 
 import java.nio.channels.SocketChannel;
 
+/**
+ * Command for a user to set up or update auto-bidding for a specific auction.
+ */
 public class AutoBidSetCommand implements Command {
     private final BidController bidController;
 
+    /**
+     * Constructs an AutoBidSetCommand with the specified BidController.
+     *
+     * @param bidController the controller for bidding operations
+     */
     public AutoBidSetCommand(BidController bidController) {
         this.bidController = bidController;
     }
 
+    /**
+     * Executes the set auto-bid command and broadcasts the change if successful.
+     *
+     * @param request the request containing AutoBidRequest
+     * @param channel the socket channel of the user
+     * @return the response indicating success or failure of the configuration
+     */
     @Override
     public Response<?> execute(Request request, SocketChannel channel) {
         User currentUser = SessionManager.getUser(channel);

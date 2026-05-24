@@ -1,185 +1,148 @@
 package org.example.server.service.product;
 
 import org.example.dto.response.PagedResponse;
-import org.example.dto.response.ProductResponse;
 import org.example.dto.request.ProductAddRequest;
-import org.example.dto.notify.AuctionEndNotify;
-import org.example.dto.notify.ProductUpdateNotify;
 import org.example.model.enums.AuctionStatus;
-import org.example.model.enums.MessageType;
 import org.example.model.product.Item;
-import org.example.payload.Response;
+import org.example.server.event.AuctionEndedEvent;
+import org.example.server.event.AuctionStartedEvent;
+import org.example.server.event.EventPublisher;
+import org.example.server.event.ProductCreatedEvent;
 import org.example.server.exception.AuctionException;
-import org.example.server.exception.NotFoundException;
 import org.example.server.exception.ValidationException;
-import org.example.server.network.Broadcaster;
-import org.example.server.repository.DatabaseManager;
 import org.example.server.repository.ProductDao;
+import org.example.server.repository.TransactionManager;
 import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
 
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.List;
 
 /**
  * Service for managing products and auction sessions.
+ * Refactored to use TransactionManager and EventPublisher.
  */
 public class ProductService {
     private final ProductDao productDao;
     private final UserDao userDao;
+    private final TransactionManager txManager;
+    private final EventPublisher eventPublisher;
 
-    public ProductService() {
+    /**
+     * Constructs a new ProductService.
+     * @param txManager The transaction manager.
+     * @param eventPublisher The event publisher.
+     */
+    public ProductService(TransactionManager txManager, EventPublisher eventPublisher) {
         this.productDao = new ProductDao();
         this.userDao = new UserDao();
+        this.txManager = txManager;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
-     * Periodically called by AuctionMonitor to close expired auctions.
+     * Processes auctions that have expired and should be finished.
      */
     public void processExpiredAuctions() {
-        try (Connection conn = DatabaseManager.getConnection()) {
-            List<Item> expiredItems = productDao.getExpiredProducts(conn);
-            for (Item item : expiredItems) {
-                finishAuction(item.getAuctionId());
-            }
-        } catch (SQLException e) {
-            FileLogger.error("Error processing expired auctions", e);
-        }
+        List<Item> expired = txManager.query(productDao::getExpiredProducts);
+        expired.forEach(item -> finishAuction(item.getAuctionId()));
     }
 
     /**
-     * Periodically called by AuctionMonitor to start scheduled auctions.
+     * Processes auctions that are upcoming and should be started.
      */
     public void processUpcomingAuctions() {
-        try (Connection conn = DatabaseManager.getConnection()) {
-            List<Item> upcomingItems = productDao.getUpcomingProducts(conn);
-            for (Item item : upcomingItems) {
-                startAuction(item.getAuctionId());
-            }
-        } catch (SQLException e) {
-            FileLogger.error("Error processing upcoming auctions", e);
-        }
+        List<Item> upcoming = txManager.query(productDao::getUpcomingProducts);
+        upcoming.forEach(item -> startAuction(item.getAuctionId()));
     }
 
+    /**
+     * Starts an auction.
+     * @param auctionId The ID of the auction to start.
+     */
     public void startAuction(int auctionId) {
-        try (Connection conn = DatabaseManager.getConnection()) {
-            conn.setAutoCommit(false);
+        txManager.run(conn -> {
             Item item = productDao.getAuctionForUpdate(conn, auctionId);
-            if (item == null || item.getStatus() != AuctionStatus.OPEN) {
-                conn.rollback();
-                return;
-            }
+            if (item == null || item.getStatus() != AuctionStatus.OPEN) return;
 
-            boolean success = productDao.updateStatus(conn, auctionId, AuctionStatus.RUNNING);
-            if (success) {
-                conn.commit();
+            boolean updated = productDao.updateStatus(conn, auctionId, AuctionStatus.RUNNING);
+            if (updated) {
                 FileLogger.info("Auction STARTED: Auction ID " + auctionId);
-                Response<String> notification = new Response<>(
-                    MessageType.AUCTION_START, true, "Auction '" + item.getName() + "' has started!", null
-                );
-                Broadcaster.broadcastToAuction(auctionId, notification);
-            } else {
-                conn.rollback();
+                eventPublisher.publish(new AuctionStartedEvent(auctionId, item.getName()));
             }
-        } catch (SQLException e) {
-            FileLogger.error("Error starting auction: " + auctionId, e);
-        }
+        });
     }
 
+    /**
+     * Finishes an auction and handles the winner and seller balances.
+     * @param auctionId The ID of the auction to finish.
+     */
     public void finishAuction(int auctionId) {
-        try (Connection conn = DatabaseManager.getConnection()) {
-            conn.setAutoCommit(false);
-            
-            Item latestItem = productDao.getAuctionForUpdate(conn, auctionId);
-            if (latestItem == null || latestItem.getStatus() != AuctionStatus.RUNNING) {
-                conn.rollback();
-                return;
-            }
+        txManager.run(conn -> {
+            Item item = productDao.getAuctionForUpdate(conn, auctionId);
+            if (item == null || item.getStatus() != AuctionStatus.RUNNING) return;
 
-            String winner = latestItem.getWinnerAccountname();
-            String seller = latestItem.getSellerAccountname();
-            long finalPrice = latestItem.getCurrentPrice();
+            String winner = item.getWinnerAccountname();
+            String seller = item.getSellerAccountname();
+            long finalPrice = item.getCurrentPrice();
 
             boolean success = productDao.updateStatus(conn, auctionId, AuctionStatus.FINISHED);
-            
             if (success && winner != null) {
-                // Deduct from winner's blocked balance
                 userDao.addBlockedBalance(conn, winner, -finalPrice);
-                // Add to seller's balance
                 userDao.addBalance(conn, seller, finalPrice);
-                
-                productDao.updateProductOwner(conn, latestItem.getProductId(), winner);
+                productDao.updateProductOwner(conn, item.getProductId(), winner);
             }
 
-            if (!success) {
-                conn.rollback();
-                return;
+            if (success) {
+                FileLogger.info("Auction FINISHED: Auction ID " + auctionId + (winner != null ? ", Winner: " + winner : " (No winner)"));
+                eventPublisher.publish(new AuctionEndedEvent(auctionId, item.getName(), winner, finalPrice, false));
             }
-
-            conn.commit();
-            
-            if (winner != null) {
-                FileLogger.info("Auction FINISHED: Auction ID " + auctionId + ", Winner: " + winner);
-                ProductResponse productDetail = new ProductResponse(latestItem);
-                Response<AuctionEndNotify> notification = new Response<>(
-                    MessageType.AUCTION_END,
-                    true,
-                    "Auction for '" + latestItem.getName() + "' has ended!",
-                    new AuctionEndNotify(
-                        auctionId,
-                        winner,
-                        latestItem.getCurrentPrice(),
-                        latestItem.getName(),
-                        productDetail
-                    )
-                );
-                Broadcaster.broadcastToAuction(auctionId, notification);
-            } else {
-                FileLogger.info("Auction FINISHED: Auction ID " + auctionId + " (No winner)");
-            }
-        } catch (SQLException e) {
-            FileLogger.error("Error finalizing auction: " + auctionId, e);
-        }
+        });
     }
 
+    /**
+     * Retrieves all auction items.
+     * @return A list of all items.
+     */
     public List<Item> getAllAuctions() {
-        try (Connection conn = DatabaseManager.getConnection()) {
-            return productDao.getAllProducts(conn);
-        } catch (SQLException e) {
-            FileLogger.error("Error fetching all products", e);
-            return List.of();
-        }
+        return txManager.query(productDao::getAllProducts);
     }
 
+    /**
+     * Retrieves a paged list of auctions.
+     * @param page The page number (1-based).
+     * @param pageSize The number of auctions per page.
+     * @return A paged response containing auction items and metadata.
+     */
     public PagedResponse<Item> getAuctionsPaged(int page, int pageSize) {
-        try (Connection conn = DatabaseManager.getConnection()) {
+        return txManager.query(conn -> {
             long totalItems = productDao.getTotalProductsCount(conn);
             List<Item> items = productDao.getProductsPaged(conn, pageSize, (page - 1) * pageSize);
             return new PagedResponse<>(items, totalItems, page, pageSize);
-        } catch (SQLException e) {
-            FileLogger.error("Error fetching paged products", e);
-            return new PagedResponse<>(List.of(), 0, page, pageSize);
-        }
+        });
     }
 
+    /**
+     * Retrieves an auction by its ID.
+     * @param id The auction ID.
+     * @return The auction item, or null if not found.
+     */
     public Item getAuctionById(int id) {
-        try (Connection conn = DatabaseManager.getConnection()) {
+        return txManager.query(conn -> {
             Item item = productDao.getAuctionById(conn, id);
             return item != null ? item : productDao.getProductById(conn, id);
-        } catch (SQLException e) {
-            FileLogger.error("Error fetching auction/product by ID: " + id, e);
-            throw new AuctionException("Database error fetching product");
-        }
+        });
     }
 
+    /**
+     * Creates a new auction.
+     * @param addReq The product add request.
+     * @param sellerAccount The account name of the seller.
+     */
     public void createAuction(ProductAddRequest addReq, String sellerAccount) {
         if (addReq == null) throw new ValidationException("Product data is required");
 
-        try (Connection conn = DatabaseManager.getConnection()) {
-            conn.setAutoCommit(false);
-
+        txManager.run(conn -> {
             Item item = org.example.model.product.ItemFactory.createItem(
                 addReq.getCategory(), 
                 org.example.util.JsonConverter.toJson(addReq)
@@ -197,22 +160,11 @@ public class ProductService {
                 item.setEndTime(new Timestamp(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000L));
             }
 
-            boolean success = productDao.insertProduct(conn, item);
-            if (success) {
-                conn.commit();
-                ProductResponse productResp = new ProductResponse(item);
-                Response<ProductUpdateNotify> broadcastResponse = new Response<>(
-                    MessageType.PRODUCT_LIST, true, "New product added!", 
-                    new ProductUpdateNotify(productResp)
-                );
-                Broadcaster.broadcast(broadcastResponse);
+            if (productDao.insertProduct(conn, item)) {
+                eventPublisher.publish(new ProductCreatedEvent(item.getAuctionId()));
             } else {
-                conn.rollback();
                 throw new AuctionException("Failed to insert product into database");
             }
-        } catch (SQLException e) {
-            FileLogger.error("Error creating auction for: " + addReq.getName(), e);
-            throw new AuctionException("Database error during product creation");
-        }
+        });
     }
 }

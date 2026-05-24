@@ -26,7 +26,9 @@ public class Config {
         DEFAULTS.put("DB_PASSWORD", "root");
         
         // Advanced performance & logic defaults
-        DEFAULTS.put("DB_MAX_POOL_SIZE", "10");
+        DEFAULTS.put("DB_MAX_POOL_SIZE", "6");
+        DEFAULTS.put("SERVER_WORKER_THREADS", "6");
+        DEFAULTS.put("SERVER_QUEUE_CAPACITY", "128");
         DEFAULTS.put("ANTI_SNIP_WINDOW_MS", "60000"); // 1 minute
         DEFAULTS.put("ANTI_SNIP_EXTENSION_MS", "300000"); // 5 minutes
 
@@ -47,11 +49,21 @@ public class Config {
         return findEnvFile(currentDir.getParentFile());
     }
 
+    /**
+     * Retrieves a configuration value as a String.
+     * @param key The configuration key.
+     * @return The configuration value, or a default value if not found.
+     */
     public static String get(String key) {
         String value = dotenv.get(key);
         return (value != null && !value.isBlank()) ? value : DEFAULTS.getOrDefault(key, null);
     }
 
+    /**
+     * Retrieves a configuration value as an integer.
+     * @param key The configuration key.
+     * @return The configuration value as an integer, or a default value if not found or invalid.
+     */
     public static int getInt(String key) {
         String envValue = dotenv.get(key);
         if (envValue != null && !envValue.isBlank()) {
@@ -72,6 +84,11 @@ public class Config {
         return 0;
     }
 
+    /**
+     * Retrieves a configuration value as a boolean.
+     * @param key The configuration key.
+     * @return True if the value is "true" (case-insensitive), false otherwise.
+     */
     public static boolean getBoolean(String key) {
         return Boolean.parseBoolean(get(key));
     }

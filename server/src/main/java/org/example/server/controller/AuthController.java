@@ -13,6 +13,11 @@ import org.example.server.service.user.auth.AuthService;
 public class AuthController {
     private final AuthService authService;
 
+    /**
+     * Constructs an AuthController with the specified AuthService.
+     *
+     * @param authService the authentication service to use
+     */
     public AuthController(AuthService authService) {
         this.authService = authService;
     }

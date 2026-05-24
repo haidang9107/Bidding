@@ -13,9 +13,19 @@ public class Bid {
     private long bidAmount;
     private Timestamp bidTime;
 
+    /**
+     * Default constructor for Bid.
+     */
     public Bid() {
     }
 
+    /**
+     * Constructs a Bid with all fields.
+     * @param productId The ID of the product being bid on.
+     * @param bidderAccountname The account name of the bidder.
+     * @param bidAmount The amount of the bid.
+     * @param bidTime The timestamp when the bid was placed.
+     */
     public Bid(int productId, String bidderAccountname, long bidAmount, Timestamp bidTime) {
         this.productId = productId;
         this.bidderAccountname = bidderAccountname;

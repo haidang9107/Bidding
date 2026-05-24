@@ -9,23 +9,29 @@ import org.example.util.FileLogger;
 
 import org.example.dto.request.UserProfileUpdateRequest;
 import org.example.dto.response.UserResponse;
-import org.example.util.JsonConverter;
 
 import java.nio.channels.SocketChannel;
 
 /**
  * Controller for handling common user-related requests (non-auth).
- * Refactored to delegate to UserService.
  */
 public class UserController {
     private final UserService userService;
 
-    public UserController() {
-        this.userService = new UserService();
+    /**
+     * Constructs a UserController with the specified UserService.
+     *
+     * @param userService the user service to use for user operations
+     */
+    public UserController(UserService userService) {
+        this.userService = userService;
     }
 
     /**
-     * Gets the profile of the logged-in user.
+     * Handles the request to fetch the profile of the current user.
+     *
+     * @param channel the socket channel of the user
+     * @return a response containing the user's profile details
      */
     public Response<UserResponse> handleGetProfile(SocketChannel channel) {
         User currentUser = SessionManager.getUser(channel);
@@ -35,7 +41,10 @@ public class UserController {
     }
 
     /**
-     * Updates the profile of the logged-in user.
+     * Updates the profile information of the current user.
+     * @param request The profile update request.
+     * @param channel The socket channel of the user.
+     * @return A success or error response.
      */
     public Response<String> handleUpdateProfile(UserProfileUpdateRequest request, SocketChannel channel) {
         if (request == null) return new Response<>(MessageType.ERROR, false, "Update data required", null);
@@ -67,7 +76,11 @@ public class UserController {
     }
 
     /**
-     * Updates the avatar of the logged-in user.
+     * Handles the request to update the avatar of the current user.
+     *
+     * @param avatarPath the new avatar path
+     * @param channel the socket channel of the user
+     * @return a response indicating the result of the avatar update
      */
     public Response<String> handleUpdateAvatar(String avatarPath, SocketChannel channel) {
         if (avatarPath == null || avatarPath.isBlank()) return new Response<>(MessageType.ERROR, false, "Avatar path required", null);

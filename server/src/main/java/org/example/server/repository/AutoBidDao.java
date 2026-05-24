@@ -14,6 +14,16 @@ import java.util.List;
  */
 public class AutoBidDao {
 
+    /**
+     * Inserts or updates an automatic bid configuration.
+     * @param connection The database connection.
+     * @param auctionId The ID of the auction.
+     * @param bidderAccountname The account name of the bidder.
+     * @param maxBid The maximum amount for auto-bidding.
+     * @param incrementAmount The increment amount.
+     * @return True if successful.
+     * @throws SQLException If a database error occurs.
+     */
     public boolean upsertAutoBid(Connection connection, int auctionId, String bidderAccountname,
                                  long maxBid, long incrementAmount) throws SQLException {
         String updateSql = """
@@ -44,6 +54,14 @@ public class AutoBidDao {
         }
     }
 
+    /**
+     * Deactivates an automatic bid for a specific bidder and auction.
+     * @param connection The database connection.
+     * @param auctionId The ID of the auction.
+     * @param bidderAccountname The account name of the bidder.
+     * @return True if successful.
+     * @throws SQLException If a database error occurs.
+     */
     public boolean deactivateAutoBid(Connection connection, int auctionId, String bidderAccountname)
             throws SQLException {
         String sql = """
@@ -58,6 +76,13 @@ public class AutoBidDao {
         }
     }
 
+    /**
+     * Finds all active automatic bids for a specific auction, ordered by priority.
+     * @param connection The database connection.
+     * @param auctionId The ID of the auction.
+     * @return A list of active auto-bids.
+     * @throws SQLException If a database error occurs.
+     */
     public List<AutoBid> findAllActiveForAuction(Connection connection, int auctionId) throws SQLException {
         List<AutoBid> autoBids = new ArrayList<>();
         String sql = """
@@ -70,23 +95,10 @@ public class AutoBidDao {
             ps.setInt(1, auctionId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    autoBids.add(mapRow(rs));
+                    autoBids.add(ResultSetMapper.mapToAutoBid(rs));
                 }
             }
         }
         return autoBids;
-    }
-
-    private AutoBid mapRow(ResultSet rs) throws SQLException {
-        return new AutoBid(
-                rs.getInt("auto_bid_id"),
-                rs.getInt("auction_id"),
-                rs.getString("bidder_accountname"),
-                rs.getLong("max_bid"),
-                rs.getLong("increment_amount"),
-                rs.getBoolean("active"),
-                rs.getTimestamp("created_at"),
-                rs.getTimestamp("updated_at")
-        );
     }
 }

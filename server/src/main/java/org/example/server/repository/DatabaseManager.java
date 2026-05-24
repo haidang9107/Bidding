@@ -75,6 +75,9 @@ public class DatabaseManager {
         return dataSource.getConnection();
     }
 
+    /**
+     * Closes the database connection pool.
+     */
     public static void closeConnection() {
         if (dataSource != null && !dataSource.isClosed()) {
             dataSource.close();

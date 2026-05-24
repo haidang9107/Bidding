@@ -15,9 +15,21 @@ public abstract class User {
     private UserRole role;
     private int status; // 0: ACTIVE, 1: BANNED
 
+    /**
+     * Default constructor for User.
+     */
     public User() {
     }
 
+    /**
+     * Constructs a User with all fields.
+     * @param accountname The unique account name.
+     * @param password The hashed password.
+     * @param email The email address.
+     * @param avt The avatar URL.
+     * @param role The user role.
+     * @param status The user status.
+     */
     public User(String accountname, String password, String email, 
                 String avt, UserRole role, int status) {
         this.accountname = accountname;

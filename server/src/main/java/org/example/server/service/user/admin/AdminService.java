@@ -4,75 +4,85 @@ import org.example.dto.response.PagedResponse;
 import org.example.model.enums.AuctionStatus;
 import org.example.model.product.Item;
 import org.example.model.user.User;
-import org.example.server.repository.DatabaseManager;
+import org.example.server.event.AuctionEndedEvent;
+import org.example.server.event.EventPublisher;
 import org.example.server.repository.ProductDao;
+import org.example.server.repository.TransactionManager;
 import org.example.server.repository.UserDao;
-import org.example.server.network.Broadcaster;
-import org.example.payload.Response;
-import org.example.model.enums.MessageType;
 import org.example.util.FileLogger;
 
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.List;
 
 /**
  * Service for handling administrative business logic.
+ * Refactored to use TransactionManager and EventPublisher.
  */
 public class AdminService {
     private final UserDao userDao;
     private final ProductDao productDao;
+    private final TransactionManager txManager;
+    private final EventPublisher eventPublisher;
 
-    public AdminService() {
+    /**
+     * Constructs a new AdminService.
+     * @param txManager The transaction manager.
+     * @param eventPublisher The event publisher.
+     */
+    public AdminService(TransactionManager txManager, EventPublisher eventPublisher) {
         this.userDao = new UserDao();
         this.productDao = new ProductDao();
+        this.txManager = txManager;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
-     * Retrieves all users.
+     * Retrieves all users in the system.
+     * @return List of all users.
      */
-    public List<User> getAllUsers() throws SQLException {
-        try (Connection conn = DatabaseManager.getConnection()) {
-            return userDao.findAllUsers(conn);
-        }
+    public List<User> getAllUsers() {
+        return txManager.query(userDao::findAllUsers);
     }
 
     /**
-     * Retrieves users with pagination.
+     * Retrieves a paged list of users.
+     * @param page The page number (1-based).
+     * @param pageSize The number of users per page.
+     * @return A paged response containing users and metadata.
      */
-    public PagedResponse<User> getUsersPaged(int page, int pageSize) throws SQLException {
-        try (Connection conn = DatabaseManager.getConnection()) {
+    public PagedResponse<User> getUsersPaged(int page, int pageSize) {
+        return txManager.query(conn -> {
             long totalItems = userDao.getTotalUsersCount(conn);
             List<User> users = userDao.getUsersPaged(conn, pageSize, (page - 1) * pageSize);
             return new PagedResponse<>(users, totalItems, page, pageSize);
-        }
+        });
     }
 
     /**
-     * Updates user status (Ban/Unban).
+     * Updates the status (e.g., active/banned) of a user.
+     * @param accountname The account name of the user.
+     * @param status The new status (0 for active, 1 for banned).
+     * @return True if successful.
      */
-    public boolean updateUserStatus(String accountname, int status) throws SQLException {
-        try (Connection conn = DatabaseManager.getConnection()) {
+    public boolean updateUserStatus(String accountname, int status) {
+        return txManager.execute(conn -> {
             boolean success = userDao.updateUserStatus(conn, accountname, status);
             if (success) {
                 String action = (status == 1) ? "BANNED" : "UNBANNED";
                 FileLogger.info("Admin action: User " + accountname + " has been " + action);
             }
             return success;
-        }
+        });
     }
 
     /**
-     * Cancels an auction.
+     * Cancels an auction and releases any blocked balances.
+     * @param auctionId The ID of the auction to cancel.
+     * @return True if successful.
      */
-    public boolean cancelAuction(int auctionId) throws SQLException {
-        try (Connection conn = DatabaseManager.getConnection()) {
-            conn.setAutoCommit(false);
+    public boolean cancelAuction(int auctionId) {
+        return txManager.execute(conn -> {
             Item item = productDao.getAuctionForUpdate(conn, auctionId);
-            if (item == null) {
-                conn.rollback();
-                return false;
-            }
+            if (item == null) return false;
 
             boolean success = productDao.updateStatus(conn, auctionId, AuctionStatus.CANCELED);
             if (success) {
@@ -80,18 +90,10 @@ public class AdminService {
                 if (item.getWinnerAccountname() != null) {
                     userDao.addBlockedBalance(conn, item.getWinnerAccountname(), -item.getCurrentPrice());
                 }
-                conn.commit();
                 FileLogger.info("Admin action: Auction " + auctionId + " has been CANCELED.");
-                Broadcaster.broadcastToAuction(auctionId, new Response<>(
-                        MessageType.NOTIFICATION,
-                        true,
-                        "Auction " + auctionId + " has been canceled.",
-                        null
-                ));
-            } else {
-                conn.rollback();
+                eventPublisher.publish(new AuctionEndedEvent(auctionId, item.getName(), item.getWinnerAccountname(), item.getCurrentPrice(), true));
             }
             return success;
-        }
+        });
     }
 }

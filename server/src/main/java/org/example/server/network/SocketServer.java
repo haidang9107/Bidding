@@ -14,8 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 /**
  * SOLID: Single Responsibility - Manages the NIO Socket Server and client connections.
@@ -33,6 +32,13 @@ public class SocketServer {
     private final Map<SocketChannel, ByteArrayOutputStream> clientBuffers = new HashMap<>();
     private boolean running = true;
 
+    /**
+     * Constructs a SocketServer with required dependencies.
+     * @param commandRegistry the registry for commands
+     * @param authService the auth service
+     * @param auctionMonitor the auction monitor
+     * @throws IOException if the server socket cannot be opened or bound
+     */
     public SocketServer(CommandRegistry commandRegistry, AuthService authService, AuctionMonitor auctionMonitor) throws IOException {
         this.commandRegistry = commandRegistry;
         this.authService = authService;
@@ -46,6 +52,9 @@ public class SocketServer {
         this.serverChannel.register(selector, SelectionKey.OP_ACCEPT);
     }
 
+    /**
+     * Starts the server's main event loop.
+     */
     public void run() {
         try {
             FileLogger.info("NIO Server started on Port: " + PORT);
@@ -74,6 +83,10 @@ public class SocketServer {
         }
     }
 
+    /**
+     * Handles a new incoming client connection.
+     * @throws IOException if the connection cannot be accepted
+     */
     private void handleAccept() throws IOException {
         SocketChannel clientChannel = serverChannel.accept();
         clientChannel.configureBlocking(false);
@@ -87,6 +100,10 @@ public class SocketServer {
         FileLogger.info("New connection from: " + clientChannel.getRemoteAddress());
     }
 
+    /**
+     * Handles reading data from a client channel.
+     * @param key the selection key representing the client's readable state
+     */
     private void handleRead(SelectionKey key) {
         SocketChannel clientChannel = (SocketChannel) key.channel();
         ByteArrayOutputStream buffer = clientBuffers.get(clientChannel);
@@ -130,6 +147,9 @@ public class SocketServer {
         }
     }
 
+    /**
+     * Stops the server and releases all resources.
+     */
     public void stop() {
         running = false;
         try {

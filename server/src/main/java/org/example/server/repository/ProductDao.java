@@ -1,9 +1,7 @@
 package org.example.server.repository;
 
 import org.example.model.enums.AuctionStatus;
-import org.example.model.enums.ItemCategory;
 import org.example.model.product.*;
-import org.example.server.repository.mapper.ResultSetMapper;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -28,6 +26,14 @@ public class ProductDao {
             JOIN products p ON p.product_id = a.product_id
             """;
 
+    /**
+     * Retrieves a page of auction items from the database.
+     * @param connection The database connection.
+     * @param limit The maximum number of items to retrieve.
+     * @param offset The number of items to skip.
+     * @return A list of items.
+     * @throws SQLException If a database error occurs.
+     */
     public List<Item> getProductsPaged(Connection connection, int limit, int offset) throws SQLException {
         List<Item> products = new ArrayList<>();
         String sql = AUCTION_VIEW_SQL + " ORDER BY a.created_at DESC LIMIT ? OFFSET ?";
@@ -44,6 +50,12 @@ public class ProductDao {
         return products;
     }
 
+    /**
+     * Retrieves the total count of auction items in the database.
+     * @param connection The database connection.
+     * @return The total count.
+     * @throws SQLException If a database error occurs.
+     */
     public long getTotalProductsCount(Connection connection) throws SQLException {
         String sql = "SELECT COUNT(*) FROM auctions";
         try (Statement stmt = connection.createStatement();
@@ -55,6 +67,12 @@ public class ProductDao {
         return 0;
     }
 
+    /**
+     * Retrieves all auction items from the database.
+     * @param connection The database connection.
+     * @return A list of all items.
+     * @throws SQLException If a database error occurs.
+     */
     public List<Item> getAllProducts(Connection connection) throws SQLException {
         List<Item> products = new ArrayList<>();
         String sql = AUCTION_VIEW_SQL + " ORDER BY a.created_at DESC";
@@ -68,6 +86,13 @@ public class ProductDao {
         return products;
     }
 
+    /**
+     * Retrieves a specific product by its ID.
+     * @param connection The database connection.
+     * @param productId The ID of the product.
+     * @return The product item, or null if not found.
+     * @throws SQLException If a database error occurs.
+     */
     public Item getProductById(Connection connection, int productId) throws SQLException {
         String sql = AUCTION_VIEW_SQL + " WHERE p.product_id = ? ORDER BY a.created_at DESC LIMIT 1";
 
@@ -82,6 +107,13 @@ public class ProductDao {
         return null;
     }
 
+    /**
+     * Retrieves a specific auction by its ID.
+     * @param connection The database connection.
+     * @param auctionId The ID of the auction.
+     * @return The auction item, or null if not found.
+     * @throws SQLException If a database error occurs.
+     */
     public Item getAuctionById(Connection connection, int auctionId) throws SQLException {
         String sql = AUCTION_VIEW_SQL + " WHERE a.auction_id = ?";
 
@@ -96,6 +128,13 @@ public class ProductDao {
         return null;
     }
 
+    /**
+     * Retrieves a specific auction and locks the row for update.
+     * @param connection The database connection.
+     * @param auctionId The ID of the auction.
+     * @return The auction item, or null if not found.
+     * @throws SQLException If a database error occurs.
+     */
     public Item getAuctionForUpdate(Connection connection, int auctionId) throws SQLException {
         String sql = AUCTION_VIEW_SQL + " WHERE a.auction_id = ? FOR UPDATE";
 
@@ -110,10 +149,24 @@ public class ProductDao {
         return null;
     }
 
+    /**
+     * Convenience method to get an auction for update.
+     * @param connection The database connection.
+     * @param auctionId The ID of the auction.
+     * @return The auction item.
+     * @throws SQLException If a database error occurs.
+     */
     public Item getProductForUpdate(Connection connection, int auctionId) throws SQLException {
         return getAuctionForUpdate(connection, auctionId);
     }
 
+    /**
+     * Checks if a user is currently the leading bidder in any running auction.
+     * @param connection The database connection.
+     * @param accountname The account name of the user.
+     * @return True if leading, false otherwise.
+     * @throws SQLException If a database error occurs.
+     */
     public boolean isUserLeadingAnyAuction(Connection connection, String accountname) throws SQLException {
         String sql = "SELECT COUNT(*) FROM auctions WHERE winner_accountname = ? AND status = 1";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -124,6 +177,13 @@ public class ProductDao {
         }
     }
 
+    /**
+     * Inserts a new product and its associated auction into the database.
+     * @param connection The database connection.
+     * @param item The item to insert.
+     * @return True if successful.
+     * @throws SQLException If a database error occurs.
+     */
     public boolean insertProduct(Connection connection, Item item) throws SQLException {
         String productSql = """
                 INSERT INTO products(
@@ -185,6 +245,12 @@ public class ProductDao {
         return true;
     }
 
+    /**
+     * Retrieves all running auctions that have expired.
+     * @param connection The database connection.
+     * @return A list of expired items.
+     * @throws SQLException If a database error occurs.
+     */
     public List<Item> getExpiredProducts(Connection connection) throws SQLException {
         List<Item> products = new ArrayList<>();
         String sql = AUCTION_VIEW_SQL + " WHERE a.status = 1 AND a.end_time <= CURRENT_TIMESTAMP";
@@ -198,6 +264,12 @@ public class ProductDao {
         return products;
     }
 
+    /**
+     * Retrieves all upcoming auctions that are ready to start.
+     * @param connection The database connection.
+     * @return A list of upcoming items.
+     * @throws SQLException If a database error occurs.
+     */
     public List<Item> getUpcomingProducts(Connection connection) throws SQLException {
         List<Item> products = new ArrayList<>();
         String sql = AUCTION_VIEW_SQL + " WHERE a.status = 0 AND a.start_time <= CURRENT_TIMESTAMP";
@@ -211,6 +283,14 @@ public class ProductDao {
         return products;
     }
 
+    /**
+     * Updates the status of an auction.
+     * @param connection The database connection.
+     * @param auctionId The ID of the auction.
+     * @param status The new status.
+     * @return True if successful.
+     * @throws SQLException If a database error occurs.
+     */
     public boolean updateStatus(Connection connection, int auctionId, AuctionStatus status) throws SQLException {
         String sql = "UPDATE auctions SET status = ? WHERE auction_id = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -220,6 +300,14 @@ public class ProductDao {
         }
     }
 
+    /**
+     * Updates the 'in auction' flag for a product.
+     * @param connection The database connection.
+     * @param productId The ID of the product.
+     * @param inAuction Whether the product is in an auction.
+     * @return True if successful.
+     * @throws SQLException If a database error occurs.
+     */
     public boolean updateProductAuctionFlag(Connection connection, int productId, boolean inAuction)
             throws SQLException {
         String sql = "UPDATE products SET is_in_auction = ? WHERE product_id = ?";
@@ -230,6 +318,14 @@ public class ProductDao {
         }
     }
 
+    /**
+     * Updates the owner of a product and marks it as no longer in auction.
+     * @param connection The database connection.
+     * @param productId The ID of the product.
+     * @param ownerAccountname The new owner's account name.
+     * @return True if successful.
+     * @throws SQLException If a database error occurs.
+     */
     public boolean updateProductOwner(Connection connection, int productId, String ownerAccountname)
             throws SQLException {
         String sql = "UPDATE products SET owner_accountname = ?, is_in_auction = FALSE WHERE product_id = ?";
@@ -240,6 +336,16 @@ public class ProductDao {
         }
     }
 
+    /**
+     * Updates the current bid and winner for an auction using optimistic locking.
+     * @param connection The database connection.
+     * @param auctionId The ID of the auction.
+     * @param newPrice The new bid amount.
+     * @param bidderAccountname The new winner's account name.
+     * @param oldVersion The current version for optimistic locking.
+     * @return True if successful.
+     * @throws SQLException If a database error occurs.
+     */
     public boolean updateBid(Connection connection, int auctionId, long newPrice,
                              String bidderAccountname, int oldVersion) throws SQLException {
         String sql = """
@@ -256,6 +362,15 @@ public class ProductDao {
         }
     }
 
+    /**
+     * Updates the current bid and winner for an auction without optimistic locking (assumes row lock).
+     * @param connection The database connection.
+     * @param auctionId The ID of the auction.
+     * @param newPrice The new bid amount.
+     * @param bidderAccountname The new winner's account name.
+     * @return True if successful.
+     * @throws SQLException If a database error occurs.
+     */
     public boolean updateBidLocked(Connection connection, int auctionId, long newPrice,
                                    String bidderAccountname) throws SQLException {
         String sql = """
@@ -271,6 +386,14 @@ public class ProductDao {
         }
     }
 
+    /**
+     * Updates the end time of an auction.
+     * @param connection The database connection.
+     * @param auctionId The ID of the auction.
+     * @param newEndTime The new end time.
+     * @return True if successful.
+     * @throws SQLException If a database error occurs.
+     */
     public boolean updateAuctionEndTime(Connection connection, int auctionId, Timestamp newEndTime)
             throws SQLException {
         String sql = "UPDATE auctions SET end_time = ? WHERE auction_id = ?";

@@ -13,9 +13,20 @@ public class Auction {
     private long bidAmount;
     private Timestamp bidTime;
 
+    /**
+     * Default constructor for Auction.
+     */
     public Auction() {
     }
 
+    /**
+     * Constructs an Auction with all fields.
+     * @param auctionId The unique auction ID.
+     * @param productId The ID of the product.
+     * @param bidderAccountname The account name of the bidder.
+     * @param bidAmount The amount of the bid.
+     * @param bidTime The timestamp when the bid was placed.
+     */
     public Auction(int auctionId, int productId, String bidderAccountname, long bidAmount, Timestamp bidTime) {
         this.auctionId = auctionId;
         this.productId = productId;

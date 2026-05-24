@@ -12,13 +12,28 @@ import org.example.util.JsonConverter;
 
 import java.nio.channels.SocketChannel;
 
+/**
+ * Command to handle user login and establish a session.
+ */
 public class LoginCommand implements Command {
     private final AuthController authController;
 
+    /**
+     * Constructs a LoginCommand with the specified AuthController.
+     *
+     * @param authController the controller for authentication operations
+     */
     public LoginCommand(AuthController authController) {
         this.authController = authController;
     }
 
+    /**
+     * Executes the login command.
+     *
+     * @param request the request containing LoginRequest
+     * @param channel the socket channel of the user
+     * @return the response indicating success or failure of the login
+     */
     @Override
     public Response<?> execute(Request request, SocketChannel channel) {
         LoginRequest loginReq = JsonConverter.convert(request.getPayload(), LoginRequest.class);

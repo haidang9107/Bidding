@@ -10,24 +10,30 @@ import org.example.model.user.User;
 import org.example.payload.Response;
 import org.example.server.service.user.admin.AdminService;
 import org.example.util.FileLogger;
-import org.example.util.JsonConverter;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * Controller for handling administrative tasks.
- * Refactored to delegate business logic to AdminService.
  */
 public class AdminController {
     private final AdminService adminService;
 
-    public AdminController() {
-        this.adminService = new AdminService();
+    /**
+     * Constructs an AdminController with the specified AdminService.
+     *
+     * @param adminService the admin service to use for administrative operations
+     */
+    public AdminController(AdminService adminService) {
+        this.adminService = adminService;
     }
 
     /**
-     * Retrieves users in the system with pagination.
+     * Handles the request to fetch a paged list of all users.
+     *
+     * @param pagReq the pagination request details
+     * @return a response containing the paged list of users
      */
     public Response<?> handleGetAllUsers(PaginationRequest pagReq) {
         try {
@@ -56,8 +62,9 @@ public class AdminController {
     }
 
     /**
-     * Bans or unbans a user.
-     * Expects an AdminUserControlRequest DTO.
+     * Updates a user's status (e.g., bans a user).
+     * @param request The control request containing target user and new status.
+     * @return A success or error response.
      */
     public Response<String> handleBanUser(AdminUserControlRequest request) {
         if (request == null) return new Response<>(MessageType.ERROR, false, "AdminUserControlRequest required", null);
@@ -66,7 +73,6 @@ public class AdminController {
             String accountname = request.getTargetAccountname();
             int status = request.getStatus();
 
-            // Delegate to Service
             boolean success = adminService.updateUserStatus(accountname, status);
             
             if (success) {
@@ -81,16 +87,16 @@ public class AdminController {
     }
 
     /**
-     * Cancels an ongoing auction.
-     * Expects an AuctionCancelRequest DTO.
+     * Handles the request to cancel an auction.
+     *
+     * @param request the auction cancel request details
+     * @return a response indicating the result of the cancellation
      */
     public Response<String> handleCancelAuction(AuctionCancelRequest request) {
         if (request == null) return new Response<>(MessageType.ERROR, false, "AuctionCancelRequest required", null);
 
         try {
             int auctionId = request.getAuctionId();
-            
-            // Delegate to Service
             boolean success = adminService.cancelAuction(auctionId);
             
             if (success) {

@@ -15,6 +15,10 @@ import java.sql.SQLException;
  */
 public class DisconnectionHandler {
 
+    /**
+     * Handles the business logic for a client disconnection.
+     * @param channel The socket channel that was disconnected.
+     */
     public static void handle(SocketChannel channel) {
         User user = SessionManager.getUser(channel);
         if (user == null) {

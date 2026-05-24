@@ -18,12 +18,20 @@ import java.util.stream.Collectors;
 public class ProductController {
     private final ProductService productService;
 
+    /**
+     * Constructs a ProductController with the specified ProductService.
+     *
+     * @param productService the product service to use for product operations
+     */
     public ProductController(ProductService productService) {
         this.productService = productService;
     }
 
     /**
      * Handles retrieving a paginated list of products.
+     *
+     * @param pagReq the pagination request details
+     * @return a response containing the paged list of products
      */
     public Response<?> handleGetAllAuctions(PaginationRequest pagReq) {
         if (pagReq == null) {
@@ -46,6 +54,13 @@ public class ProductController {
         return new Response<>(MessageType.PRODUCT_LIST, true, "Auctions fetched successfully", finalResponse);
     }
 
+    /**
+     * Handles retrieving the details of a specific auction.
+     *
+     * @param productId the ID of the product/auction
+     * @return a response containing the product details
+     * @throws NotFoundException if the product is not found
+     */
     public Response<ProductResponse> handleGetAuctionDetail(Integer productId) {
         Item item = productService.getAuctionById(productId);
         if (item == null) {
@@ -54,6 +69,12 @@ public class ProductController {
         return new Response<>(MessageType.PRODUCT_DETAIL, true, "Product found", new ProductResponse(item));
     }
 
+    /**
+     * Handles the creation of a new auction.
+     * @param addReq The request containing product details.
+     * @param sellerAccount The account name of the seller.
+     * @return A success response.
+     */
     public Response<String> handleCreateAuction(ProductAddRequest addReq, String sellerAccount) {
         productService.createAuction(addReq, sellerAccount);
         return new Response<>(MessageType.SUCCESS, true, "Product added successfully", null);

@@ -16,10 +16,19 @@ public enum AuctionStatus {
         this.value = value;
     }
 
+    /**
+     * Gets the integer value of the status.
+     * @return The integer value.
+     */
     public int getValue() {
         return value;
     }
 
+    /**
+     * Maps an integer to an AuctionStatus.
+     * @param value The integer value.
+     * @return The corresponding AuctionStatus, or OPEN if not found.
+     */
     public static AuctionStatus fromInt(int value) {
         for (AuctionStatus status : AuctionStatus.values()) {
             if (status.value == value) {

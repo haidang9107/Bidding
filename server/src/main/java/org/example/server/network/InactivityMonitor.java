@@ -14,15 +14,25 @@ public class InactivityMonitor {
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private final long timeoutMillis;
 
+    /**
+     * Constructs an InactivityMonitor with specified timeout.
+     * @param timeoutSeconds the inactivity timeout in seconds
+     */
     public InactivityMonitor(long timeoutSeconds) {
         this.timeoutMillis = timeoutSeconds * 1000;
     }
 
+    /**
+     * Starts the inactivity monitoring task.
+     */
     public void start() {
         scheduler.scheduleAtFixedRate(this::checkInactivity, 10, 10, TimeUnit.SECONDS);
         FileLogger.info("InactivityMonitor started with timeout: " + (timeoutMillis / 1000) + "s");
     }
 
+    /**
+     * Stops the inactivity monitoring task.
+     */
     public void stop() {
         scheduler.shutdown();
         try {
@@ -34,6 +44,9 @@ public class InactivityMonitor {
         }
     }
 
+    /**
+     * Checks all heartbeat timestamps and disconnects inactive channels.
+     */
     private void checkInactivity() {
         long now = System.currentTimeMillis();
         Map<SocketChannel, Long> lastActiveTimes = HeartbeatRegistry.getAll();

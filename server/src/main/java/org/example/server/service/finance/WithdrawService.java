@@ -1,65 +1,57 @@
 package org.example.server.service.finance;
 
 import org.example.dto.response.BalanceResponse;
-import org.example.model.user.User;
 import org.example.model.user.Member;
+import org.example.model.user.User;
 import org.example.server.exception.FinanceException;
-import org.example.server.exception.NotFoundException;
-import org.example.server.repository.DatabaseManager;
-import org.example.server.repository.TransactionDao;
+import org.example.server.repository.TransactionManager;
 import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-
 /**
- * Service for handling withdrawal operations.
+ * Service for handling fund withdrawals.
  */
 public class WithdrawService {
     private final UserDao userDao;
-    private final TransactionDao transactionDao;
+    private final TransactionManager txManager;
 
-    public WithdrawService() {
+    /**
+     * Constructs a WithdrawService with dependencies.
+     * @param txManager The transaction manager.
+     */
+    public WithdrawService(TransactionManager txManager) {
         this.userDao = new UserDao();
-        this.transactionDao = new TransactionDao();
+        this.txManager = txManager;
     }
 
+    /**
+     * Withdraws an amount from a user's account.
+     * @param accountname The account name.
+     * @param amount The amount to withdraw.
+     * @return The updated balance.
+     */
     public BalanceResponse withdraw(String accountname, long amount) {
-        if (amount <= 0) throw new FinanceException("Amount must be greater than 0");
+        if (amount <= 0) throw new FinanceException("Withdraw amount must be positive");
 
-        try (Connection connection = DatabaseManager.getConnection()) {
-            try {
-                connection.setAutoCommit(false);
-                
-                User user = userDao.findByAccountnameForUpdate(connection, accountname);
-                if (user == null) {
-                    throw new NotFoundException("User not found");
-                }
-                if (!(user instanceof Member member)) {
-                    throw new FinanceException("Only members can withdraw funds");
-                }
+        return txManager.execute(conn -> {
+            User user = userDao.findByAccountnameForUpdate(conn, accountname);
+            if (user == null) throw new FinanceException("User not found");
+            if (!(user instanceof Member member)) throw new FinanceException("User is not a member");
 
-                long availableBalance = member.getBalance() - member.getBlockedBalance();
-                if (availableBalance < amount) {
-                    throw new FinanceException("Insufficient balance. Available: " + availableBalance, "FINANCE_ERROR");
-                }
-
-                userDao.addBalance(connection, accountname, -amount);
-                transactionDao.insertTransaction(connection, accountname, null, 1, null,
-                        amount, null, "Withdraw");
-                
-                connection.commit();
-                FileLogger.info("User " + accountname + " withdrew " + amount);
-                
-                return new BalanceResponse(accountname, member.getBalance() - amount, member.getBlockedBalance());
-            } catch (SQLException e) {
-                try { connection.rollback(); } catch (SQLException ex) { /* Ignore */ }
-                throw new FinanceException("Database error during withdrawal: " + e.getMessage());
+            long available = member.getBalance() - member.getBlockedBalance();
+            if (available < amount) {
+                throw new FinanceException("Insufficient funds. Available: " + available);
             }
-        } catch (SQLException e) {
-            FileLogger.error("Withdrawal error for user " + accountname, e);
-            throw new FinanceException("Internal server error during withdrawal");
-        }
+
+            boolean success = userDao.addBalance(conn, accountname, -amount);
+            if (success) {
+                User updatedUser = userDao.findByAccountname(conn, accountname);
+                if (updatedUser instanceof Member updatedMember) {
+                    FileLogger.info("Withdraw SUCCESS: User " + accountname + ", Amount " + amount);
+                    return new BalanceResponse(accountname, updatedMember.getBalance(), updatedMember.getBlockedBalance());
+                }
+            }
+            throw new FinanceException("Withdraw failed.");
+        });
     }
 }
