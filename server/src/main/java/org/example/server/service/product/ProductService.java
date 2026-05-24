@@ -123,6 +123,7 @@ public class ProductService {
 
             boolean success = productDao.updateStatus(conn, auctionId, AuctionStatus.FINISHED);
             if (success && winner != null) {
+                userDao.addBalance(conn, winner, -finalPrice);
                 userDao.addBlockedBalance(conn, winner, -finalPrice);
                 userDao.addBalance(conn, seller, finalPrice);
                 productDao.updateProductOwner(conn, item.getProductId(), winner);
@@ -188,7 +189,7 @@ public class ProductService {
             );
 
             item.setSellerAccountname(sellerAccount);
-            item.setStatus(AuctionStatus.RUNNING);
+            item.setStatus(AuctionStatus.OPEN);
             item.setCurrentPrice(item.getStartingPrice());
             item.setStepPrice(Math.max(1, item.getStartingPrice() / 10));
 
@@ -200,9 +201,13 @@ public class ProductService {
             }
 
             if (productDao.insertProduct(conn, item)) {
-                // Lập lịch kết thúc chính xác cho phiên vừa tạo
+                // Lập lịch bắt đầu hoặc kết thúc chính xác cho phiên vừa tạo
                 if (auctionMonitor != null) {
-                    auctionMonitor.scheduleAuctionEnd(item.getAuctionId(), item.getEndTime());
+                    if (item.getStatus() == AuctionStatus.OPEN) {
+                        auctionMonitor.scheduleAuctionStart(item.getAuctionId(), item.getStartTime());
+                    } else if (item.getStatus() == AuctionStatus.RUNNING) {
+                        auctionMonitor.scheduleAuctionEnd(item.getAuctionId(), item.getEndTime());
+                    }
                 }
                 eventPublisher.publish(new ProductCreatedEvent(item.getAuctionId()));
             } else {

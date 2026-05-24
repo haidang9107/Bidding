@@ -86,6 +86,24 @@ public class AuctionMonitor {
         scheduledTasks.put(auctionId, future);
     }
 
+    /**
+     * Lập lịch bắt đầu chính xác cho một phiên đấu giá.
+     * @param auctionId ID phiên đấu giá.
+     * @param startTime Thời điểm bắt đầu chính xác của phiên.
+     */
+    public void scheduleAuctionStart(int auctionId, Timestamp startTime) {
+        long delay = startTime.getTime() - System.currentTimeMillis();
+        if (delay < 0) delay = 0;
+
+        scheduler.schedule(() -> {
+            try {
+                productService.startAuction(auctionId);
+            } catch (Exception e) {
+                FileLogger.error("Failed to process scheduled start for Auction " + auctionId, e);
+            }
+        }, delay, TimeUnit.MILLISECONDS);
+    }
+
     private void cancelTask(int auctionId) {
         ScheduledFuture<?> future = scheduledTasks.remove(auctionId);
         if (future != null && !future.isDone()) {

@@ -82,7 +82,9 @@ public class AdminService {
     public boolean cancelAuction(int auctionId) {
         return txManager.execute(conn -> {
             Item item = productDao.getAuctionForUpdate(conn, auctionId);
-            if (item == null) return false;
+            if (item == null || item.getStatus() == AuctionStatus.FINISHED || item.getStatus() == AuctionStatus.CANCELED) {
+                return false;
+            }
 
             boolean success = productDao.updateStatus(conn, auctionId, AuctionStatus.CANCELED);
             if (success) {

@@ -74,6 +74,12 @@ public class NetworkNotificationListener {
                     new AuctionEndNotify(e.auctionId(), e.winnerAccountname(),
                             e.finalPrice(), e.itemName(),
                             item != null ? new ProductResponse(item) : null)));
+        } else {
+            Broadcaster.broadcastToAuction(e.auctionId(), new Response<>(
+                    MessageType.AUCTION_END, true,
+                    "Auction for '" + e.itemName() + "' has ended with no winner.",
+                    new AuctionEndNotify(e.auctionId(), null,
+                            e.finalPrice(), e.itemName(), null)));
         }
     }
 

@@ -133,10 +133,10 @@ public class BidService {
                     + ") must be at least the auction step price (" + item.getStepPrice() + ")");
             }
 
-            long availableBalance = member.getBalance() - member.getBlockedBalance();
-            if (availableBalance < minimumNextBid
-                    && !bidderAccountname.equals(item.getWinnerAccountname())) {
-                throw new FinanceException("Insufficient balance. Available: " + availableBalance);
+            long currentBidAmount = bidderAccountname.equals(item.getWinnerAccountname()) ? item.getCurrentPrice() : 0;
+            long totalAvailable = member.getBalance() - (member.getBlockedBalance() - currentBidAmount);
+            if (totalAvailable < minimumNextBid) {
+                throw new FinanceException("Insufficient balance. Available: " + totalAvailable);
             }
 
             autoBidDao.upsertAutoBid(connection, auctionId, bidderAccountname, maxBid, incrementAmount);
