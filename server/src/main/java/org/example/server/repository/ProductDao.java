@@ -198,6 +198,19 @@ public class ProductDao {
         return products;
     }
 
+    public List<Item> getUpcomingProducts(Connection connection) throws SQLException {
+        List<Item> products = new ArrayList<>();
+        String sql = AUCTION_VIEW_SQL + " WHERE a.status = 0 AND a.start_time <= CURRENT_TIMESTAMP";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                products.add(ResultSetMapper.mapToItem(rs));
+            }
+        }
+        return products;
+    }
+
     public boolean updateStatus(Connection connection, int auctionId, AuctionStatus status) throws SQLException {
         String sql = "UPDATE auctions SET status = ? WHERE auction_id = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {

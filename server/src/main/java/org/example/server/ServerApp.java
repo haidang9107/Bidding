@@ -34,7 +34,7 @@ public class ServerApp {
         }
     }
 
-    private static void bootstrap() {
+    private static void bootstrap() throws Exception {
         FileLogger.info("Starting Bidding Server Bootstrap Sequence...");
 
         // 0. Initialize Database

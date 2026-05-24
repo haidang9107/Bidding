@@ -21,9 +21,12 @@ public class AuctionMonitor {
     public void start() {
         FileLogger.info("AuctionMonitor started: Checking for expired auctions every 5 seconds.");
         
-        // Check every 5 seconds
+        // Check every 5 seconds for expired or starting auctions
         scheduler.scheduleAtFixedRate(
-            productService::processExpiredAuctions,
+            () -> {
+                productService.processUpcomingAuctions();
+                productService.processExpiredAuctions();
+            },
             5, 5, TimeUnit.SECONDS
         );
     }

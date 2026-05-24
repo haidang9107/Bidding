@@ -52,7 +52,7 @@ public class CommandHandler implements Runnable {
             FileLogger.warn("Application error handling command: " + e.getMessage() + " [" + e.getErrorCode() + "]");
             sendResponse(new Response<>(MessageType.ERROR, false, e.getMessage(), new ErrorDetail(e.getErrorCode(), e.getMessage())));
         } catch (Exception e) {
-            FileLogger.error("Critical error handling command: " + message, e);
+            FileLogger.error("Critical error handling command: " + JsonConverter.maskSensitiveData(message), e);
             sendResponse(new Response<>(MessageType.ERROR, false, "Internal Server Error", new ErrorDetail("INTERNAL_SERVER_ERROR", e.getMessage())));
         }
     }
@@ -91,7 +91,7 @@ public class CommandHandler implements Runnable {
         synchronized (clientChannel) {
             try {
                 String json = JsonConverter.toJson(response);
-                FileLogger.info("<<< OUTGOING to " + clientChannel.getRemoteAddress() + ": " + json);
+                FileLogger.info("<<< OUTGOING to " + clientChannel.getRemoteAddress() + ": " + JsonConverter.maskSensitiveData(json));
 
                 String messageWithNewline = json + "\n";
                 ByteBuffer buffer = ByteBuffer.wrap(messageWithNewline.getBytes(StandardCharsets.UTF_8));

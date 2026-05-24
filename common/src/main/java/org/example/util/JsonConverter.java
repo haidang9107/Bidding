@@ -62,4 +62,12 @@ public class JsonConverter {
         if (to.isInstance(from)) return to.cast(from);
         return gson.fromJson(gson.toJsonTree(from), to);
     }
+
+    /**
+     * Masks sensitive fields like 'password' in JSON strings for safe logging.
+     */
+    public static String maskSensitiveData(String json) {
+        if (json == null) return null;
+        return json.replaceAll("(\"password\"\\s*:\\s*\")[^\"]*(\")", "$1***$2");
+    }
 }

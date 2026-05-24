@@ -15,6 +15,7 @@ import org.example.server.exception.ValidationException;
 import org.example.server.network.Broadcaster;
 import org.example.server.repository.DatabaseManager;
 import org.example.server.repository.ProductDao;
+import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
 
 import java.sql.Connection;
@@ -27,9 +28,11 @@ import java.util.List;
  */
 public class ProductService {
     private final ProductDao productDao;
+    private final UserDao userDao;
 
     public ProductService() {
         this.productDao = new ProductDao();
+        this.userDao = new UserDao();
     }
 
     /**
@@ -46,6 +49,45 @@ public class ProductService {
         }
     }
 
+    /**
+     * Periodically called by AuctionMonitor to start scheduled auctions.
+     */
+    public void processUpcomingAuctions() {
+        try (Connection conn = DatabaseManager.getConnection()) {
+            List<Item> upcomingItems = productDao.getUpcomingProducts(conn);
+            for (Item item : upcomingItems) {
+                startAuction(item.getAuctionId());
+            }
+        } catch (SQLException e) {
+            FileLogger.error("Error processing upcoming auctions", e);
+        }
+    }
+
+    public void startAuction(int auctionId) {
+        try (Connection conn = DatabaseManager.getConnection()) {
+            conn.setAutoCommit(false);
+            Item item = productDao.getAuctionForUpdate(conn, auctionId);
+            if (item == null || item.getStatus() != AuctionStatus.OPEN) {
+                conn.rollback();
+                return;
+            }
+
+            boolean success = productDao.updateStatus(conn, auctionId, AuctionStatus.RUNNING);
+            if (success) {
+                conn.commit();
+                FileLogger.info("Auction STARTED: Auction ID " + auctionId);
+                Response<String> notification = new Response<>(
+                    MessageType.AUCTION_START, true, "Auction '" + item.getName() + "' has started!", null
+                );
+                Broadcaster.broadcastToAuction(auctionId, notification);
+            } else {
+                conn.rollback();
+            }
+        } catch (SQLException e) {
+            FileLogger.error("Error starting auction: " + auctionId, e);
+        }
+    }
+
     public void finishAuction(int auctionId) {
         try (Connection conn = DatabaseManager.getConnection()) {
             conn.setAutoCommit(false);
@@ -57,9 +99,17 @@ public class ProductService {
             }
 
             String winner = latestItem.getWinnerAccountname();
+            String seller = latestItem.getSellerAccountname();
+            long finalPrice = latestItem.getCurrentPrice();
+
             boolean success = productDao.updateStatus(conn, auctionId, AuctionStatus.FINISHED);
             
-            if (winner != null) {
+            if (success && winner != null) {
+                // Deduct from winner's blocked balance
+                userDao.addBlockedBalance(conn, winner, -finalPrice);
+                // Add to seller's balance
+                userDao.addBalance(conn, seller, finalPrice);
+                
                 productDao.updateProductOwner(conn, latestItem.getProductId(), winner);
             }
 
@@ -130,12 +180,10 @@ public class ProductService {
         try (Connection conn = DatabaseManager.getConnection()) {
             conn.setAutoCommit(false);
 
-            Item item = switch (addReq.getCategory()) {
-                case ELECTRONICS -> org.example.util.JsonConverter.fromJson(org.example.util.JsonConverter.toJson(addReq), org.example.model.product.Electronics.class);
-                case ART -> org.example.util.JsonConverter.fromJson(org.example.util.JsonConverter.toJson(addReq), org.example.model.product.Art.class);
-                case VEHICLE -> org.example.util.JsonConverter.fromJson(org.example.util.JsonConverter.toJson(addReq), org.example.model.product.Vehicle.class);
-                case OTHER -> org.example.util.JsonConverter.fromJson(org.example.util.JsonConverter.toJson(addReq), org.example.model.product.OtherItem.class);
-            };
+            Item item = org.example.model.product.ItemFactory.createItem(
+                addReq.getCategory(), 
+                org.example.util.JsonConverter.toJson(addReq)
+            );
 
             item.setSellerAccountname(sellerAccount);
             item.setStatus(AuctionStatus.RUNNING);
