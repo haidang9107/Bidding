@@ -13,6 +13,7 @@ import org.example.server.service.bid.BidService;
 import org.example.server.service.finance.DepositService;
 import org.example.server.service.finance.TransferService;
 import org.example.server.service.finance.WithdrawService;
+import org.example.server.service.finance.TransactionService;
 import org.example.server.service.product.ProductService;
 import org.example.server.service.user.UserService;
 import org.example.server.service.user.admin.AdminService;
@@ -59,6 +60,7 @@ public class ServerApp {
         DepositService depositService = new DepositService(txManager);
         WithdrawService withdrawService = new WithdrawService(txManager);
         TransferService transferService = new TransferService(txManager);
+        TransactionService transactionService = new TransactionService(txManager);
 
         // 4. Network notification wiring
         NetworkNotificationListener notifListener = new NetworkNotificationListener(productService);
@@ -70,7 +72,7 @@ public class ServerApp {
         BidController bidController = new BidController(bidService);
         AdminController adminController = new AdminController(adminService);
         UserController userController = new UserController(userService);
-        FinanceController financeController = new FinanceController(depositService, withdrawService, transferService);
+        FinanceController financeController = new FinanceController(depositService, withdrawService, transferService, transactionService);
 
         // 6. Command Registry
         CommandRegistry registry = new CommandRegistry();
@@ -143,5 +145,6 @@ public class ServerApp {
         registry.register(MessageType.DEPOSIT,  new DepositCommand(finance));
         registry.register(MessageType.WITHDRAW, new WithdrawCommand(finance));
         registry.register(MessageType.TRANSFER, new TransferCommand(finance));
+        registry.register(MessageType.TRANSACTION_HISTORY, new TransactionHistoryCommand(finance));
     }
 }

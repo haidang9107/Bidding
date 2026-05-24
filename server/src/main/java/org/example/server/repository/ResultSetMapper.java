@@ -3,8 +3,10 @@ package org.example.server.repository;
 import org.example.model.Auction;
 import org.example.model.AutoBid;
 import org.example.model.Bid;
+import org.example.model.Transaction;
 import org.example.model.enums.AuctionStatus;
 import org.example.model.enums.ItemCategory;
+import org.example.model.enums.TransactionType;
 import org.example.model.enums.UserRole;
 import org.example.model.product.*;
 import org.example.model.user.Admin;
@@ -151,6 +153,29 @@ public class ResultSetMapper {
                 rs.getBoolean("active"),
                 rs.getTimestamp("created_at"),
                 rs.getTimestamp("updated_at")
+        );
+    }
+
+    /**
+     * Maps a ResultSet row to a Transaction object.
+     * @param rs The ResultSet.
+     * @return The mapped Transaction object.
+     * @throws SQLException If a database error occurs.
+     */
+    public static Transaction mapToTransaction(ResultSet rs) throws SQLException {
+        int productId = rs.getInt("product_id");
+        int referenceId = rs.getInt("reference_id");
+        
+        return new Transaction(
+                rs.getInt("transaction_id"),
+                rs.getString("sender_accountname"),
+                rs.getString("receiver_accountname"),
+                TransactionType.fromInt(rs.getInt("type")),
+                rs.wasNull() ? null : productId,
+                rs.getLong("amount"),
+                rs.wasNull() ? null : referenceId,
+                rs.getString("description"),
+                rs.getTimestamp("created_at")
         );
     }
 }

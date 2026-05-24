@@ -51,6 +51,8 @@ public enum MessageType {
     WITHDRAW,
     /** Finance Actions: Transfer money between users */
     TRANSFER,
+    /** Finance Actions: Get transaction history */
+    TRANSACTION_HISTORY,
     
     /** Real-time Notifications: Server sends remaining time for an auction */
     TIMER_TICK,

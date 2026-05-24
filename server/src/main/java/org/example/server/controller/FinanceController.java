@@ -2,11 +2,15 @@ package org.example.server.controller;
 
 import org.example.dto.response.BalanceResponse;
 import org.example.dto.request.TransferRequest;
+import org.example.model.Transaction;
 import org.example.model.enums.MessageType;
 import org.example.payload.Response;
 import org.example.server.service.finance.DepositService;
 import org.example.server.service.finance.TransferService;
 import org.example.server.service.finance.WithdrawService;
+import org.example.server.service.finance.TransactionService;
+
+import java.util.List;
 
 /**
  * Controller for handling financial operations.
@@ -15,6 +19,7 @@ public class FinanceController {
     private final DepositService depositService;
     private final WithdrawService withdrawService;
     private final TransferService transferService;
+    private final TransactionService transactionService;
 
     /**
      * Constructs a FinanceController with the specified services.
@@ -22,11 +27,14 @@ public class FinanceController {
      * @param depositService the service for deposits
      * @param withdrawService the service for withdrawals
      * @param transferService the service for transfers
+     * @param transactionService the service for transactions
      */
-    public FinanceController(DepositService depositService, WithdrawService withdrawService, TransferService transferService) {
+    public FinanceController(DepositService depositService, WithdrawService withdrawService, 
+                             TransferService transferService, TransactionService transactionService) {
         this.depositService = depositService;
         this.withdrawService = withdrawService;
         this.transferService = transferService;
+        this.transactionService = transactionService;
     }
 
     /**
@@ -62,5 +70,15 @@ public class FinanceController {
     public Response<BalanceResponse> handleTransfer(String fromAccount, TransferRequest transferReq) {
         BalanceResponse result = transferService.transfer(fromAccount, transferReq.getToAccountname(), transferReq.getAmount());
         return new Response<>(MessageType.TRANSFER, true, "Transfer successful", result);
+    }
+
+    /**
+     * Handles retrieving the transaction history for a user.
+     * @param accountname The user's account name.
+     * @return A response containing the list of transactions.
+     */
+    public Response<List<Transaction>> handleGetTransactions(String accountname) {
+        List<Transaction> transactions = transactionService.getTransactions(accountname);
+        return new Response<>(MessageType.TRANSACTION_HISTORY, true, "Transactions retrieved successfully", transactions);
     }
 }

@@ -3,7 +3,9 @@ package org.example.server.service.finance;
 import org.example.dto.response.BalanceResponse;
 import org.example.model.user.Member;
 import org.example.model.user.User;
+import org.example.model.enums.TransactionType;
 import org.example.server.exception.FinanceException;
+import org.example.server.repository.TransactionDao;
 import org.example.server.repository.TransactionManager;
 import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
@@ -13,6 +15,7 @@ import org.example.util.FileLogger;
  */
 public class TransferService {
     private final UserDao userDao;
+    private final TransactionDao transactionDao;
     private final TransactionManager txManager;
 
     /**
@@ -21,6 +24,7 @@ public class TransferService {
      */
     public TransferService(TransactionManager txManager) {
         this.userDao = new UserDao();
+        this.transactionDao = new TransactionDao();
         this.txManager = txManager;
     }
 
@@ -60,6 +64,9 @@ public class TransferService {
 
             if (!userDao.addBalance(conn, fromAccount, -amount)) throw new FinanceException("Debit failed");
             if (!userDao.addBalance(conn, toAccount, amount)) throw new FinanceException("Credit failed");
+
+            transactionDao.insertTransaction(conn, fromAccount, toAccount, 
+                    TransactionType.TRANSFER, null, amount, null, "Transfer to " + toAccount);
 
             User updatedFromUser = userDao.findByAccountname(conn, fromAccount);
             if (updatedFromUser instanceof Member updatedFromMember) {

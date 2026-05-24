@@ -3,6 +3,7 @@ package org.example.server.service.product;
 import org.example.dto.response.PagedResponse;
 import org.example.dto.request.ProductAddRequest;
 import org.example.model.enums.AuctionStatus;
+import org.example.model.enums.TransactionType;
 import org.example.model.product.Item;
 import org.example.server.event.AuctionEndedEvent;
 import org.example.server.event.AuctionStartedEvent;
@@ -11,6 +12,7 @@ import org.example.server.event.ProductCreatedEvent;
 import org.example.server.exception.AuctionException;
 import org.example.server.exception.ValidationException;
 import org.example.server.repository.ProductDao;
+import org.example.server.repository.TransactionDao;
 import org.example.server.repository.TransactionManager;
 import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
@@ -25,6 +27,7 @@ import java.util.List;
 public class ProductService {
     private final ProductDao productDao;
     private final UserDao userDao;
+    private final TransactionDao transactionDao;
     private final TransactionManager txManager;
     private final EventPublisher eventPublisher;
 
@@ -36,6 +39,7 @@ public class ProductService {
     public ProductService(TransactionManager txManager, EventPublisher eventPublisher) {
         this.productDao = new ProductDao();
         this.userDao = new UserDao();
+        this.transactionDao = new TransactionDao();
         this.txManager = txManager;
         this.eventPublisher = eventPublisher;
     }
@@ -91,6 +95,10 @@ public class ProductService {
                 userDao.addBlockedBalance(conn, winner, -finalPrice);
                 userDao.addBalance(conn, seller, finalPrice);
                 productDao.updateProductOwner(conn, item.getProductId(), winner);
+                
+                transactionDao.insertTransaction(conn, winner, seller, 
+                        TransactionType.AUCTION_PAYMENT, item.getProductId(), finalPrice, 
+                        auctionId, "Payment for auction win: " + item.getName());
             }
 
             if (success) {
