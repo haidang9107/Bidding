@@ -1,0 +1,343 @@
+/* ==================================================
+   Auction marketplace ("Sàn đấu giá") screen
+   ================================================== */
+
+.list-root {
+    -fx-background-color: linear-gradient(to bottom right, #1a1a2e, #16213e);
+}
+
+/* === Top bar === */
+.topbar {
+    -fx-background-color: #14142b;
+    -fx-border-color: transparent transparent #2a2a3e transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.title-label {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.user-label {
+    -fx-text-fill: #c0c0d0;
+    -fx-font-size: 13px;
+}
+
+.search-field {
+    -fx-background-color: #2a2a3e;
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #7a7a90;
+    -fx-padding: 8 14;
+    -fx-background-radius: 20;
+    -fx-font-size: 13px;
+    -fx-min-width: 320;
+    -fx-max-width: 480;
+}
+
+.search-field:focused {
+    -fx-border-color: #5a8dee;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 20;
+}
+
+.ghost-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #c0c0d0;
+    -fx-border-color: #3a3a4e;
+    -fx-border-radius: 6;
+    -fx-padding: 8 14;
+    -fx-cursor: hand;
+}
+
+.ghost-btn:hover {
+    -fx-background-color: #2a2a3e;
+    -fx-text-fill: white;
+}
+
+.avatar-btn {
+    -fx-background-color: linear-gradient(to bottom right, #5a8dee, #2c6ad6);
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-background-radius: 18;
+    -fx-min-width: 38;
+    -fx-min-height: 38;
+    -fx-max-width: 38;
+    -fx-max-height: 38;
+    -fx-cursor: hand;
+    -fx-padding: 0;
+}
+
+.avatar-btn:hover {
+    -fx-background-color: linear-gradient(to bottom right, #6e9bf2, #3a78dc);
+}
+
+/* === Sidebar === */
+.sidebar {
+    -fx-background-color: #14142b;
+    -fx-min-width: 220;
+    -fx-pref-width: 230;
+}
+
+.sidebar-title {
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.category-box {
+    -fx-background-color: transparent;
+}
+
+.category-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #c0c0d0;
+    -fx-padding: 10 14;
+    -fx-font-size: 13px;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-alignment: CENTER_LEFT;
+    -fx-graphic-text-gap: 8;
+}
+
+.category-btn:hover {
+    -fx-background-color: #1f1f3a;
+    -fx-text-fill: white;
+}
+
+.category-btn-selected,
+.category-btn-selected:hover {
+    -fx-background-color: linear-gradient(to right, #2c6ad6, #5a8dee);
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.tip-card {
+    -fx-background-color: #1f1f33;
+    -fx-background-radius: 10;
+}
+
+.muted-label {
+    -fx-text-fill: #8a8aa0;
+    -fx-font-size: 12px;
+    -fx-wrap-text: true;
+}
+
+.section-title {
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+/* === Tabs === */
+.auction-tabs {
+    -fx-background-color: transparent;
+    -fx-tab-min-height: 36;
+}
+
+.auction-tabs .tab-header-background {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #2a2a3e transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.auction-tabs .tab {
+    -fx-background-color: transparent;
+    -fx-background-radius: 8 8 0 0;
+    -fx-padding: 4 16;
+}
+
+.auction-tabs .tab:selected {
+    -fx-background-color: #1f1f3a;
+}
+
+.auction-tabs .tab .tab-label {
+    -fx-text-fill: #8a8aa0;
+    -fx-font-size: 13px;
+}
+
+.auction-tabs .tab:selected .tab-label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.auction-tabs .tab:hover .tab-label {
+    -fx-text-fill: white;
+}
+
+.grid-scroll {
+    -fx-background: transparent;
+    -fx-background-color: transparent;
+}
+
+.grid-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.product-grid {
+    -fx-background-color: transparent;
+}
+
+/* === Product card === */
+.product-card {
+    -fx-background-color: #1f1f33;
+    -fx-background-radius: 12;
+    -fx-border-color: #2a2a3e;
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 4, 0, 0, 1);
+}
+
+.product-card:hover {
+    -fx-border-color: #5a8dee;
+    -fx-effect: dropshadow(gaussian, rgba(90,141,238,0.4), 10, 0, 0, 3);
+}
+
+.product-image-box {
+    -fx-background-radius: 12 12 0 0;
+}
+
+.product-image-bg {
+    -fx-background-color: linear-gradient(to bottom right, #2c2c54, #474787);
+    -fx-background-radius: 12 12 0 0;
+}
+
+.heart-toggle {
+    -fx-background-color: rgba(255,255,255,0.85);
+    -fx-text-fill: #ff4d6d;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 14;
+    -fx-min-width: 28;
+    -fx-min-height: 28;
+    -fx-max-width: 28;
+    -fx-max-height: 28;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+}
+
+.heart-toggle:hover {
+    -fx-background-color: white;
+}
+
+.product-name {
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.price-label {
+    -fx-text-fill: #67e8b1;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.category-badge {
+    -fx-background-color: #2a4a6e;
+    -fx-text-fill: #b6d4ff;
+    -fx-padding: 2 8;
+    -fx-background-radius: 10;
+    -fx-font-size: 10px;
+}
+
+.status-badge {
+    -fx-background-color: #3a3a4e;
+    -fx-text-fill: #c0c0d0;
+    -fx-padding: 2 8;
+    -fx-background-radius: 10;
+    -fx-font-size: 10px;
+}
+
+.status-running { -fx-background-color: #2eb277; -fx-text-fill: white; }
+.status-open    { -fx-background-color: #5a8dee; -fx-text-fill: white; }
+.status-finished{ -fx-background-color: #6c6c80; -fx-text-fill: white; }
+.status-canceled{ -fx-background-color: #b25a5a; -fx-text-fill: white; }
+.status-paid    { -fx-background-color: #9b6cff; -fx-text-fill: white; }
+
+.card-detail-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #c0c0d0;
+    -fx-border-color: #3a3a4e;
+    -fx-border-radius: 6;
+    -fx-padding: 6 10;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+
+.card-detail-btn:hover {
+    -fx-background-color: #2a2a3e;
+    -fx-text-fill: white;
+}
+
+.card-join-btn {
+    -fx-background-color: #5a8dee;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 6 10;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+
+.card-join-btn:hover {
+    -fx-background-color: #4a7dde;
+}
+
+/* === My-bids tab rows === */
+.mybid-row {
+    -fx-background-color: #1f1f33;
+    -fx-background-radius: 10;
+    -fx-border-color: #2a2a3e;
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+}
+
+.mybid-name {
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.mybid-price {
+    -fx-text-fill: #d0d0e0;
+    -fx-font-size: 12px;
+}
+
+.mybid-status-winning { -fx-background-color: #2eb277; -fx-text-fill: white; }
+.mybid-status-outbid  { -fx-background-color: #b25a5a; -fx-text-fill: white; }
+.mybid-status-won     { -fx-background-color: #9b6cff; -fx-text-fill: white; }
+.mybid-status-lost    { -fx-background-color: #6c6c80; -fx-text-fill: white; }
+.mybid-status-pending { -fx-background-color: #5a8dee; -fx-text-fill: white; }
+
+.primary-btn {
+    -fx-background-color: #5a8dee;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 6 14;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.primary-btn:hover {
+    -fx-background-color: #4a7dde;
+}
+
+.secondary-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #c0c0d0;
+    -fx-border-color: #3a3a4e;
+    -fx-border-radius: 6;
+    -fx-padding: 6 14;
+    -fx-cursor: hand;
+}
+
+.secondary-btn:hover {
+    -fx-background-color: #2a2a3e;
+    -fx-text-fill: white;
+}
+
+.list-root > Label {
+    -fx-text-fill: #c0c0d0;
+}
