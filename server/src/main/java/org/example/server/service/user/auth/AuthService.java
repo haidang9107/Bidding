@@ -89,7 +89,7 @@ public class AuthService {
         return switch (type) {
             case ADMIN_GET_ALL_USERS, ADMIN_BAN_USER, ADMIN_CANCEL_AUCTION -> 
                 user.getRole() == org.example.model.enums.UserRole.ADMIN;
-            case BID_PLACE, AUTO_BID_SET, AUTO_BID_CANCEL, PRODUCT_ADD, DEPOSIT, WITHDRAW, TRANSFER,
+            case BID_PLACE, AUTO_BID_SET, AUTO_BID_CANCEL, BID_HISTORY, PRODUCT_ADD, DEPOSIT, WITHDRAW, TRANSFER,
                  JOIN_AUCTION_ROOM, LEAVE_AUCTION_ROOM -> 
                 user.getRole() == org.example.model.enums.UserRole.MEMBER;
             default -> true; 

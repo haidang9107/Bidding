@@ -145,6 +145,7 @@ public class ServerApp {
         registry.register(MessageType.BID_PLACE,      new BidPlaceCommand(bid));
         registry.register(MessageType.AUTO_BID_SET,   new AutoBidSetCommand(bid));
         registry.register(MessageType.AUTO_BID_CANCEL, new AutoBidCancelCommand(bid));
+        registry.register(MessageType.BID_HISTORY,    new BidHistoryCommand(bid));
 
         // User & Admin
         registry.register(MessageType.GET_PROFILE,        new GetProfileCommand(user));

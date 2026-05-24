@@ -1,8 +1,11 @@
 package org.example.server.controller;
 
 import org.example.dto.request.AutoBidRequest;
+import org.example.dto.request.BidHistoryRequest;
 import org.example.dto.request.BidRequest;
 import org.example.dto.response.BidResult;
+import org.example.dto.response.PagedResponse;
+import org.example.model.Bid;
 import org.example.model.enums.MessageType;
 import org.example.payload.Response;
 import org.example.server.service.bid.BidService;
@@ -20,6 +23,23 @@ public class BidController {
      */
     public BidController(BidService bidService) {
         this.bidService = bidService;
+    }
+
+    /**
+     * Handles retrieving the bid history for an auction with pagination.
+     * @param historyReq The bid history request details.
+     * @return A response containing the paged list of bids.
+     */
+    public Response<PagedResponse<Bid>> handleGetBidHistory(BidHistoryRequest historyReq) {
+        if (historyReq == null) {
+            return new Response<>(MessageType.ERROR, false, "History request data required", null);
+        }
+        PagedResponse<Bid> history = bidService.getBidHistoryPaged(
+                historyReq.getAuctionId(),
+                historyReq.getPage(),
+                historyReq.getPageSize()
+        );
+        return new Response<>(MessageType.BID_HISTORY, true, "Bid history fetched successfully", history);
     }
 
     /**

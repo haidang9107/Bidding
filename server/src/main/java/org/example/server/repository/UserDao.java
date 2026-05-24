@@ -130,7 +130,7 @@ public class UserDao {
      */
     public List<User> getUsersPaged(Connection connection, int limit, int offset) throws SQLException {
         List<User> users = new ArrayList<>();
-        String sql = "SELECT * FROM users LIMIT ? OFFSET ?";
+        String sql = "SELECT * FROM users ORDER BY accountname DESC LIMIT ? OFFSET ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, limit);
             ps.setInt(2, offset);

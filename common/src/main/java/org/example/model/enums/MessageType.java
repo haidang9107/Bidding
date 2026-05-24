@@ -38,6 +38,8 @@ public enum MessageType {
     AUTO_BID_SET,
     /** Bidding Logic: Client disables automatic bidding */
     AUTO_BID_CANCEL,
+    /** Bidding Logic: Client gets bid history */
+    BID_HISTORY,
     /** Bidding Logic: Client joins a realtime auction room */
     JOIN_AUCTION_ROOM,
     /** Bidding Logic: Client leaves a realtime auction room */

@@ -92,4 +92,56 @@ public class TransactionDao {
         }
         return transactions;
     }
+
+    /**
+     * Retrieves a paged list of transactions involving a specific user.
+     * @param connection The database connection.
+     * @param accountname The account name.
+     * @param limit The number of items to retrieve.
+     * @param offset The number of items to skip.
+     * @return A list of transactions.
+     * @throws SQLException If a database error occurs.
+     */
+    public List<Transaction> getTransactionsPaged(Connection connection, String accountname, int limit, int offset) throws SQLException {
+        List<Transaction> transactions = new ArrayList<>();
+        String sql = """
+                SELECT * FROM transactions 
+                WHERE sender_accountname = ? OR receiver_accountname = ?
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+                """;
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, accountname);
+            ps.setString(2, accountname);
+            ps.setInt(3, limit);
+            ps.setInt(4, offset);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    transactions.add(ResultSetMapper.mapToTransaction(rs));
+                }
+            }
+        }
+        return transactions;
+    }
+
+    /**
+     * Retrieves the total count of transactions for a specific user.
+     * @param connection The database connection.
+     * @param accountname The account name.
+     * @return The total count.
+     * @throws SQLException If a database error occurs.
+     */
+    public long getTotalTransactionsCount(Connection connection, String accountname) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM transactions WHERE sender_accountname = ? OR receiver_accountname = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, accountname);
+            ps.setString(2, accountname);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
+            }
+        }
+        return 0;
+    }
 }

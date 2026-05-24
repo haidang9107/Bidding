@@ -1,7 +1,9 @@
 package org.example.server.controller;
 
 import org.example.dto.response.BalanceResponse;
+import org.example.dto.request.PaginationRequest;
 import org.example.dto.request.TransferRequest;
+import org.example.dto.response.PagedResponse;
 import org.example.model.Transaction;
 import org.example.model.enums.MessageType;
 import org.example.payload.Response;
@@ -73,11 +75,25 @@ public class FinanceController {
     }
 
     /**
-     * Handles retrieving the transaction history for a user.
+     * Handles retrieving the transaction history for a user with pagination.
+     * @param accountname The user's account name.
+     * @param pagReq The pagination request details.
+     * @return A response containing the paged list of transactions.
+     */
+    public Response<PagedResponse<Transaction>> handleGetTransactions(String accountname, PaginationRequest pagReq) {
+        if (pagReq == null) {
+            pagReq = new PaginationRequest(1, 10);
+        }
+        PagedResponse<Transaction> transactions = transactionService.getTransactionsPaged(accountname, pagReq.getPage(), pagReq.getPageSize());
+        return new Response<>(MessageType.TRANSACTION_HISTORY, true, "Transactions retrieved successfully", transactions);
+    }
+
+    /**
+     * Handles retrieving the transaction history for a user. (Legacy/Full)
      * @param accountname The user's account name.
      * @return A response containing the list of transactions.
      */
-    public Response<List<Transaction>> handleGetTransactions(String accountname) {
+    public Response<List<Transaction>> handleGetTransactionsFull(String accountname) {
         List<Transaction> transactions = transactionService.getTransactions(accountname);
         return new Response<>(MessageType.TRANSACTION_HISTORY, true, "Transactions retrieved successfully", transactions);
     }

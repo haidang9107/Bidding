@@ -1,7 +1,9 @@
 package org.example.server.service.bid;
 
 import org.example.dto.response.BidResult;
+import org.example.dto.response.PagedResponse;
 import org.example.model.AutoBid;
+import org.example.model.Bid;
 import org.example.model.enums.AuctionStatus;
 import org.example.model.product.Item;
 import org.example.model.user.Member;
@@ -167,6 +169,21 @@ public class BidService {
             if (!success) {
                 throw new NotFoundException("Auto bid not found.");
             }
+        });
+    }
+
+    /**
+     * Retrieves a paged list of bids for a specific auction.
+     * @param auctionId The ID of the auction.
+     * @param page The page number (1-based).
+     * @param pageSize The number of items per page.
+     * @return A paged response containing the bids.
+     */
+    public PagedResponse<Bid> getBidHistoryPaged(int auctionId, int page, int pageSize) {
+        return txManager.query(conn -> {
+            long totalItems = auctionDao.getTotalBidsCount(conn, auctionId);
+            List<Bid> bids = auctionDao.getBidsPaged(conn, auctionId, pageSize, (page - 1) * pageSize);
+            return new PagedResponse<>(bids, totalItems, page, pageSize);
         });
     }
 
