@@ -270,7 +270,7 @@ public class UserDashboardController {
         payload.put("accountname", u.getAccountname());
         payload.put("action", action);
         payload.putAll(data);
-        client.send(new Request(MessageType.UPDATE_PROFILE, JsonConverter.toJson(payload)));
+        client.send(new Request(MessageType.UPDATE_PROFILE, payload));
     }
 
     private void handleResponse(Response resp) {

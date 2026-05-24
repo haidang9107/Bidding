@@ -68,7 +68,7 @@ public class RegisterController {
         // Server (AuthController.handleSignup) expects a SignupRequest JSON object.
         // No role is sent: server always creates MEMBER.
         SignupRequest signup = new SignupRequest(username, password, email);
-        Request req = new Request(MessageType.SIGNUP, JsonConverter.toJson(signup));
+        Request req = new Request(MessageType.SIGNUP, signup);
         client.send(req);
     }
 

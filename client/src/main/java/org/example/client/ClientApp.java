@@ -14,7 +14,7 @@ import org.example.client.util.SceneRouter;
 public class ClientApp extends Application {
 
     private static final String SERVER_HOST = "localhost";
-    private static final int SERVER_PORT = 8888;
+    private static final int SERVER_PORT = 9997;
 
     @Override
     public void start(Stage stage) {

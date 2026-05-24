@@ -1,17 +1,50 @@
-# Project Bidding - Technical Standards
+## Hi there 👋
 
-## Tech Stack
-- **Java Version:** 25 (LTS)
-- **Framework:** Spring Boot 4.0.6 (Supports Java 25)
-- **Module Structure:** Multi-module (common, server, client)
-- **Communication:** Socket-based with JSON (GSON 2.11.0)
-- **Socket Port:** 8888
-- **UI:** JavaFX 21.0.6 (Client module)
+<h1 style="color: #FFD700;"><b>✨ Welcome to my repository ✨</b></h1>
 
-## Communication Protocol
-- All messages use `org.example.payload.Request` and `Response`.
-- JSON conversion must use `org.example.util.JsonConverter`.
-- Each JSON message must end with a newline character (`\n`) for `BufferedReader.readLine()`.
+<table>
+  <tr>
+    <td align="center" valign="middle">
+      <img src="https://media.giphy.com/media/QYdJh32YqqKJBPF0wW/giphy.gif" alt="Hello GIF" height="300">
+    </td>
+    <td align="center" valign="middle">
+      <a href="https://git.io/typing-svg">
+        <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&pause=1000&lines=How're+you+today%3F" alt="Typing SVG" height="40">
+      </a>
+    </td>
+  </tr>
+</table>
 
-## Environment Notes
-- **macOS Docker:** If using Docker Desktop, ensure the socket is correctly mapped or use Spring Boot 4.0.6+ for better compatibility.
+<!--
+**lkishere2/lkishere2** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+
+Here are some ideas to get you started:
+
+- 🔭 I’m currently working on ...
+- 🌱 I’m currently learning ...
+- 👯 I’m looking to collaborate on ...
+- 🤔 I’m looking for help with ...
+- 💬 Ask me about ...
+- 📫 How to reach me: ...
+- 😄 Pronouns: ...
+- ⚡ Fun fact: ...
+-->
+
+## My Contribution
+<div align="center">
+  <table>
+    <tr>
+      <td valign="center">
+        <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHp1NXN6NXN6NXN6NXN6NXN6NXN6NXN6NXN6NXN6NXN6NXN6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/i3iy69ZTzh2Scc5bKH/giphy.gif" width="200" alt="Potato Dancing">
+        <p align="center"><i>The potato is cheering!</i></p>
+      </td>
+      <td valign="center">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/lkishere2/lkishere2/output/github-contribution-grid-snake-dark.svg">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/lkishere2/lkishere2/output/github-contribution-grid-snake.svg">
+          <img alt="snake eating contributions" src="https://raw.githubusercontent.com/lkishere2/lkishere2/output/github-contribution-grid-snake.svg">
+        </picture>
+      </td>
+    </tr>
+  </table>
+</div>

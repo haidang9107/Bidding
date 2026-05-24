@@ -48,7 +48,7 @@ public class LoginController {
         statusLabel.setText("Đang kết nối tới hệ thống...");
 
         LoginRequest lr = new LoginRequest(username, password);
-        Request req = new Request(MessageType.LOGIN, JsonConverter.toJson(lr));
+        Request req = new Request(MessageType.LOGIN, lr);
         client.send(req);
     }
 
