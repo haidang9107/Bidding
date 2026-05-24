@@ -47,6 +47,20 @@ public class SessionManager {
     }
 
     /**
+     * Finds the channel associated with a specific username.
+     * @param username the username to search for
+     * @return the socket channel, or null if not found
+     */
+    public static SocketChannel findChannelByUsername(String username) {
+        for (Map.Entry<SocketChannel, User> entry : activeSessions.entrySet()) {
+            if (entry.getValue().getAccountname().equals(username)) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
+    /**
      * Gets the total number of active sessions.
      * @return the active sessions count
      */

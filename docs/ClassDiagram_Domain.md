@@ -4,13 +4,12 @@
 classDiagram
     class User {
         -String accountname
+        -String fullname
         -String password
-        -String fullName
         -String email
-        -String phone
-        -Gender gender
+        -String avt
         -UserRole role
-        -long balance
+        -int status
         +getters()
         +setters()
     }
@@ -21,6 +20,8 @@ classDiagram
     }
 
     class Member {
+        -long balance
+        -long blockedBalance
         +placeBid()
         +topUp()
     }
@@ -30,58 +31,81 @@ classDiagram
 
     class Item {
         <<abstract>>
-        -int itemId
-        -String itemName
+        -int productId
+        -int auctionId
+        -String name
         -String description
-        -ItemCategory category
+        -String imageUrl
+        -String ownerAccountname
+        -boolean inAuction
+        -Timestamp withdrawnAt
         -long startingPrice
+        -long currentPrice
+        -long stepPrice
+        -Long buyNowPrice
+        -String sellerAccountname
+        -String winnerAccountname
+        -ItemCategory category
+        -AuctionStatus status
         -Timestamp startTime
         -Timestamp endTime
-        -AuctionStatus status
+        -int version
         +getters()
         +setters()
     }
 
     class Electronics {
         -String brand
-        -String model
+        -Integer warrantyMonths
     }
 
     class Vehicle {
-        -String vin
-        -int year
+        -String model
+        -Integer manufactureYear
     }
 
     class Art {
         -String artist
+        -String artType
+    }
+
+    class OtherItem {
+        -String itemType
     }
 
     Item <|-- Electronics
     Item <|-- Vehicle
     Item <|-- Art
+    Item <|-- OtherItem
 
     class Bid {
-        -int bidId
         -int productId
         -String bidderAccountname
-        -long amount
+        -long bidAmount
         -Timestamp bidTime
     }
 
     class AutoBid {
         -int autoBidId
-        -int productId
-        -String userAccountname
-        -long maxAmount
-        -long increment
+        -int auctionId
+        -String bidderAccountname
+        -long maxBid
+        -long incrementAmount
+        -boolean active
+        -Timestamp createdAt
+        -Timestamp updatedAt
     }
 
     class Transaction {
         -int transactionId
-        -String accountname
-        -long amount
+        -String senderAccountname
+        -String receiverAccountname
         -TransactionType type
-        -Timestamp timestamp
+        -Integer productId
+        -long amount
+        -Integer referenceId
+        -String description
+        -Timestamp createdAt
     }
 
     User "1" -- "*" Bid : places

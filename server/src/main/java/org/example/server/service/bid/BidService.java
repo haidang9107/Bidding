@@ -126,6 +126,13 @@ public class BidService {
             if (maxBid < minimumNextBid) {
                 throw new ValidationException("Max bid is too low. Minimum required: " + minimumNextBid);
             }
+            
+            // Logic: Bước giá của auto-bid phải >= bước giá tối thiểu của sản phẩm
+            if (incrementAmount < item.getStepPrice()) {
+                throw new ValidationException("Auto-bid increment (" + incrementAmount 
+                    + ") must be at least the auction step price (" + item.getStepPrice() + ")");
+            }
+
             long availableBalance = member.getBalance() - member.getBlockedBalance();
             if (availableBalance < minimumNextBid
                     && !bidderAccountname.equals(item.getWinnerAccountname())) {
@@ -237,7 +244,17 @@ public class BidService {
                 if (highest.getBidderAccountname().equals(item.getWinnerAccountname())) {
                     break; 
                 }
-                targetPrice = minimumNextBid;
+                
+                // Sử dụng chính xác bước giá người dùng đã cài đặt (đã được validation ở Bước 1)
+                targetPrice = item.getCurrentPrice() + highest.getIncrementAmount();
+                
+                // Đảm bảo không vượt quá mức tối đa người dùng cho phép
+                if (targetPrice > highest.getMaxBid()) {
+                    targetPrice = highest.getMaxBid();
+                }
+
+                // Đảm bảo vẫn phải đáp ứng bước giá tối thiểu của sàn (phòng hờ)
+                targetPrice = Math.max(targetPrice, minimumNextBid);
             }
 
             if (targetPrice > highest.getMaxBid() || targetPrice < minimumNextBid) {

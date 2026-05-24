@@ -34,7 +34,9 @@ public class ServerApp {
         try {
             bootstrap();
         } catch (Exception e) {
+            e.printStackTrace(); // Print directly to console to bypass async logger exit race condition
             FileLogger.error("CRITICAL: Server failed to start", e);
+            try { Thread.sleep(500); } catch (InterruptedException ignored) {} // Give logger time to write
             System.exit(1);
         }
     }
@@ -88,12 +90,17 @@ public class ServerApp {
         // 8. Socket Server
         SocketServer server = new SocketServer(registry, authService, auctionMonitor);
 
+        // 8.1 Inactivity Monitor (Handles dead connections/network loss)
+        org.example.server.network.InactivityMonitor inactivityMonitor = new org.example.server.network.InactivityMonitor(60); // 60s timeout
+
         // 9. Start Background Tasks
         auctionMonitor.start();
+        inactivityMonitor.start();
 
         // 10. Graceful Shutdown
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             FileLogger.info("Shutdown signal received. Cleaning up resources...");
+            inactivityMonitor.stop();
             server.stop();
             pool.close();
             FileLogger.info("Server shutdown complete.");
