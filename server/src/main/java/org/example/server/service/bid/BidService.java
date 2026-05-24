@@ -18,6 +18,7 @@ import org.example.server.repository.AutoBidDao;
 import org.example.server.repository.ProductDao;
 import org.example.server.repository.TransactionManager;
 import org.example.server.repository.UserDao;
+import org.example.server.network.AuctionMonitor;
 import org.example.util.FileLogger;
 
 import java.sql.Connection;
@@ -27,7 +28,7 @@ import java.util.List;
 
 /**
  * Service for safe manual and automatic bid placement on auction sessions.
- * Refactored to use TransactionManager and EventPublisher.
+ * Refactored to use TransactionManager, EventPublisher, and AuctionMonitor.
  */
 public class BidService {
     private final ProductDao productDao;
@@ -36,19 +37,22 @@ public class BidService {
     private final AutoBidDao autoBidDao;
     private final TransactionManager txManager;
     private final EventPublisher eventPublisher;
+    private final AuctionMonitor auctionMonitor;
 
     /**
      * Constructs a new BidService.
      * @param txManager The transaction manager.
      * @param eventPublisher The event publisher.
+     * @param auctionMonitor The auction monitor.
      */
-    public BidService(TransactionManager txManager, EventPublisher eventPublisher) {
+    public BidService(TransactionManager txManager, EventPublisher eventPublisher, AuctionMonitor auctionMonitor) {
         this.productDao = new ProductDao();
         this.userDao = new UserDao();
         this.auctionDao = new AuctionDao();
         this.autoBidDao = new AutoBidDao();
         this.txManager = txManager;
         this.eventPublisher = eventPublisher;
+        this.auctionMonitor = auctionMonitor;
     }
 
     /**
@@ -76,6 +80,9 @@ public class BidService {
                     + ", winner " + item.getWinnerAccountname()
                     + ", price " + item.getCurrentPrice());
             
+            // Đăng ký lịch kết thúc chính xác (đề phòng Anti-snipping kéo dài thời gian)
+            auctionMonitor.scheduleAuctionEnd(auctionId, item.getEndTime());
+
             eventPublisher.publish(new NewBidPlacedEvent(
                     auctionId, item.getWinnerAccountname(),
                     item.getCurrentPrice(), autoBidApplied, item.getEndTime()));
@@ -132,6 +139,9 @@ public class BidService {
                     + " on Auction " + auctionId + " max " + maxBid);
 
             if (autoBidApplied) {
+                // Cập nhật lại lịch kết thúc nếu tự động bid làm thay đổi thời gian (Anti-snipping)
+                auctionMonitor.scheduleAuctionEnd(auctionId, item.getEndTime());
+
                 eventPublisher.publish(new NewBidPlacedEvent(
                         auctionId, item.getWinnerAccountname(),
                         item.getCurrentPrice(), true, item.getEndTime()));

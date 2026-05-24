@@ -87,6 +87,27 @@ public class ProductDao {
     }
 
     /**
+     * Retrieves all products that are currently in a RUNNING auction.
+     * @param connection The database connection.
+     * @return A list of running items.
+     * @throws SQLException If a database error occurs.
+     */
+    public List<Item> getRunningProducts(Connection connection) throws SQLException {
+        List<Item> products = new ArrayList<>();
+        String sql = AUCTION_VIEW_SQL + " WHERE a.status = ? ORDER BY a.created_at DESC";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, AuctionStatus.RUNNING.ordinal());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    products.add(ResultSetMapper.mapToItem(rs));
+                }
+            }
+        }
+        return products;
+    }
+
+    /**
      * Retrieves a specific product by its ID.
      * @param connection The database connection.
      * @param productId The ID of the product.

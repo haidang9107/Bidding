@@ -51,10 +51,6 @@ public class SocketServer {
         this.serverChannel.configureBlocking(false);
         this.serverChannel.register(selector, SelectionKey.OP_ACCEPT);
     }
-
-    /**
-     * Starts the server's main event loop.
-     */
     public void run() {
         try {
             FileLogger.info("NIO Server started on Port: " + PORT);
@@ -112,9 +108,7 @@ public class SocketServer {
         try {
             int bytesRead = clientChannel.read(readBuffer);
             if (bytesRead == -1) {
-                DisconnectionHandler.handle(clientChannel);
-                key.cancel();
-                clientBuffers.remove(clientChannel);
+                closeChannel(key);
                 return;
             }
 
@@ -132,19 +126,22 @@ public class SocketServer {
                     buffer.write(b);
                     if (buffer.size() > MAX_MESSAGE_SIZE) {
                         FileLogger.warn("Message size exceeded limit (64KB) from " + clientChannel.getRemoteAddress() + ". Disconnecting.");
-                        DisconnectionHandler.handle(clientChannel);
-                        key.cancel();
-                        clientBuffers.remove(clientChannel);
+                        closeChannel(key);
                         return;
                     }
                 }
             }
         } catch (IOException e) {
             FileLogger.error("Error reading from client: " + clientChannel, e);
-            DisconnectionHandler.handle(clientChannel);
-            key.cancel();
-            clientBuffers.remove(clientChannel);
+            closeChannel(key);
         }
+    }
+
+    private void closeChannel(SelectionKey key) {
+        SocketChannel clientChannel = (SocketChannel) key.channel();
+        key.cancel();
+        clientBuffers.remove(clientChannel);
+        DisconnectionHandler.handle(clientChannel);
     }
 
     /**

@@ -30,6 +30,7 @@ public class ProductService {
     private final TransactionDao transactionDao;
     private final TransactionManager txManager;
     private final EventPublisher eventPublisher;
+    private org.example.server.network.AuctionMonitor auctionMonitor;
 
     /**
      * Constructs a new ProductService.
@@ -42,6 +43,22 @@ public class ProductService {
         this.transactionDao = new TransactionDao();
         this.txManager = txManager;
         this.eventPublisher = eventPublisher;
+    }
+
+    /**
+     * Sets the auction monitor for this service.
+     * @param auctionMonitor The auction monitor.
+     */
+    public void setAuctionMonitor(org.example.server.network.AuctionMonitor auctionMonitor) {
+        this.auctionMonitor = auctionMonitor;
+    }
+
+    /**
+     * Retrieves all currently running auctions.
+     * @return A list of running items.
+     */
+    public List<Item> getAllRunningAuctions() {
+        return txManager.query(productDao::getRunningProducts);
     }
 
     /**
@@ -72,9 +89,23 @@ public class ProductService {
             boolean updated = productDao.updateStatus(conn, auctionId, AuctionStatus.RUNNING);
             if (updated) {
                 FileLogger.info("Auction STARTED: Auction ID " + auctionId);
+                
+                // Lập lịch kết thúc chính xác
+                if (auctionMonitor != null) {
+                    auctionMonitor.scheduleAuctionEnd(auctionId, item.getEndTime());
+                }
+
                 eventPublisher.publish(new AuctionStartedEvent(auctionId, item.getName()));
             }
         });
+    }
+
+    /**
+     * Alias for finishAuction to match AuctionMonitor terminology.
+     * @param auctionId The ID of the auction.
+     */
+    public void processAuctionEnd(int auctionId) {
+        finishAuction(auctionId);
     }
 
     /**
@@ -169,6 +200,10 @@ public class ProductService {
             }
 
             if (productDao.insertProduct(conn, item)) {
+                // Lập lịch kết thúc chính xác cho phiên vừa tạo
+                if (auctionMonitor != null) {
+                    auctionMonitor.scheduleAuctionEnd(item.getAuctionId(), item.getEndTime());
+                }
                 eventPublisher.publish(new ProductCreatedEvent(item.getAuctionId()));
             } else {
                 throw new AuctionException("Failed to insert product into database");

@@ -1,64 +1,68 @@
-# Server Architecture Class Diagram (Command Pattern)
+# Server Architecture Class Diagram
 
 ```mermaid
 classDiagram
     class SocketServer {
-        -int port
         -Selector selector
-        -ServerSocketChannel serverSocket
+        -ExecutorService executorService
+        -Map clientBuffers
+        +run()
+        -handleRead(SelectionKey key)
+        -closeChannel(SelectionKey key)
+    }
+
+    class DisconnectionHandler {
+        <<Utility>>
+        +handle(SocketChannel channel)
+    }
+
+    class AuctionMonitor {
+        -ScheduledExecutorService scheduler
+        -Map scheduledTasks
         +start()
-        -handleAccept()
-        -handleRead()
+        +scheduleAuctionEnd(int auctionId, Timestamp endTime)
+    }
+
+    class EventPublisher {
+        -ExecutorService executorService
+        -Map listeners
+        +publish(DomainEvent event)
+        +subscribe(Class type, EventListener l)
+    }
+
+    class BidService {
+        -AuctionMonitor auctionMonitor
+        -EventPublisher eventPublisher
+        +placeBid()
+    }
+
+    class ProductService {
+        -AuctionMonitor auctionMonitor
+        +startAuction()
+        +processAuctionEnd()
     }
 
     class CommandHandler {
         -SocketChannel clientChannel
-        -String message
         -CommandRegistry commandRegistry
         +run()
     }
 
-    class CommandRegistry {
-        -Map<MessageType, Command> commands
-        +getCommand(MessageType type)
-    }
-
+    SocketServer ..> CommandHandler : creates
+    SocketServer ..> DisconnectionHandler : uses
+    CommandHandler --> CommandRegistry : uses
+    
+    BidService --> AuctionMonitor : schedules ends
+    BidService --> EventPublisher : publishes events
+    ProductService --> AuctionMonitor : schedules/updates
+    
+    AuctionMonitor --> ProductService : triggers end logic
+    
     class Command {
         <<interface>>
-        +execute(Request request, SocketChannel channel) Response
-    }
-
-    class LoginCommand {
         +execute(...)
     }
 
-    class BidPlaceCommand {
-        +execute(...)
-    }
-
-    class ProductAddCommand {
-        +execute(...)
-    }
-
-    SocketServer ..> CommandHandler : creates
-    CommandHandler --> CommandRegistry : uses
-    CommandRegistry "1" o-- "*" Command : contains
     Command <|.. LoginCommand
     Command <|.. BidPlaceCommand
-    Command <|.. ProductAddCommand
-
-    class Request {
-        -MessageType type
-        -T payload
-        -String token
-    }
-
-    class Response {
-        -boolean success
-        -T data
-        -String message
-    }
-
-    CommandHandler ..> Request : parses
-    CommandHandler ..> Response : sends
 ```

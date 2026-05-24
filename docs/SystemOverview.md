@@ -17,18 +17,18 @@ The project is divided into three main modules:
     *   **Repository**: Data access layer (DAO) with JDBC.
 3.  **`client`**: A client application/test suite that interacts with the server.
 
-## 📢 Event-Driven Architecture (Observer Pattern)
+## 📢 Event-Driven Architecture (Asynchronous)
 
-The system uses an internal Event Bus to decouple business logic from notification logic.
+The system uses an internal **Asynchronous Event Bus** to decouple business logic from notification logic. This ensures that database transactions are released immediately, even if network delivery is slow.
 
 ```mermaid
 graph TD
-    subgraph "Business Layer"
+    subgraph "Business Layer (Main Thread)"
         S[Service] -- publishes --> EP[EventPublisher]
     end
 
-    subgraph "Event Bus"
-        EP -- notifies --> NNL[NetworkNotificationListener]
+    subgraph "Event Bus (Thread Pool)"
+        EP -- async dispatch --> NNL[NetworkNotificationListener]
     end
 
     subgraph "Notification Layer"
@@ -43,10 +43,27 @@ graph TD
 ```
 
 ### Key Components:
-*   **`EventPublisher`**: A thread-safe event bus that manages subscribers and dispatches events.
+*   **`EventPublisher`**: Uses a fixed thread pool to dispatch events asynchronously.
 *   **`DomainEvent`**: Base interface for all system events.
 *   **`NetworkNotificationListener`**: Subscribes to events and converts them into network responses.
 *   **`Broadcaster`**: Manages active socket connections and pushes JSON messages to clients.
+
+## 🕒 Precise Auction Monitoring
+
+The system features a millisecond-accurate auction closure mechanism using a dedicated scheduling system.
+
+```mermaid
+graph LR
+    BS[BidService] -- triggers --> AM[AuctionMonitor]
+    PS[ProductService] -- triggers --> AM
+    AM -- schedules task --> SES[ScheduledExecutorService]
+    SES -- executed at endTime --> PS
+    PS -- publishes --> EP[EventPublisher]
+```
+
+*   **Scheduling**: Instead of polling the database, `AuctionMonitor` schedules a precise task for every auction's `endTime`.
+*   **Anti-Snipping Integration**: When a last-minute bid extends an auction, the old task is cancelled and a new one is scheduled instantly.
+*   **Fault Tolerance**: A background "defensive" task runs every minute to capture any auctions missed due to server restarts.
 
 ## 🤝 Component Interaction
 

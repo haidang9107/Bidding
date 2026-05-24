@@ -54,7 +54,13 @@ public class ServerApp {
         // 2. Services
         AuthService authService = new AuthService(txManager);
         ProductService productService = new ProductService(txManager, eventPublisher);
-        BidService bidService = new BidService(txManager, eventPublisher);
+        
+        // 7. Background Tasks (Depends on ProductService)
+        AuctionMonitor auctionMonitor = new AuctionMonitor(productService);
+        productService.setAuctionMonitor(auctionMonitor);
+
+        // 2. Services (Continued)
+        BidService bidService = new BidService(txManager, eventPublisher, auctionMonitor);
         UserService userService = new UserService(txManager);
         AdminService adminService = new AdminService(txManager, eventPublisher);
         DepositService depositService = new DepositService(txManager);
@@ -79,13 +85,13 @@ public class ServerApp {
         registerCommands(registry, authController, productController, bidController,
                 adminController, userController, financeController, productService);
 
-        // 7. Background Tasks
-        AuctionMonitor auctionMonitor = new AuctionMonitor(productService);
-
         // 8. Socket Server
         SocketServer server = new SocketServer(registry, authService, auctionMonitor);
 
-        // 9. Graceful Shutdown
+        // 9. Start Background Tasks
+        auctionMonitor.start();
+
+        // 10. Graceful Shutdown
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             FileLogger.info("Shutdown signal received. Cleaning up resources...");
             server.stop();
