@@ -15,8 +15,22 @@ public class AutoBid {
     private Timestamp createdAt;
     private Timestamp updatedAt;
 
+    /**
+     * Default constructor for AutoBid.
+     */
     public AutoBid() {}
 
+    /**
+     * Constructs an AutoBid with all fields.
+     * @param autoBidId Unique ID for this auto-bid configuration.
+     * @param auctionId The ID of the auction.
+     * @param bidderAccountname The account name of the bidder.
+     * @param maxBid The maximum amount the bidder is willing to bid.
+     * @param incrementAmount The amount to increment for each auto-bid.
+     * @param active Whether this auto-bid is currently active.
+     * @param createdAt Creation timestamp.
+     * @param updatedAt Last update timestamp.
+     */
     public AutoBid(int autoBidId, int auctionId, String bidderAccountname, long maxBid,
                    long incrementAmount, boolean active, Timestamp createdAt, Timestamp updatedAt) {
         this.autoBidId = autoBidId;

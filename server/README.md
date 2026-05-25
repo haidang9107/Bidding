@@ -1,31 +1,60 @@
-# Module: Server (Backend)
+# 🖥️ Module: Server (Backend Core)
 
-Module `server` là bộ khung của dự án, quản lý toàn bộ "luật chơi" của các phiên đấu giá. Module này được xây dựng thuần túy bằng **Java Core**, đảm nhận việc kết nối Socket đa luồng, xử lý logic đấu giá an toàn, lưu trữ dữ liệu vào Database và phát sóng (broadcast) thông tin thời gian thực đến Client.
+Module `server` là trái tim của hệ thống đấu giá. Được xây dựng thuần túy bằng **Java Core** (Không dùng các framework cồng kềnh như Spring Boot), nó xử lý toàn bộ logic phức tạp của đấu giá trực tuyến. Server vận hành một hệ thống **Socket TCP/IP** liên tục đa luồng, xử lý dữ liệu với **MySQL** qua HikariCP Connection Pool.
 
-## 📂 Cấu trúc logic nghiệp vụ (Folder Structure Logic)
+---
+
+## 📂 Architecture Logic (Cấu trúc thư mục)
 
 ```text
 server/src/main/java/org/example/server/
-├── network/                 # Quản lý tầng giao tiếp mạng (Socket), mở cổng chờ kết nối, cấp phát luồng cho từng Client và phát sóng tín hiệu.
-├── controller/              # Tầng điều phối, đóng vai trò như router nhận các Request đã phân tích từ luồng mạng và gọi đúng logic nghiệp vụ.
-├── service/                 # Tầng chứa toàn bộ logic "luật chơi" phức tạp nhất của dự án (tính toán giá, kiểm tra thời gian, auto-bid).
-├── repository/              # Tầng truy xuất dữ liệu (DAO), chịu trách nhiệm duy nhất cho việc thực thi các câu lệnh SQL để đọc/ghi vào Database.
-└── exception/               # Chứa định nghĩa các lỗi nghiệp vụ tùy chỉnh của hệ thống để trả về phản hồi lỗi cụ thể cho Client.
+├── ServerApp.java           # Lớp khởi tạo chính, liên kết Database và mở cổng ServerSocket.
+├── controller/              # Nhận các "Request" đã được phân tích và điều phối sang Service.
+├── event/                   # Hệ thống Event Bus / Observer ngầm trong Server để xử lý decoupling.
+├── exception/               # Các ngoại lệ kinh doanh (Business Exceptions) tự định nghĩa.
+├── network/                 # Xử lý tầng TCP Socket (Server, ClientHandler, Broadcasting).
+├── repository/              # Tầng DAO (Data Access Object) xử lý trực tiếp chuỗi SQL với MySQL.
+└── service/                 # Tầng logic lõi (Luật giá thầu, Thời gian đấu giá, Auto-Bidding).
+
+server/src/main/resources/
+└── MySQL/                   # Các tệp kịch bản khởi tạo database ban đầu.
+    ├── 1schema.sql          # Tạo các Table.
+    └── 2data.sql            # Tạo dữ liệu Mock test (Admin, Users, Products).
 ```
 
-## 🛠 Nguyên tắc hoạt động & Luồng xử lý
+---
 
-### 1. Tầng `network/` (Socket & Broadcasting)
-- **Lắng nghe kết nối**: Server luôn duy trì một cổng mở để chờ các Client kết nối tới.
-- **Xử lý đa luồng (Multi-threading)**: Mỗi khi có một Client tham gia, Server tạo ra một luồng (Thread) hoàn toàn độc lập để liên tục lắng nghe tin nhắn từ Client đó, đảm bảo các Client không bị chặn (block) lẫn nhau.
-- **Phát sóng (Broadcast)**: Khi có một thay đổi lớn (giá thầu mới hợp lệ), hệ thống sẽ dùng cơ chế Broadcast để đẩy tin nhắn thông báo dạng JSON tới toàn bộ các Client đang tham gia phòng đấu giá đó cùng lúc.
+## 🛠 Nguyên tắc hoạt động & Core Logic
 
-### 2. Tầng `controller/` & `service/` (Nghiệp vụ cốt lõi)
-- **Controller** phân tích yêu cầu từ gói tin mạng và điều hướng luồng xử lý.
-- **Service** xử lý các bài toán kỹ thuật phức tạp:
-  - **Concurrent Bidding**: Sử dụng cơ chế khóa (Locks/Synchronized) để ngăn tình trạng nhiều người đặt giá cùng một mili-giây dẫn đến sai lệch dữ liệu.
-  - **Anti-sniping**: Thuật toán tự động cộng thêm giây nếu phát hiện lượt đặt giá sát giờ đóng cửa.
+### 1. Multi-threaded Socket Server
+- **Khởi tạo:** `ServerSocket` liên tục lắng nghe tại cổng đã định (mặc định 8888).
+- **Cấp phát luồng:** Mỗi khi có 1 Client báo kết nối, ServerApp tạo một `ClientHandler` (thừa kế `Thread` hoặc `Runnable`). Luồng này sẽ độc quyền nói chuyện với Client đó trong suốt phiên, đảm bảo hệ thống không bị nghẽn (Blocking IO).
+- **Phát sóng (Broadcasting):** Có một danh sách tĩnh (Thread-safe List) chứa toàn bộ các `ClientHandler` đang hoạt động. Khi có người đặt giá thành công, Service gọi lệnh Broadcast để gửi cấu trúc gói JSON về toàn bộ các Client khác cùng lúc.
 
-### 3. Tầng `repository/` (Database Security)
-- Hệ thống tuân thủ nguyên tắc bảo mật: Client KHÔNG BAO GIỜ được kết nối thẳng vào Database.
-- Tầng `repository` thao tác với Database (qua JDBC/DAO) để lưu trữ và trích xuất dữ liệu, sau đó Server sẽ chuyển đổi thành dạng DTO chuẩn trước khi gửi xuống Client.
+### 2. Cơ sở dữ liệu và Connection Pool
+- **Không giữ kết nối Database lâu:** Thay vì mỗi Client mở 1 kết nối Database, Server sử dụng `HikariCP` làm hồ chứa kết nối (Connection Pool). Tầng `repository` (DAO) chỉ mượn Connection từ Pool khi cần thực thi SQL, rồi trả lại ngay lập tức.
+- **Bảo mật:** Mọi truy vấn SQL đều phải dùng `PreparedStatement` để phòng tránh lỗi bảo mật SQL Injection.
+- **Mã hóa:** Mật khẩu người dùng được băm thuật toán BCrypt trước khi lưu trữ xuống Database thông qua thư viện `jbcrypt`.
+
+### 3. Logic Đấu Giá Tương Tranh (Concurrency Bidding)
+- Khi 2 Client cùng gửi lệnh Bid một lúc cho cùng 1 sản phẩm, nếu không được thiết kế tốt sẽ dẫn tới "Lost Update" (Ghi đè dữ liệu sai).
+- **Giải pháp:** Tầng `AuctionService` ứng dụng `ReentrantLock` hoặc khối `synchronized` dựa trên `Auction ID`. Ai tới trước sẽ được khóa tài nguyên xử lý trước, người tới sau vài phần ngàn giây sẽ thấy giá đã thay đổi và nhận phản hồi `Thất bại do giá đã bị người khác vượt`.
+
+### 4. Hệ thống sự kiện (Event-Driven)
+- Tầng `event/` cung cấp công cụ `EventPublisher`. Ví dụ: Khi người dùng gọi lệnh hủy đấu giá, thay vì gọi một đống hàm ở nhiều Service, Controller chỉ phát ra sự kiện `AuctionCancelledEvent`. Các Listener đã đăng ký sẽ tự động lắng nghe và làm nhiệm vụ của mình (VD: Trả lại tiền cọc, Thông báo Notification cho Client, Cập nhật trạng thái SQL).
+
+---
+
+## 🚀 Hướng dẫn cấu hình và chạy
+
+### 1. Database Configurations
+- Server cần kết nối đến MySQL. File thuộc tính kết nối sẽ lấy ưu tiên từ **Environment Variables** (Các file `.env`).
+- Bạn có thể tùy chỉnh thông số kết nối ở file `.env` (tạo từ bản mẫu `.env.example`).
+- Nếu dùng Docker Compose từ thư mục gốc, database sẽ tự khởi chạy ở port `3306`.
+
+### 2. Run Server
+Từ thư mục root của dự án, biên dịch và chạy bằng Maven Plugin:
+```bash
+mvn -pl server exec:java -Dexec.mainClass="org.example.server.ServerApp"
+```
+Server sẽ in log thông báo: `Server started on port 8888...`.

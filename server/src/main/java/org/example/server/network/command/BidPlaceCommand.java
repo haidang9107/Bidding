@@ -2,25 +2,38 @@ package org.example.server.network.command;
 
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
-import org.example.dto.BidRequest;
-import org.example.dto.BidResult;
+import org.example.dto.request.BidRequest;
 import org.example.payload.Request;
 import org.example.payload.Response;
-import org.example.server.network.Broadcaster;
 import org.example.server.controller.BidController;
 import org.example.server.network.SessionManager;
 import org.example.util.JsonConverter;
 
 import java.nio.channels.SocketChannel;
-import java.util.Map;
 
+/**
+ * Command for a user to place a manual bid on an auction.
+ * Events are published by the BidService, so manual broadcast is not required here.
+ */
 public class BidPlaceCommand implements Command {
     private final BidController bidController;
 
+    /**
+     * Constructs a BidPlaceCommand with the specified BidController.
+     *
+     * @param bidController the controller for bidding operations
+     */
     public BidPlaceCommand(BidController bidController) {
         this.bidController = bidController;
     }
 
+    /**
+     * Executes the bid placement command.
+     *
+     * @param request the request containing BidRequest
+     * @param channel the socket channel of the user
+     * @return the response indicating success or failure of the bid
+     */
     @Override
     public Response<?> execute(Request request, SocketChannel channel) {
         User currentUser = SessionManager.getUser(channel);
@@ -29,29 +42,6 @@ public class BidPlaceCommand implements Command {
         }
 
         BidRequest bidRequest = JsonConverter.convert(request.getPayload(), BidRequest.class);
-        Response<?> response = bidController.handlePlaceBid(bidRequest, currentUser.getAccountname());
-
-        if (response.isSuccess() && bidRequest != null) {
-            BidResult result = response.getData() instanceof BidResult bidResult ? bidResult : null;
-            long amount = result == null ? bidRequest.getAmount() : result.getCurrentPrice();
-            String winner = result == null ? currentUser.getAccountname() : result.getWinnerAccountname();
-            boolean autoBidApplied = result != null && result.isAutoBidApplied();
-
-            Broadcaster.broadcastToAuction(
-                    bidRequest.getAuctionId(),
-                    new Response<>(
-                            MessageType.BID_UPDATE,
-                            true,
-                            "New highest bid",
-                            Map.of(
-                                    "auctionId", bidRequest.getAuctionId(),
-                                    "bidderAccountname", winner,
-                                    "amount", amount,
-                                    "autoBidApplied", autoBidApplied
-                            )
-                    )
-            );
-        }
-        return response;
+        return bidController.handlePlaceBid(bidRequest, currentUser.getAccountname());
     }
 }

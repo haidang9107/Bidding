@@ -13,16 +13,29 @@ import java.util.concurrent.TimeUnit;
 public class InactivityMonitor {
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private final long timeoutMillis;
+    private final DisconnectionHandler disconnectionHandler;
 
-    public InactivityMonitor(long timeoutSeconds) {
+    /**
+     * Constructs an InactivityMonitor with specified timeout.
+     * @param timeoutSeconds the inactivity timeout in seconds
+     * @param disconnectionHandler the handler for client disconnections
+     */
+    public InactivityMonitor(long timeoutSeconds, DisconnectionHandler disconnectionHandler) {
         this.timeoutMillis = timeoutSeconds * 1000;
+        this.disconnectionHandler = disconnectionHandler;
     }
 
+    /**
+     * Starts the inactivity monitoring task.
+     */
     public void start() {
         scheduler.scheduleAtFixedRate(this::checkInactivity, 10, 10, TimeUnit.SECONDS);
         FileLogger.info("InactivityMonitor started with timeout: " + (timeoutMillis / 1000) + "s");
     }
 
+    /**
+     * Stops the inactivity monitoring task.
+     */
     public void stop() {
         scheduler.shutdown();
         try {
@@ -34,6 +47,9 @@ public class InactivityMonitor {
         }
     }
 
+    /**
+     * Checks all heartbeat timestamps and disconnects inactive channels.
+     */
     private void checkInactivity() {
         long now = System.currentTimeMillis();
         Map<SocketChannel, Long> lastActiveTimes = HeartbeatRegistry.getAll();
@@ -44,7 +60,7 @@ public class InactivityMonitor {
 
             if (now - lastActive > timeoutMillis) {
                 FileLogger.warn("Channel timed out due to inactivity: " + channel);
-                DisconnectionHandler.handle(channel);
+                disconnectionHandler.handle(channel);
             }
         }
     }

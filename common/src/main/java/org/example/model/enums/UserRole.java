@@ -13,10 +13,19 @@ public enum UserRole {
         this.value = value;
     }
 
+    /**
+     * Gets the integer value of the role.
+     * @return The integer value.
+     */
     public int getValue() {
         return value;
     }
 
+    /**
+     * Maps an integer to a UserRole.
+     * @param value The integer value.
+     * @return The corresponding UserRole, or MEMBER if not found.
+     */
     public static UserRole fromInt(int value) {
         for (UserRole role : UserRole.values()) {
             if (role.value == value) {

@@ -1,58 +1,57 @@
 package org.example.server.service.finance;
 
+import org.example.dto.response.BalanceResponse;
+import org.example.model.user.Member;
 import org.example.model.user.User;
-import org.example.server.repository.DatabaseManager;
+import org.example.model.enums.TransactionType;
+import org.example.server.exception.FinanceException;
 import org.example.server.repository.TransactionDao;
+import org.example.server.repository.TransactionManager;
 import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-
 /**
- * Service for handling deposit operations.
+ * Service for handling account deposits.
  */
 public class DepositService {
     private final UserDao userDao;
     private final TransactionDao transactionDao;
+    private final TransactionManager txManager;
 
-    public DepositService() {
+    /**
+     * Constructs a new DepositService.
+     * @param txManager The transaction manager.
+     */
+    public DepositService(TransactionManager txManager) {
         this.userDao = new UserDao();
         this.transactionDao = new TransactionDao();
+        this.txManager = txManager;
     }
 
-    public String deposit(String accountname, long amount) {
-        if (amount <= 0) return "Invalid amount. Must be greater than 0.";
-
-        try (Connection connection = DatabaseManager.getConnection()) {
-            try {
-                connection.setAutoCommit(false);
-                
-                User user = userDao.findByAccountnameForUpdate(connection, accountname);
-                if (user == null) {
-                    connection.rollback();
-                    return "User not found.";
+    /**
+     * Deposits an amount into a user's account.
+     * @param accountname The account name.
+     * @param amount The amount to deposit.
+     * @return The updated balance response.
+     */
+    public BalanceResponse deposit(String accountname, long amount) {
+        if (amount <= 0) throw new FinanceException("Deposit amount must be positive");
+        
+        return txManager.execute(conn -> {
+            boolean success = userDao.addBalance(conn, accountname, amount);
+            if (success) {
+                User user = userDao.findByAccountname(conn, accountname);
+                if (user instanceof Member member) {
+                    transactionDao.insertTransaction(conn, null, accountname, 
+                            TransactionType.DEPOSIT, null, amount, null, "Manual deposit");
+                    
+                    FileLogger.info("Deposit SUCCESS: User " + accountname + ", Amount " + amount);
+                    return new BalanceResponse(accountname, member.getBalance(), member.getBlockedBalance());
                 }
-
-                if (!(user instanceof org.example.model.user.Member)) {
-                    connection.rollback();
-                    return "Deposits are only available for members.";
-                }
-
-                userDao.addBalance(connection, accountname, amount);
-                transactionDao.insertTransaction(connection, null, accountname, 0, null,
-                        amount, null, "Deposit");
-                
-                connection.commit();
-                FileLogger.info("User " + accountname + " deposited " + amount);
-                return "SUCCESS";
-            } catch (SQLException e) {
-                try { connection.rollback(); } catch (SQLException ex) { /* Ignore */ }
-                throw e;
+                throw new FinanceException("User is not a member.");
+            } else {
+                throw new FinanceException("Deposit failed. User not found.");
             }
-        } catch (SQLException e) {
-            FileLogger.error("Deposit error for user " + accountname, e);
-            return "Internal Error: " + e.getMessage();
-        }
+        });
     }
 }

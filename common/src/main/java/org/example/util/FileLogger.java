@@ -30,6 +30,7 @@ public class FileLogger {
     // Async Logging Queue
     private static final BlockingQueue<LogEntry> logQueue = new LinkedBlockingQueue<>();
     private static final Thread logWorker;
+    private static final boolean ENABLE_CONSOLE;
 
     static {
         // 1. Locate Log Directory
@@ -43,7 +44,10 @@ public class FileLogger {
             dir.mkdirs();
         }
 
-        // 2. Start Async Log Worker
+        // 2. Read Configuration
+        ENABLE_CONSOLE = Config.getBoolean("LOG_TO_CONSOLE");
+
+        // 3. Start Async Log Worker
         logWorker = new Thread(FileLogger::processQueue);
         logWorker.setDaemon(true);
         logWorker.setName("FileLogger-Worker");
@@ -57,22 +61,43 @@ public class FileLogger {
         return findProjectRoot(currentDir.getParentFile());
     }
 
+    /**
+     * Logs an informational message.
+     * @param message The message to log.
+     */
     public static void info(String message) {
         enqueue("INFO", message, null);
     }
 
+    /**
+     * Logs a warning message.
+     * @param message The message to log.
+     */
     public static void warn(String message) {
         enqueue("WARN", message, null);
     }
 
+    /**
+     * Logs an error message.
+     * @param message The message to log.
+     */
     public static void error(String message) {
         enqueue("ERROR", message, null);
     }
 
+    /**
+     * Logs an error message with an associated throwable.
+     * @param message The message to log.
+     * @param throwable The exception or error to log.
+     */
     public static void error(String message, Throwable throwable) {
         enqueue("ERROR", message, throwable);
     }
 
+    /**
+     * Logs a debug message.
+     * @param message The message to log.
+     */
     public static void debug(String message) {
         enqueue("DEBUG", message, null);
     }
@@ -114,22 +139,24 @@ public class FileLogger {
         }
 
         // 2. Write to Console with Colors
-        String color = switch (entry.level) {
-            case "INFO" -> GREEN;
-            case "WARN" -> YELLOW;
-            case "ERROR" -> RED;
-            case "DEBUG" -> BLUE;
-            default -> RESET;
-        };
+        if (ENABLE_CONSOLE) {
+            String color = switch (entry.level) {
+                case "INFO" -> GREEN;
+                case "WARN" -> YELLOW;
+                case "ERROR" -> RED;
+                case "DEBUG" -> BLUE;
+                default -> RESET;
+            };
 
-        System.out.printf("%s[%s]%s %s[%s]%s %s[%s]%s %s%n", 
-            PURPLE, timeStr, RESET,
-            color, entry.level, RESET,
-            BLUE, entry.threadName, RESET,
-            entry.message);
-            
-        if (entry.throwable != null) {
-            entry.throwable.printStackTrace(System.err);
+            System.out.printf("%s[%s]%s %s[%s]%s %s[%s]%s %s%n",
+                    PURPLE, timeStr, RESET,
+                    color, entry.level, RESET,
+                    BLUE, entry.threadName, RESET,
+                    entry.message);
+
+            if (entry.throwable != null) {
+                entry.throwable.printStackTrace(System.err);
+            }
         }
     }
 
