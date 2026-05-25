@@ -24,19 +24,19 @@ public class TransactionDao {
      * @param type The transaction type.
      * @param productId Optional product ID related to the transaction.
      * @param amount The transaction amount.
-     * @param referenceId Optional reference ID (e.g., auction ID).
+     * @param auctionId Optional auction ID related to the transaction.
      * @param description A brief description of the transaction.
      * @return True if successful.
      * @throws SQLException If a database error occurs.
      */
     public boolean insertTransaction(Connection connection, String senderAccountname,
                                      String receiverAccountname, TransactionType type, Integer productId,
-                                     long amount, Integer referenceId, String description)
+                                     long amount, Integer auctionId, String description)
             throws SQLException {
         String sql = """
                 INSERT INTO transactions(
                     sender_accountname, receiver_accountname, type, product_id,
-                    amount, reference_id, description
+                    amount, auction_id, description
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """;
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -57,10 +57,10 @@ public class TransactionDao {
                 ps.setInt(4, productId);
             }
             ps.setLong(5, amount);
-            if (referenceId == null) {
+            if (auctionId == null) {
                 ps.setNull(6, Types.INTEGER);
             } else {
-                ps.setInt(6, referenceId);
+                ps.setInt(6, auctionId);
             }
             ps.setString(7, description);
             return ps.executeUpdate() > 0;

@@ -1,11 +1,10 @@
 package org.example.dto.request;
 
 /**
- * Data Transfer Object for placing a bid.
+ * Data Transfer Object for placing a bid on an auction.
  */
 public class BidRequest {
     private int auctionId;
-    private int productId;
     private long amount;
 
     /**
@@ -14,13 +13,12 @@ public class BidRequest {
     public BidRequest() {}
 
     /**
-     * Constructs a BidRequest with specified product ID and amount.
-     * @param productId the ID of the product being bid on
-     * @param bidderAccountname the account name of the bidder (unused, handled by session)
-     * @param amount the bid amount
+     * Constructs a BidRequest.
+     * @param auctionId the ID of the auction being bid on
+     * @param amount    the bid amount
      */
-    public BidRequest(int productId, String bidderAccountname, long amount) {
-        this.productId = productId;
+    public BidRequest(int auctionId, long amount) {
+        this.auctionId = auctionId;
         this.amount = amount;
     }
 
@@ -35,24 +33,6 @@ public class BidRequest {
      * @param auctionId the auction ID to set
      */
     public void setAuctionId(int auctionId) { this.auctionId = auctionId; }
-
-    /**
-     * Gets the product ID.
-     * @return the product ID
-     */
-    public int getProductId() { return productId; }
-
-    /**
-     * Sets the product ID.
-     * @param productId the product ID to set
-     */
-    public void setProductId(int productId) { this.productId = productId; }
-
-    /**
-     * Gets the bidder account name.
-     * @return always null, as account name is retrieved from the session
-     */
-    public String getBidderAccountname() { return null; }
 
     /**
      * Gets the bid amount.

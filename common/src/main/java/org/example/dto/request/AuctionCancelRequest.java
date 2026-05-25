@@ -1,11 +1,10 @@
 package org.example.dto.request;
 
 /**
- * DTO for admin to cancel an ongoing auction.
+ * DTO for an admin to cancel an ongoing auction.
  */
 public class AuctionCancelRequest {
     private int auctionId;
-    private int productId;
     private String reason;
 
     /**
@@ -14,12 +13,12 @@ public class AuctionCancelRequest {
     public AuctionCancelRequest() {}
 
     /**
-     * Constructs an AuctionCancelRequest with specified product ID and reason.
-     * @param productId the ID of the product whose auction is to be cancelled
-     * @param reason the reason for cancellation
+     * Constructs an AuctionCancelRequest.
+     * @param auctionId the ID of the auction to cancel
+     * @param reason    the reason for cancellation
      */
-    public AuctionCancelRequest(int productId, String reason) {
-        this.productId = productId;
+    public AuctionCancelRequest(int auctionId, String reason) {
+        this.auctionId = auctionId;
         this.reason = reason;
     }
 
@@ -27,25 +26,13 @@ public class AuctionCancelRequest {
      * Gets the auction ID.
      * @return the auction ID
      */
-    public int getAuctionId() { return auctionId > 0 ? auctionId : productId; }
+    public int getAuctionId() { return auctionId; }
 
     /**
      * Sets the auction ID.
      * @param auctionId the auction ID to set
      */
     public void setAuctionId(int auctionId) { this.auctionId = auctionId; }
-
-    /**
-     * Gets the product ID.
-     * @return the product ID
-     */
-    public int getProductId() { return productId; }
-
-    /**
-     * Sets the product ID.
-     * @param productId the product ID to set
-     */
-    public void setProductId(int productId) { this.productId = productId; }
 
     /**
      * Gets the cancellation reason.

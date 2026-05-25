@@ -3,12 +3,12 @@ package org.example.model;
 import java.sql.Timestamp;
 
 /**
- * Represents a bid placed by a bidder on an item.
- * This can be used as a DTO for real-time bidding messages.
+ * Represents a single bid placed by a bidder in an auction.
+ * Maps to a row in the {@code bids} table.
  */
 public class Bid {
 
-    private int productId;
+    private int auctionId;
     private String bidderAccountname;
     private long bidAmount;
     private Timestamp bidTime;
@@ -21,21 +21,21 @@ public class Bid {
 
     /**
      * Constructs a Bid with all fields.
-     * @param productId The ID of the product being bid on.
+     * @param auctionId         The ID of the auction this bid belongs to.
      * @param bidderAccountname The account name of the bidder.
-     * @param bidAmount The amount of the bid.
-     * @param bidTime The timestamp when the bid was placed.
+     * @param bidAmount         The amount of the bid.
+     * @param bidTime           The timestamp when the bid was placed.
      */
-    public Bid(int productId, String bidderAccountname, long bidAmount, Timestamp bidTime) {
-        this.productId = productId;
+    public Bid(int auctionId, String bidderAccountname, long bidAmount, Timestamp bidTime) {
+        this.auctionId = auctionId;
         this.bidderAccountname = bidderAccountname;
         this.bidAmount = bidAmount;
         this.bidTime = bidTime;
     }
 
     // Getters and Setters
-    public int getProductId() { return productId; }
-    public void setProductId(int productId) { this.productId = productId; }
+    public int getAuctionId() { return auctionId; }
+    public void setAuctionId(int auctionId) { this.auctionId = auctionId; }
 
     public String getBidderAccountname() { return bidderAccountname; }
     public void setBidderAccountname(String bidderAccountname) { this.bidderAccountname = bidderAccountname; }

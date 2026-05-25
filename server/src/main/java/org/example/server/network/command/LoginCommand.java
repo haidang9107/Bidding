@@ -22,14 +22,17 @@ import java.nio.charset.StandardCharsets;
  */
 public class LoginCommand implements Command {
     private final AuthController authController;
+    private final DisconnectionHandler disconnectionHandler;
 
     /**
      * Constructs a LoginCommand with the specified AuthController.
      *
      * @param authController the controller for authentication operations
+     * @param disconnectionHandler the handler for client disconnections
      */
-    public LoginCommand(AuthController authController) {
+    public LoginCommand(AuthController authController, DisconnectionHandler disconnectionHandler) {
         this.authController = authController;
+        this.disconnectionHandler = disconnectionHandler;
     }
 
     /**
@@ -51,7 +54,7 @@ public class LoginCommand implements Command {
             if (oldChannel != null && oldChannel != channel) {
                 FileLogger.info("User " + user.getAccountname() + " logged in from another location. Kicking out old session.");
                 notifyKickout(oldChannel);
-                DisconnectionHandler.handle(oldChannel);
+                disconnectionHandler.handle(oldChannel);
             }
 
             SessionManager.login(channel, user);

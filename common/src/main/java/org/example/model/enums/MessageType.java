@@ -29,8 +29,14 @@ public enum MessageType {
     PRODUCT_LIST,
     /** Auction/Product Management: Get product details */
     PRODUCT_DETAIL,
-    /** Auction/Product Management: Add a new product */
+    /** Auction/Product Management: Add a new product (legacy: also opens auction) */
     PRODUCT_ADD,
+    /** Auction/Product Management: Create a product in the seller's inventory only (no auction) */
+    PRODUCT_CREATE,
+    /** Auction/Product Management: Get the current user's owned products (inventory) */
+    MY_PRODUCT_LIST,
+    /** Auction/Product Management: Open an auction for an existing inventory product */
+    AUCTION_OPEN,
     
     /** Bidding Logic: Client sends a bid */
     BID_PLACE,

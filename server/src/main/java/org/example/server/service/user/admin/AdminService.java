@@ -1,38 +1,32 @@
 package org.example.server.service.user.admin;
 
 import org.example.dto.response.PagedResponse;
-import org.example.model.enums.AuctionStatus;
-import org.example.model.product.Item;
 import org.example.model.user.User;
-import org.example.server.event.AuctionEndedEvent;
-import org.example.server.event.EventPublisher;
-import org.example.server.repository.ProductDao;
 import org.example.server.repository.TransactionManager;
 import org.example.server.repository.UserDao;
+import org.example.server.service.auction.AuctionService;
 import org.example.util.FileLogger;
 
 import java.util.List;
 
 /**
- * Service for handling administrative business logic.
- * Refactored to use TransactionManager and EventPublisher.
+ * Service for handling administrative business logic. Delegates auction operations
+ * to {@link AuctionService} rather than touching auction DAOs directly.
  */
 public class AdminService {
     private final UserDao userDao;
-    private final ProductDao productDao;
+    private final AuctionService auctionService;
     private final TransactionManager txManager;
-    private final EventPublisher eventPublisher;
 
     /**
      * Constructs a new AdminService.
-     * @param txManager The transaction manager.
-     * @param eventPublisher The event publisher.
+     * @param txManager      The transaction manager.
+     * @param auctionService The auction service used for auction-related admin actions.
      */
-    public AdminService(TransactionManager txManager, EventPublisher eventPublisher) {
+    public AdminService(TransactionManager txManager, AuctionService auctionService) {
         this.userDao = new UserDao();
-        this.productDao = new ProductDao();
+        this.auctionService = auctionService;
         this.txManager = txManager;
-        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -75,27 +69,11 @@ public class AdminService {
     }
 
     /**
-     * Cancels an auction and releases any blocked balances.
+     * Cancels an auction by delegating to the auction service.
      * @param auctionId The ID of the auction to cancel.
      * @return True if successful.
      */
     public boolean cancelAuction(int auctionId) {
-        return txManager.execute(conn -> {
-            Item item = productDao.getAuctionForUpdate(conn, auctionId);
-            if (item == null || item.getStatus() == AuctionStatus.FINISHED || item.getStatus() == AuctionStatus.CANCELED) {
-                return false;
-            }
-
-            boolean success = productDao.updateStatus(conn, auctionId, AuctionStatus.CANCELED);
-            if (success) {
-                productDao.updateProductAuctionFlag(conn, item.getProductId(), false);
-                if (item.getWinnerAccountname() != null) {
-                    userDao.addBlockedBalance(conn, item.getWinnerAccountname(), -item.getCurrentPrice());
-                }
-                FileLogger.info("Admin action: Auction " + auctionId + " has been CANCELED.");
-                eventPublisher.publish(new AuctionEndedEvent(auctionId, item.getName(), item.getWinnerAccountname(), item.getCurrentPrice(), true));
-            }
-            return success;
-        });
+        return auctionService.cancelAuction(auctionId);
     }
 }

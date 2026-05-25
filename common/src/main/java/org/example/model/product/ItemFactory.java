@@ -4,19 +4,19 @@ import org.example.model.enums.ItemCategory;
 import org.example.util.JsonConverter;
 
 /**
- * Factory for creating specific Item types based on category.
+ * Factory for creating specific Product types based on category.
  * Implements the Factory Method pattern as per project requirements.
  */
 public class ItemFactory {
 
     /**
-     * Creates an Item instance based on the provided category and data.
+     * Creates a Product instance based on the provided category and data.
      *
-     * @param category the category of the item
-     * @param dataJson the JSON representation of the item data
-     * @return a specific subclass of Item
+     * @param category the category of the product
+     * @param dataJson the JSON representation of the product data
+     * @return a specific subclass of Product
      */
-    public static Item createItem(ItemCategory category, String dataJson) {
+    public static Product createProduct(ItemCategory category, String dataJson) {
         return switch (category) {
             case ELECTRONICS -> JsonConverter.fromJson(dataJson, Electronics.class);
             case ART -> JsonConverter.fromJson(dataJson, Art.class);

@@ -4,16 +4,18 @@ import org.example.model.enums.MessageType;
 import org.example.server.controller.*;
 import org.example.server.event.EventPublisher;
 import org.example.server.event.NetworkNotificationListener;
-import org.example.server.network.AuctionMonitor;
+import org.example.server.network.DisconnectionHandler;
 import org.example.server.network.SocketServer;
 import org.example.server.network.command.*;
 import org.example.server.repository.DatabaseConnectionPool;
 import org.example.server.repository.TransactionManager;
+import org.example.server.service.auction.AuctionMonitor;
+import org.example.server.service.auction.AuctionService;
 import org.example.server.service.bid.BidService;
 import org.example.server.service.finance.DepositService;
+import org.example.server.service.finance.TransactionService;
 import org.example.server.service.finance.TransferService;
 import org.example.server.service.finance.WithdrawService;
-import org.example.server.service.finance.TransactionService;
 import org.example.server.service.product.ProductService;
 import org.example.server.service.user.UserService;
 import org.example.server.service.user.admin.AdminService;
@@ -22,28 +24,29 @@ import org.example.util.FileLogger;
 
 /**
  * Main entry point for the Bidding Server.
- * Refactored to use non-static components and Event-Driven Architecture.
+ * Refactored to use non-static components, Event-Driven Architecture, and a clean
+ * Product / Auction separation.
  */
 public class ServerApp {
 
     /**
-     * Main entry point for the Bidding Server.
-     * @param args command line arguments
+     * Main entry point.
+     * @param args command line arguments.
      */
     public static void main(String[] args) {
         try {
             bootstrap();
         } catch (Exception e) {
-            e.printStackTrace(); // Print directly to console to bypass async logger exit race condition
+            e.printStackTrace();
             FileLogger.error("CRITICAL: Server failed to start", e);
-            try { Thread.sleep(500); } catch (InterruptedException ignored) {} // Give logger time to write
+            try { Thread.sleep(500); } catch (InterruptedException ignored) {}
             System.exit(1);
         }
     }
 
     /**
-     * Bootstraps the server components, including infrastructure, services, controllers, and network wiring.
-     * @throws Exception if an error occurs during bootstrapping
+     * Bootstraps the server: infrastructure → services → controllers → network.
+     * @throws Exception if an error occurs during bootstrapping.
      */
     private static void bootstrap() throws Exception {
         FileLogger.info("Starting Bidding Server Bootstrap Sequence...");
@@ -53,45 +56,49 @@ public class ServerApp {
         TransactionManager txManager = new TransactionManager(pool);
         EventPublisher eventPublisher = new EventPublisher();
 
-        // 2. Services
-        AuthService authService = new AuthService(txManager);
-        ProductService productService = new ProductService(txManager, eventPublisher);
-        
-        // 7. Background Tasks (Depends on ProductService)
-        AuctionMonitor auctionMonitor = new AuctionMonitor(productService);
-        productService.setAuctionMonitor(auctionMonitor);
+        // 2. Services - Product first (used by AuctionService for ownership transfer)
+        ProductService productService = new ProductService(txManager);
+        AuctionService auctionService = new AuctionService(txManager, eventPublisher, productService);
 
-        // 2. Services (Continued)
+        // 3. AuctionMonitor depends on AuctionService; wired back via setter to break the cycle
+        AuctionMonitor auctionMonitor = new AuctionMonitor(auctionService);
+        auctionService.setAuctionMonitor(auctionMonitor);
+
+        // 4. Other services
+        AuthService authService = new AuthService(txManager);
         BidService bidService = new BidService(txManager, eventPublisher, auctionMonitor);
         UserService userService = new UserService(txManager);
-        AdminService adminService = new AdminService(txManager, eventPublisher);
+        AdminService adminService = new AdminService(txManager, auctionService);
         DepositService depositService = new DepositService(txManager);
         WithdrawService withdrawService = new WithdrawService(txManager);
         TransferService transferService = new TransferService(txManager);
         TransactionService transactionService = new TransactionService(txManager);
 
-        // 4. Network notification wiring
-        NetworkNotificationListener notifListener = new NetworkNotificationListener(productService);
+        // 5. Notification & Connection wiring
+        NetworkNotificationListener notifListener = new NetworkNotificationListener(auctionService);
         notifListener.registerAll(eventPublisher);
+        DisconnectionHandler disconnectionHandler = new DisconnectionHandler(txManager);
 
-        // 5. Controllers
+        // 6. Controllers
         AuthController authController = new AuthController(authService);
-        ProductController productController = new ProductController(productService);
+        AuctionController auctionController = new AuctionController(auctionService);
         BidController bidController = new BidController(bidService);
         AdminController adminController = new AdminController(adminService);
         UserController userController = new UserController(userService);
-        FinanceController financeController = new FinanceController(depositService, withdrawService, transferService, transactionService);
+        FinanceController financeController = new FinanceController(
+                depositService, withdrawService, transferService, transactionService);
 
-        // 6. Command Registry
+        // 7. Command Registry
         CommandRegistry registry = new CommandRegistry();
-        registerCommands(registry, authController, productController, bidController,
-                adminController, userController, financeController, productService);
+        registerCommands(registry, authController, auctionController, bidController,
+                adminController, userController, financeController, auctionService, productService, disconnectionHandler);
 
         // 8. Socket Server
-        SocketServer server = new SocketServer(registry, authService, auctionMonitor);
+        SocketServer server = new SocketServer(registry, authService, auctionMonitor, disconnectionHandler);
 
-        // 8.1 Inactivity Monitor (Handles dead connections/network loss)
-        org.example.server.network.InactivityMonitor inactivityMonitor = new org.example.server.network.InactivityMonitor(60); // 60s timeout
+        // 8.1 Inactivity Monitor
+        org.example.server.network.InactivityMonitor inactivityMonitor =
+                new org.example.server.network.InactivityMonitor(60, disconnectionHandler);
 
         // 9. Start Background Tasks
         auctionMonitor.start();
@@ -101,64 +108,62 @@ public class ServerApp {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             FileLogger.info("Shutdown signal received. Cleaning up resources...");
             inactivityMonitor.stop();
+            auctionMonitor.stop();
             server.stop();
+            eventPublisher.shutdown();
             pool.close();
             FileLogger.info("Server shutdown complete.");
         }));
 
-        // 10. Start
+        // 11. Start
         server.run();
     }
 
     /**
      * Registers all available commands with the command registry.
-     * @param registry the command registry to register with
-     * @param auth the auth controller
-     * @param product the product controller
-     * @param bid the bid controller
-     * @param admin the admin controller
-     * @param user the user controller
-     * @param finance the finance controller
-     * @param productService the product service
      */
     private static void registerCommands(
             CommandRegistry registry,
-            AuthController auth, ProductController product,
+            AuthController auth, AuctionController auction,
             BidController bid, AdminController admin,
             UserController user, FinanceController finance,
-            ProductService productService) {
+            AuctionService auctionService, ProductService productService,
+            DisconnectionHandler disconnectionHandler) {
 
         // Auth
-        registry.register(MessageType.LOGIN,  new LoginCommand(auth));
+        registry.register(MessageType.LOGIN,  new LoginCommand(auth, disconnectionHandler));
         registry.register(MessageType.SIGNUP, new SignupCommand(auth));
         registry.register(MessageType.LOGOUT, new LogoutCommand());
         registry.register(MessageType.PING,   new PingCommand());
 
-        // Product & Auction
-        registry.register(MessageType.PRODUCT_LIST,       new ProductListCommand(product));
-        registry.register(MessageType.PRODUCT_DETAIL,     new ProductDetailCommand(product));
-        registry.register(MessageType.PRODUCT_ADD,        new ProductAddCommand(product));
-        registry.register(MessageType.JOIN_AUCTION_ROOM,  new JoinAuctionRoomCommand(productService));
+        // Auction (product list / detail / create)
+        registry.register(MessageType.PRODUCT_LIST,       new AuctionListCommand(auction));
+        registry.register(MessageType.PRODUCT_DETAIL,     new AuctionDetailCommand(auction));
+        registry.register(MessageType.PRODUCT_ADD,        new AuctionCreateCommand(auction));
+        registry.register(MessageType.PRODUCT_CREATE,     new ProductCreateCommand(productService));
+        registry.register(MessageType.MY_PRODUCT_LIST,    new MyProductListCommand(productService));
+        registry.register(MessageType.AUCTION_OPEN,       new AuctionOpenCommand(auctionService));
+        registry.register(MessageType.JOIN_AUCTION_ROOM,  new JoinAuctionRoomCommand(auctionService));
         registry.register(MessageType.LEAVE_AUCTION_ROOM, new LeaveAuctionRoomCommand());
 
         // Bidding
-        registry.register(MessageType.BID_PLACE,      new BidPlaceCommand(bid));
-        registry.register(MessageType.AUTO_BID_SET,   new AutoBidSetCommand(bid));
+        registry.register(MessageType.BID_PLACE,       new BidPlaceCommand(bid));
+        registry.register(MessageType.AUTO_BID_SET,    new AutoBidSetCommand(bid));
         registry.register(MessageType.AUTO_BID_CANCEL, new AutoBidCancelCommand(bid));
-        registry.register(MessageType.BID_HISTORY,    new BidHistoryCommand(bid));
+        registry.register(MessageType.BID_HISTORY,     new BidHistoryCommand(bid));
 
         // User & Admin
         registry.register(MessageType.GET_PROFILE,        new GetProfileCommand(user));
         registry.register(MessageType.UPDATE_PROFILE,     new UpdateProfileCommand(user));
         registry.register(MessageType.USER_UPDATE_AVATAR, new UserUpdateAvatarCommand(user));
-        registry.register(MessageType.ADMIN_GET_ALL_USERS,    new AdminGetAllUsersCommand(admin));
-        registry.register(MessageType.ADMIN_BAN_USER,         new AdminBanUserCommand(admin));
-        registry.register(MessageType.ADMIN_CANCEL_AUCTION,   new AdminCancelAuctionCommand(admin));
+        registry.register(MessageType.ADMIN_GET_ALL_USERS,  new AdminGetAllUsersCommand(admin));
+        registry.register(MessageType.ADMIN_BAN_USER,       new AdminBanUserCommand(admin));
+        registry.register(MessageType.ADMIN_CANCEL_AUCTION, new AdminCancelAuctionCommand(admin));
 
         // Finance
-        registry.register(MessageType.DEPOSIT,  new DepositCommand(finance));
-        registry.register(MessageType.WITHDRAW, new WithdrawCommand(finance));
-        registry.register(MessageType.TRANSFER, new TransferCommand(finance));
+        registry.register(MessageType.DEPOSIT,             new DepositCommand(finance));
+        registry.register(MessageType.WITHDRAW,            new WithdrawCommand(finance));
+        registry.register(MessageType.TRANSFER,            new TransferCommand(finance));
         registry.register(MessageType.TRANSACTION_HISTORY, new TransactionHistoryCommand(finance));
     }
 }

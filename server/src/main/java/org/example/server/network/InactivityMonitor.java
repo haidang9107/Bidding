@@ -13,13 +13,16 @@ import java.util.concurrent.TimeUnit;
 public class InactivityMonitor {
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private final long timeoutMillis;
+    private final DisconnectionHandler disconnectionHandler;
 
     /**
      * Constructs an InactivityMonitor with specified timeout.
      * @param timeoutSeconds the inactivity timeout in seconds
+     * @param disconnectionHandler the handler for client disconnections
      */
-    public InactivityMonitor(long timeoutSeconds) {
+    public InactivityMonitor(long timeoutSeconds, DisconnectionHandler disconnectionHandler) {
         this.timeoutMillis = timeoutSeconds * 1000;
+        this.disconnectionHandler = disconnectionHandler;
     }
 
     /**
@@ -57,7 +60,7 @@ public class InactivityMonitor {
 
             if (now - lastActive > timeoutMillis) {
                 FileLogger.warn("Channel timed out due to inactivity: " + channel);
-                DisconnectionHandler.handle(channel);
+                disconnectionHandler.handle(channel);
             }
         }
     }

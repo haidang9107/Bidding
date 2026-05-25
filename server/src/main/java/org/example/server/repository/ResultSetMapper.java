@@ -18,7 +18,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 
 /**
- * Utility class to map ResultSet rows to Domain Models.
+ * Utility class to map ResultSet rows to domain models.
  * Follows SRP by separating mapping logic from DAO database operations.
  */
 public class ResultSetMapper {
@@ -32,7 +32,7 @@ public class ResultSetMapper {
     public static User mapToUser(ResultSet rs) throws SQLException {
         int roleValue = rs.getInt("role");
         UserRole role = UserRole.fromInt(roleValue);
-        
+
         String accountname = rs.getString("accountname");
         String password = rs.getString("password");
         String fullname = rs.getString("fullname");
@@ -56,70 +56,78 @@ public class ResultSetMapper {
     }
 
     /**
-     * Maps a ResultSet row to an Item object of the appropriate subclass (Art, Electronics, etc.).
+     * Maps a ResultSet row (from the {@code products} table or a JOIN that includes
+     * its columns) to the appropriate {@link Product} subclass.
      * @param rs The ResultSet.
-     * @return The mapped Item object.
+     * @return The mapped Product object.
      * @throws SQLException If a database error occurs.
      */
-    public static Item mapToItem(ResultSet rs) throws SQLException {
+    public static Product mapToProduct(ResultSet rs) throws SQLException {
         int productId = rs.getInt("product_id");
         String name = rs.getString("name");
         String description = rs.getString("description");
         String imageUrl = rs.getString("image_url");
-        long startingPrice = rs.getLong("start_price");
-        long currentPrice = rs.getLong("current_price");
-        long stepPrice = rs.getLong("step_price");
-        String sellerAccountname = rs.getString("seller_accountname");
-        String winnerAccountname = rs.getString("winner_accountname");
         ItemCategory category = ItemCategory.fromInt(rs.getInt("category"));
-        AuctionStatus status = AuctionStatus.fromInt(rs.getInt("status"));
-        Timestamp startTime = rs.getTimestamp("start_time");
-        Timestamp endTime = rs.getTimestamp("end_time");
-        int version = rs.getInt("version");
+        String ownerAccountname = rs.getString("owner_accountname");
 
-        Item item;
+        Product product;
         if (category == ItemCategory.ELECTRONICS) {
-            item = new Electronics(productId, name, description, imageUrl, startingPrice, currentPrice,
-                    stepPrice, sellerAccountname, winnerAccountname, status, startTime, endTime,
-                    version, rs.getString("brand"), rs.getInt("warranty_months"));
+            product = new Electronics(productId, name, description, imageUrl, ownerAccountname,
+                    rs.getString("brand"), rs.getInt("warranty_months"));
         } else if (category == ItemCategory.ART) {
-            item = new Art(productId, name, description, imageUrl, startingPrice, currentPrice,
-                    stepPrice, sellerAccountname, winnerAccountname, status, startTime, endTime,
-                    version, rs.getString("artist"), rs.getString("art_type"));
+            product = new Art(productId, name, description, imageUrl, ownerAccountname,
+                    rs.getString("artist"), rs.getString("art_type"));
         } else if (category == ItemCategory.VEHICLE) {
-            item = new Vehicle(productId, name, description, imageUrl, startingPrice, currentPrice,
-                    stepPrice, sellerAccountname, winnerAccountname, status, startTime, endTime,
-                    version, rs.getString("brand"), rs.getString("model"), rs.getInt("manufacture_year"));
+            product = new Vehicle(productId, name, description, imageUrl, ownerAccountname,
+                    rs.getString("brand"), rs.getString("model"), rs.getInt("manufacture_year"));
         } else {
-            item = new OtherItem(productId, name, description, imageUrl, startingPrice, currentPrice,
-                    stepPrice, sellerAccountname, winnerAccountname, status, startTime, endTime, version);
+            product = new OtherItem(productId, name, description, imageUrl, ownerAccountname);
         }
 
-        item.setAuctionId(rs.getInt("auction_id"));
-        item.setOwnerAccountname(rs.getString("owner_accountname"));
-        item.setInAuction(rs.getBoolean("is_in_auction"));
-        item.setWithdrawnAt(rs.getTimestamp("withdrawn_at"));
-        
-        long buyNowPrice = rs.getLong("buy_now_price");
-        item.setBuyNowPrice(rs.wasNull() ? null : buyNowPrice);
-        
-        return item;
+        product.setInAuction(rs.getBoolean("is_in_auction"));
+        product.setWithdrawnAt(rs.getTimestamp("withdrawn_at"));
+        return product;
     }
 
     /**
-     * Maps a ResultSet row to an Auction object.
+     * Maps a ResultSet row from the {@code auctions} table to an {@link Auction}.
+     * Does NOT populate the embedded {@link Product}; use {@link #mapToAuctionWithProduct}
+     * when the query joins {@code products}.
      * @param rs The ResultSet.
-     * @return The mapped Auction object.
+     * @return The mapped Auction.
      * @throws SQLException If a database error occurs.
      */
     public static Auction mapToAuction(ResultSet rs) throws SQLException {
+        long buyNowPrice = rs.getLong("buy_now_price");
+        Long buyNow = rs.wasNull() ? null : buyNowPrice;
+
         return new Auction(
-                rs.getInt("bid_id"),
                 rs.getInt("auction_id"),
-                rs.getString("bidder_accountname"),
-                rs.getLong("bid_amount"),
-                rs.getTimestamp("bid_time")
+                rs.getInt("product_id"),
+                rs.getString("seller_accountname"),
+                rs.getString("winner_accountname"),
+                rs.getLong("start_price"),
+                rs.getLong("current_price"),
+                rs.getLong("step_price"),
+                buyNow,
+                rs.getTimestamp("start_time"),
+                rs.getTimestamp("end_time"),
+                AuctionStatus.fromInt(rs.getInt("status")),
+                rs.getInt("version")
         );
+    }
+
+    /**
+     * Maps a ResultSet row from a JOIN of {@code auctions} and {@code products} to an
+     * {@link Auction} with its {@link Product} eagerly loaded.
+     * @param rs The ResultSet.
+     * @return The mapped Auction with its product.
+     * @throws SQLException If a database error occurs.
+     */
+    public static Auction mapToAuctionWithProduct(ResultSet rs) throws SQLException {
+        Auction auction = mapToAuction(rs);
+        auction.setProduct(mapToProduct(rs));
+        return auction;
     }
 
     /**
@@ -164,18 +172,21 @@ public class ResultSetMapper {
      */
     public static Transaction mapToTransaction(ResultSet rs) throws SQLException {
         int productId = rs.getInt("product_id");
-        int referenceId = rs.getInt("reference_id");
-        
+        Integer productIdOrNull = rs.wasNull() ? null : productId;
+        int auctionId = rs.getInt("auction_id");
+        Integer auctionIdOrNull = rs.wasNull() ? null : auctionId;
+        Timestamp createdAt = rs.getTimestamp("created_at");
+
         return new Transaction(
                 rs.getInt("transaction_id"),
                 rs.getString("sender_accountname"),
                 rs.getString("receiver_accountname"),
                 TransactionType.fromInt(rs.getInt("type")),
-                rs.wasNull() ? null : productId,
+                productIdOrNull,
                 rs.getLong("amount"),
-                rs.wasNull() ? null : referenceId,
+                auctionIdOrNull,
                 rs.getString("description"),
-                rs.getTimestamp("created_at")
+                createdAt
         );
     }
 }

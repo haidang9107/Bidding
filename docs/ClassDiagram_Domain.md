@@ -1,8 +1,24 @@
-# Core Domain Model Class Diagram
+# Core Domain Model Architecture
+
+This document outlines the core domain model of the Bidding System, detailing the primary entities, their attributes, and the relationships that drive the business logic of the application.
+
+## 1. Domain Entities Overview
+
+The system is built around several key entities:
+*   **User Hierarchy**: Represents the participants in the system, utilizing inheritance to distinguish between regular `Member`s and administrative `Admin`s.
+*   **Product Hierarchy**: Represents the items being auctioned, with specific subtypes for various categories (e.g., `Electronics`, `Vehicle`).
+*   **Bidding Mechanics**: Entities like `Bid` and `AutoBid` manage the transactional interactions within an auction.
+*   **Financials**: The `Transaction` entity records all financial movements, ensuring auditability and balance integrity.
+
+## 2. Class Diagram
+
+The following Mermaid class diagram illustrates the object-oriented design of the domain layer.
 
 ```mermaid
 classDiagram
+    %% User Hierarchy
     class User {
+        <<abstract>>
         -String accountname
         -String fullname
         -String password
@@ -15,21 +31,23 @@ classDiagram
     }
 
     class Admin {
-        +banUser()
-        +cancelAuction()
+        +banUser(User user)
+        +cancelAuction(Auction auction)
     }
 
     class Member {
         -long balance
         -long blockedBalance
-        +placeBid()
-        +topUp()
+        +placeBid(Auction auction, long amount)
+        +topUp(long amount)
+        +getAvailableBalance() long
     }
 
     User <|-- Admin
     User <|-- Member
 
-    class Item {
+    %% Product Hierarchy
+    class Product {
         <<abstract>>
         -int productId
         -int auctionId
@@ -73,11 +91,12 @@ classDiagram
         -String itemType
     }
 
-    Item <|-- Electronics
-    Item <|-- Vehicle
-    Item <|-- Art
-    Item <|-- OtherItem
+    Product <|-- Electronics
+    Product <|-- Vehicle
+    Product <|-- Art
+    Product <|-- OtherItem
 
+    %% Auction Mechanics
     class Bid {
         -int productId
         -String bidderAccountname
@@ -103,14 +122,21 @@ classDiagram
         -TransactionType type
         -Integer productId
         -long amount
-        -Integer referenceId
+        -Integer auctionId
         -String description
         -Timestamp createdAt
     }
 
-    User "1" -- "*" Bid : places
-    Item "1" -- "*" Bid : has
-    User "1" -- "*" AutoBid : configures
-    Item "1" -- "*" AutoBid : has
-    User "1" -- "*" Transaction : performs
+    %% Relationships
+    User "1" --> "*" Bid : places
+    Product "1" --> "*" Bid : receives
+    User "1" --> "*" AutoBid : configures
+    Product "1" --> "*" AutoBid : allows
+    User "1" --> "*" Transaction : performs
 ```
+
+## 3. Design Decisions & Patterns
+
+*   **Inheritance (IS-A Relationship)**: The `User` and `Product` classes are designed as abstract base classes. This allows for polymorphic behavior and shared attributes across all specific user roles and product categories.
+*   **Composition (HAS-A Relationship)**: `User` and `Product` associate with `Bid`, `AutoBid`, and `Transaction` via one-to-many relationships.
+*   **Optimistic Locking**: The `version` attribute in `Product` (representing the Auction state) is crucial for optimistic concurrency control, preventing race conditions during simultaneous bidding.

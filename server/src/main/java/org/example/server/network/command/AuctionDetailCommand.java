@@ -4,7 +4,7 @@ import org.example.dto.request.AuctionRoomRequest;
 import org.example.model.enums.MessageType;
 import org.example.payload.Request;
 import org.example.payload.Response;
-import org.example.server.controller.ProductController;
+import org.example.server.controller.AuctionController;
 import org.example.util.JsonConverter;
 
 import java.nio.channels.SocketChannel;
@@ -12,24 +12,22 @@ import java.nio.channels.SocketChannel;
 /**
  * Command to retrieve detailed information about a specific auction.
  */
-public class ProductDetailCommand implements Command {
-    private final ProductController productController;
+public class AuctionDetailCommand implements Command {
+    private final AuctionController auctionController;
 
     /**
-     * Constructs a ProductDetailCommand with the specified ProductController.
-     *
-     * @param productController the controller for product-related operations
+     * Constructs an AuctionDetailCommand.
+     * @param auctionController The auction controller.
      */
-    public ProductDetailCommand(ProductController productController) {
-        this.productController = productController;
+    public AuctionDetailCommand(AuctionController auctionController) {
+        this.auctionController = auctionController;
     }
 
     /**
-     * Executes the product detail command.
-     *
-     * @param request the request containing the auction ID
-     * @param channel the socket channel of the client
-     * @return the response containing auction details
+     * Executes the auction detail command.
+     * @param request The request containing the auction ID.
+     * @param channel The socket channel of the client.
+     * @return The response containing the auction details.
      */
     @Override
     public Response<?> execute(Request request, SocketChannel channel) {
@@ -37,6 +35,6 @@ public class ProductDetailCommand implements Command {
         if (detailRequest == null) {
             return new Response<>(MessageType.ERROR, false, "Invalid request payload", null);
         }
-        return productController.handleGetAuctionDetail(detailRequest.getAuctionId());
+        return auctionController.handleGetAuctionDetail(detailRequest.getAuctionId());
     }
 }

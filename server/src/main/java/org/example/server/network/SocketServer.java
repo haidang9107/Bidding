@@ -1,6 +1,7 @@
 package org.example.server.network;
 
 import org.example.server.network.command.CommandRegistry;
+import org.example.server.service.auction.AuctionMonitor;
 import org.example.server.service.user.auth.AuthService;
 import org.example.util.Config;
 import org.example.util.FileLogger;
@@ -28,6 +29,7 @@ public class SocketServer {
     private final CommandRegistry commandRegistry;
     private final AuthService authService;
     private final AuctionMonitor auctionMonitor;
+    private final DisconnectionHandler disconnectionHandler;
     private final ExecutorService executorService;
     private final Map<SocketChannel, ByteArrayOutputStream> clientBuffers = new HashMap<>();
     private boolean running = true;
@@ -37,12 +39,14 @@ public class SocketServer {
      * @param commandRegistry the registry for commands
      * @param authService the auth service
      * @param auctionMonitor the auction monitor
+     * @param disconnectionHandler the disconnection handler
      * @throws IOException if the server socket cannot be opened or bound
      */
-    public SocketServer(CommandRegistry commandRegistry, AuthService authService, AuctionMonitor auctionMonitor) throws IOException {
+    public SocketServer(CommandRegistry commandRegistry, AuthService authService, AuctionMonitor auctionMonitor, DisconnectionHandler disconnectionHandler) throws IOException {
         this.commandRegistry = commandRegistry;
         this.authService = authService;
         this.auctionMonitor = auctionMonitor;
+        this.disconnectionHandler = disconnectionHandler;
         this.executorService = Executors.newFixedThreadPool(10); // Standard thread pool for commands
 
         this.selector = Selector.open();
@@ -141,7 +145,7 @@ public class SocketServer {
         SocketChannel clientChannel = (SocketChannel) key.channel();
         key.cancel();
         clientBuffers.remove(clientChannel);
-        DisconnectionHandler.handle(clientChannel);
+        disconnectionHandler.handle(clientChannel);
     }
 
     /**

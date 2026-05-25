@@ -82,7 +82,9 @@ public class Broadcaster {
                 RoomManager.removeChannel(channel);
                 try {
                     channel.close();
-                } catch (IOException ignored) {}
+                } catch (IOException ex) {
+                    FileLogger.debug("Error closing channel after broadcast failure: " + ex.getMessage());
+                }
             }
         }
     }

@@ -13,7 +13,7 @@ public class Transaction {
     private TransactionType type;
     private Integer productId;
     private long amount;
-    private Integer referenceId; // e.g., auctionId
+    private Integer auctionId; // e.g., auctionId
     private String description;
     private Timestamp createdAt;
 
@@ -21,14 +21,14 @@ public class Transaction {
 
     public Transaction(int transactionId, String senderAccountname, String receiverAccountname,
                        TransactionType type, Integer productId, long amount,
-                       Integer referenceId, String description, Timestamp createdAt) {
+                       Integer auctionId, String description, Timestamp createdAt) {
         this.transactionId = transactionId;
         this.senderAccountname = senderAccountname;
         this.receiverAccountname = receiverAccountname;
         this.type = type;
         this.productId = productId;
         this.amount = amount;
-        this.referenceId = referenceId;
+        this.auctionId = auctionId;
         this.description = description;
         this.createdAt = createdAt;
     }
@@ -52,8 +52,8 @@ public class Transaction {
     public long getAmount() { return amount; }
     public void setAmount(long amount) { this.amount = amount; }
 
-    public Integer getReferenceId() { return referenceId; }
-    public void setReferenceId(Integer referenceId) { this.referenceId = referenceId; }
+    public Integer getAuctionId() { return auctionId; }
+    public void setAuctionId(Integer auctionId) { this.auctionId = auctionId; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }

@@ -5,32 +5,30 @@ import org.example.model.enums.MessageType;
 import org.example.payload.Request;
 import org.example.payload.Response;
 import org.example.server.network.RoomManager;
-import org.example.server.service.product.ProductService;
+import org.example.server.service.auction.AuctionService;
 import org.example.util.JsonConverter;
 
 import java.nio.channels.SocketChannel;
 
 /**
- * Command for a user to join a specific auction room to receive updates.
+ * Command for a user to join a specific auction room to receive realtime updates.
  */
 public class JoinAuctionRoomCommand implements Command {
-    private final ProductService productService;
+    private final AuctionService auctionService;
 
     /**
-     * Constructs a JoinAuctionRoomCommand with the specified ProductService.
-     *
-     * @param productService the service for product and auction data
+     * Constructs a JoinAuctionRoomCommand.
+     * @param auctionService The auction service used to verify auction existence.
      */
-    public JoinAuctionRoomCommand(ProductService productService) {
-        this.productService = productService;
+    public JoinAuctionRoomCommand(AuctionService auctionService) {
+        this.auctionService = auctionService;
     }
 
     /**
      * Executes the join auction room command.
-     *
-     * @param request the request containing AuctionRoomRequest
-     * @param channel the socket channel of the user
-     * @return the response indicating success or failure of joining the room
+     * @param request The request containing the auction ID.
+     * @param channel The socket channel of the user.
+     * @return The response indicating success or failure of joining the room.
      */
     @Override
     public Response<?> execute(Request request, SocketChannel channel) {
@@ -41,7 +39,7 @@ public class JoinAuctionRoomCommand implements Command {
         }
 
         try {
-            if (productService.getAuctionById(roomRequest.getAuctionId()) == null) {
+            if (auctionService.getAuctionById(roomRequest.getAuctionId()) == null) {
                 return new Response<>(MessageType.ERROR, false, "Auction not found", null);
             }
         } catch (Exception e) {

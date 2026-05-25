@@ -2,25 +2,25 @@ package org.example.server.service.bid;
 
 import org.example.dto.response.BidResult;
 import org.example.dto.response.PagedResponse;
+import org.example.model.Auction;
 import org.example.model.AutoBid;
 import org.example.model.Bid;
 import org.example.model.enums.AuctionStatus;
-import org.example.model.product.Item;
 import org.example.model.user.Member;
 import org.example.model.user.User;
 import org.example.server.event.EventPublisher;
 import org.example.server.event.NewBidPlacedEvent;
-import org.example.server.exception.AuctionException;
 import org.example.server.exception.BaseAppException;
 import org.example.server.exception.FinanceException;
 import org.example.server.exception.NotFoundException;
 import org.example.server.exception.ValidationException;
 import org.example.server.repository.AuctionDao;
 import org.example.server.repository.AutoBidDao;
-import org.example.server.repository.ProductDao;
+import org.example.server.repository.BidDao;
 import org.example.server.repository.TransactionManager;
 import org.example.server.repository.UserDao;
-import org.example.server.network.AuctionMonitor;
+import org.example.server.service.auction.AntiSnipping;
+import org.example.server.service.auction.AuctionMonitor;
 import org.example.util.FileLogger;
 
 import java.sql.Connection;
@@ -30,12 +30,11 @@ import java.util.List;
 
 /**
  * Service for safe manual and automatic bid placement on auction sessions.
- * Refactored to use TransactionManager, EventPublisher, and AuctionMonitor.
  */
 public class BidService {
-    private final ProductDao productDao;
-    private final UserDao userDao;
     private final AuctionDao auctionDao;
+    private final BidDao bidDao;
+    private final UserDao userDao;
     private final AutoBidDao autoBidDao;
     private final TransactionManager txManager;
     private final EventPublisher eventPublisher;
@@ -43,14 +42,14 @@ public class BidService {
 
     /**
      * Constructs a new BidService.
-     * @param txManager The transaction manager.
-     * @param eventPublisher The event publisher.
-     * @param auctionMonitor The auction monitor.
+     * @param txManager       The transaction manager.
+     * @param eventPublisher  The event publisher.
+     * @param auctionMonitor  The auction monitor (re-scheduled when anti-snipping fires).
      */
     public BidService(TransactionManager txManager, EventPublisher eventPublisher, AuctionMonitor auctionMonitor) {
-        this.productDao = new ProductDao();
-        this.userDao = new UserDao();
         this.auctionDao = new AuctionDao();
+        this.bidDao = new BidDao();
+        this.userDao = new UserDao();
         this.autoBidDao = new AutoBidDao();
         this.txManager = txManager;
         this.eventPublisher = eventPublisher;
@@ -59,57 +58,56 @@ public class BidService {
 
     /**
      * Places a manual bid on an auction.
-     * @param auctionId The ID of the auction.
-     * @param bidderAccountname The account name of the bidder.
-     * @param bidAmount The amount of the bid.
-     * @return The result of the bidding process.
+     * @param auctionId          The auction ID.
+     * @param bidderAccountname  The bidder's account name.
+     * @param bidAmount          The bid amount.
+     * @return The bid result.
      */
     public BidResult placeBid(int auctionId, String bidderAccountname, long bidAmount) {
         if (auctionId <= 0) throw new ValidationException("Invalid Auction ID");
         if (bidAmount <= 0) throw new ValidationException("Bid amount must be positive");
 
         return txManager.execute(connection -> {
-            Item item = loadActiveAuction(connection, auctionId);
-            if (item == null) {
+            Auction auction = loadActiveAuction(connection, auctionId);
+            if (auction == null) {
                 throw new NotFoundException("Auction not found or not active");
             }
 
-            applyBid(connection, item, bidderAccountname, bidAmount, false);
-
-            boolean autoBidApplied = runAutoBidding(connection, item);
+            applyBid(connection, auction, bidderAccountname, bidAmount, false);
+            boolean autoBidApplied = runAutoBidding(connection, auction);
 
             FileLogger.info("Bid sequence completed: Auction " + auctionId
-                    + ", winner " + item.getWinnerAccountname()
-                    + ", price " + item.getCurrentPrice());
-            
-            // Đăng ký lịch kết thúc chính xác (đề phòng Anti-snipping kéo dài thời gian)
-            auctionMonitor.scheduleAuctionEnd(auctionId, item.getEndTime());
+                    + ", winner " + auction.getWinnerAccountname()
+                    + ", price " + auction.getCurrentPrice());
+
+            // Re-schedule the end in case anti-snipping extended it
+            auctionMonitor.scheduleAuctionEnd(auctionId, auction.getEndTime());
 
             eventPublisher.publish(new NewBidPlacedEvent(
-                    auctionId, item.getWinnerAccountname(),
-                    item.getCurrentPrice(), autoBidApplied, item.getEndTime()));
+                    auctionId, auction.getWinnerAccountname(),
+                    auction.getCurrentPrice(), autoBidApplied, auction.getEndTime()));
 
-            return new BidResult(auctionId, item.getWinnerAccountname(),
-                    item.getCurrentPrice(), autoBidApplied, item.getEndTime());
+            return new BidResult(auctionId, auction.getWinnerAccountname(),
+                    auction.getCurrentPrice(), autoBidApplied, auction.getEndTime());
         });
     }
 
     /**
-     * Sets up or updates an automatic bidding configuration for a user.
-     * @param auctionId The ID of the auction.
-     * @param bidderAccountname The account name of the user.
-     * @param maxBid The maximum amount to bid.
-     * @param incrementAmount The increment step.
+     * Sets up or updates an automatic bidding configuration.
+     * @param auctionId          The auction ID.
+     * @param bidderAccountname  The user's account name.
+     * @param maxBid             The maximum amount to bid.
+     * @param incrementAmount    The increment step.
      */
     public void configureAutoBid(int auctionId, String bidderAccountname, long maxBid,
-                                   long incrementAmount) {
+                                 long incrementAmount) {
         if (auctionId <= 0) throw new ValidationException("Auction ID is required.");
         if (maxBid <= 0) throw new ValidationException("Max bid must be greater than 0.");
         if (incrementAmount <= 0) throw new ValidationException("Increment amount must be greater than 0.");
 
         txManager.run(connection -> {
-            Item item = loadActiveAuction(connection, auctionId);
-            if (item == null) {
+            Auction auction = loadActiveAuction(connection, auctionId);
+            if (auction == null) {
                 throw new NotFoundException("Auction not found or not active.");
             }
 
@@ -120,48 +118,45 @@ public class BidService {
             if (bidder.getStatus() != 0) {
                 throw new ValidationException("User is not active.");
             }
-            if (item.getSellerAccountname().equals(bidderAccountname)) {
+            if (auction.getSellerAccountname().equals(bidderAccountname)) {
                 throw new ValidationException("Seller cannot auto bid on their own item.");
             }
 
-            long minimumNextBid = item.getCurrentPrice() + item.getStepPrice();
+            long minimumNextBid = auction.getCurrentPrice() + auction.getStepPrice();
             if (maxBid < minimumNextBid) {
                 throw new ValidationException("Max bid is too low. Minimum required: " + minimumNextBid);
             }
-            
-            // Logic: Bước giá của auto-bid phải >= bước giá tối thiểu của sản phẩm
-            if (incrementAmount < item.getStepPrice()) {
-                throw new ValidationException("Auto-bid increment (" + incrementAmount 
-                    + ") must be at least the auction step price (" + item.getStepPrice() + ")");
+            if (incrementAmount < auction.getStepPrice()) {
+                throw new ValidationException("Auto-bid increment (" + incrementAmount
+                        + ") must be at least the auction step price (" + auction.getStepPrice() + ")");
             }
 
-            long currentBidAmount = bidderAccountname.equals(item.getWinnerAccountname()) ? item.getCurrentPrice() : 0;
+            long currentBidAmount = bidderAccountname.equals(auction.getWinnerAccountname())
+                    ? auction.getCurrentPrice() : 0;
             long totalAvailable = member.getBalance() - (member.getBlockedBalance() - currentBidAmount);
             if (totalAvailable < minimumNextBid) {
                 throw new FinanceException("Insufficient balance. Available: " + totalAvailable);
             }
 
             autoBidDao.upsertAutoBid(connection, auctionId, bidderAccountname, maxBid, incrementAmount);
-            boolean autoBidApplied = runAutoBidding(connection, item);
+            boolean autoBidApplied = runAutoBidding(connection, auction);
 
             FileLogger.info("Auto bid configured: User " + bidderAccountname
                     + " on Auction " + auctionId + " max " + maxBid);
 
             if (autoBidApplied) {
-                // Cập nhật lại lịch kết thúc nếu tự động bid làm thay đổi thời gian (Anti-snipping)
-                auctionMonitor.scheduleAuctionEnd(auctionId, item.getEndTime());
-
+                auctionMonitor.scheduleAuctionEnd(auctionId, auction.getEndTime());
                 eventPublisher.publish(new NewBidPlacedEvent(
-                        auctionId, item.getWinnerAccountname(),
-                        item.getCurrentPrice(), true, item.getEndTime()));
+                        auctionId, auction.getWinnerAccountname(),
+                        auction.getCurrentPrice(), true, auction.getEndTime()));
             }
         });
     }
 
     /**
      * Cancels an automatic bidding configuration.
-     * @param auctionId The ID of the auction.
-     * @param bidderAccountname The account name of the user.
+     * @param auctionId          The auction ID.
+     * @param bidderAccountname  The user's account name.
      */
     public void cancelAutoBid(int auctionId, String bidderAccountname) {
         txManager.run(connection -> {
@@ -173,122 +168,135 @@ public class BidService {
     }
 
     /**
-     * Retrieves a paged list of bids for a specific auction.
-     * @param auctionId The ID of the auction.
-     * @param page The page number (1-based).
-     * @param pageSize The number of items per page.
-     * @return A paged response containing the bids.
+     * Retrieves a paged list of bids for an auction.
+     * @param auctionId The auction ID.
+     * @param page      The 1-based page number.
+     * @param pageSize  The page size.
+     * @return The paged bid history.
      */
     public PagedResponse<Bid> getBidHistoryPaged(int auctionId, int page, int pageSize) {
         return txManager.query(conn -> {
-            long totalItems = auctionDao.getTotalBidsCount(conn, auctionId);
-            List<Bid> bids = auctionDao.getBidsPaged(conn, auctionId, pageSize, (page - 1) * pageSize);
+            long totalItems = bidDao.getTotalBidsCount(conn, auctionId);
+            List<Bid> bids = bidDao.getBidsPaged(conn, auctionId, pageSize, (page - 1) * pageSize);
             return new PagedResponse<>(bids, totalItems, page, pageSize);
         });
     }
 
     /**
-     * Loads an active auction and verifies it's still running.
-     * @param connection The database connection.
-     * @param auctionId The auction ID.
-     * @return The auction item, or null if not found/not active.
-     * @throws SQLException If a database error occurs.
+     * Loads an active auction (status RUNNING and not yet ended).
      */
-    private Item loadActiveAuction(Connection connection, int auctionId) throws SQLException {
-        Item item = productDao.getAuctionForUpdate(connection, auctionId);
-        if (item == null) return null;
-        if (item.getStatus() != AuctionStatus.RUNNING) return null;
+    private Auction loadActiveAuction(Connection connection, int auctionId) throws SQLException {
+        Auction auction = auctionDao.getAuctionForUpdate(connection, auctionId);
+        if (auction == null) return null;
+        if (auction.getStatus() != AuctionStatus.RUNNING) return null;
 
         Timestamp now = new Timestamp(System.currentTimeMillis());
-        if (item.getEndTime() == null || !item.getEndTime().after(now)) return null;
-        return item;
+        if (auction.getEndTime() == null || !auction.getEndTime().after(now)) return null;
+        return auction;
     }
 
-    private void applyBid(Connection connection, Item item, String bidderAccountname,
-                            long bidAmount, boolean autoBid) throws SQLException {
-        String oldWinnerAccount = item.getWinnerAccountname();
+    private void applyBid(Connection connection, Auction auction, String bidderAccountname,
+                          long bidAmount, boolean autoBid) throws SQLException {
+        String oldWinnerAccount = auction.getWinnerAccountname();
         User bidder = lockBidderAndPreviousWinner(connection, bidderAccountname, oldWinnerAccount);
         if (bidder == null) throw new NotFoundException("User not found.");
         if (bidder.getStatus() != 0) throw new ValidationException("User is not active.");
         if (!(bidder instanceof Member member)) throw new ValidationException("Only members can place bids.");
-        if (item.getSellerAccountname().equals(bidderAccountname)) {
+        if (auction.getSellerAccountname().equals(bidderAccountname)) {
             throw new ValidationException("Seller cannot bid on their own item.");
         }
 
-        long minimumBid = item.getCurrentPrice() + item.getStepPrice();
-        if (bidAmount < minimumBid) throw new ValidationException("Bid amount is too low. Minimum required: " + minimumBid);
+        long minimumBid = auction.getCurrentPrice() + auction.getStepPrice();
+        if (bidAmount < minimumBid) {
+            throw new ValidationException("Bid amount is too low. Minimum required: " + minimumBid);
+        }
+
+        // Buy Now Logic: Clamp the bid amount to the Buy Now price if it's met or exceeded
+        boolean isBuyNow = false;
+        long finalBidAmount = bidAmount;
+        if (auction.getBuyNowPrice() != null && bidAmount >= auction.getBuyNowPrice()) {
+            finalBidAmount = auction.getBuyNowPrice();
+            isBuyNow = true;
+        }
 
         long extraBlocked = oldWinnerAccount != null && oldWinnerAccount.equals(bidderAccountname)
-                ? bidAmount - item.getCurrentPrice()
-                : bidAmount;
+                ? finalBidAmount - auction.getCurrentPrice()
+                : finalBidAmount;
         long availableBalance = member.getBalance() - member.getBlockedBalance();
         if (extraBlocked > availableBalance) {
             throw new FinanceException("Insufficient balance. Available: " + availableBalance);
         }
 
         if (oldWinnerAccount != null && !oldWinnerAccount.equals(bidderAccountname)) {
-            userDao.addBlockedBalance(connection, oldWinnerAccount, -item.getCurrentPrice());
+            userDao.addBlockedBalance(connection, oldWinnerAccount, -auction.getCurrentPrice());
         }
         userDao.addBlockedBalance(connection, bidderAccountname, extraBlocked);
-        productDao.updateBidLocked(connection, item.getAuctionId(), bidAmount, bidderAccountname);
-        auctionDao.insertBid(connection, item.getAuctionId(), bidderAccountname, bidAmount, autoBid);
+        auctionDao.updateBidLocked(connection, auction.getAuctionId(), finalBidAmount, bidderAccountname);
+        bidDao.insertBid(connection, auction.getAuctionId(), bidderAccountname, finalBidAmount, autoBid);
 
-        item.setCurrentPrice(bidAmount);
-        item.setWinnerAccountname(bidderAccountname);
+        auction.setCurrentPrice(finalBidAmount);
+        auction.setWinnerAccountname(bidderAccountname);
 
-        AntiSnipping.process(connection, item, productDao);
+        if (isBuyNow) {
+            Timestamp now = new Timestamp(System.currentTimeMillis());
+            auction.setEndTime(now);
+            auctionDao.updateAuctionEndTime(connection, auction.getAuctionId(), now);
+            FileLogger.info("Buy Now triggered for Auction " + auction.getAuctionId() + " by " + bidderAccountname);
+        } else {
+            AntiSnipping.process(connection, auction, auctionDao);
+        }
     }
 
-    private boolean runAutoBidding(Connection connection, Item item) throws SQLException {
+    private boolean runAutoBidding(Connection connection, Auction auction) throws SQLException {
         boolean appliedAtLeastOnce = false;
 
-        List<AutoBid> activeBids = autoBidDao.findAllActiveForAuction(connection, item.getAuctionId());
+        List<AutoBid> activeBids = autoBidDao.findAllActiveForAuction(connection, auction.getAuctionId());
 
         while (!activeBids.isEmpty()) {
+            // If Buy Now was triggered, the auction end time will be set to now or past
+            if (auction.getEndTime() != null && auction.getEndTime().getTime() <= System.currentTimeMillis()) {
+                break;
+            }
+
             AutoBid highest = activeBids.get(0);
             AutoBid secondHighest = activeBids.size() > 1 ? activeBids.get(1) : null;
 
-            long minimumNextBid = item.getCurrentPrice() + item.getStepPrice();
+            long minimumNextBid = auction.getCurrentPrice() + auction.getStepPrice();
             long targetPrice;
 
             if (secondHighest != null) {
-                long competePrice = secondHighest.getMaxBid() + item.getStepPrice();
+                long competePrice = secondHighest.getMaxBid() + auction.getStepPrice();
                 targetPrice = Math.min(highest.getMaxBid(), competePrice);
-                if (!highest.getBidderAccountname().equals(item.getWinnerAccountname())) {
+                if (!highest.getBidderAccountname().equals(auction.getWinnerAccountname())) {
                     targetPrice = Math.max(targetPrice, minimumNextBid);
                 }
             } else {
-                if (highest.getBidderAccountname().equals(item.getWinnerAccountname())) {
-                    break; 
+                if (highest.getBidderAccountname().equals(auction.getWinnerAccountname())) {
+                    break;
                 }
-                
-                // Sử dụng chính xác bước giá người dùng đã cài đặt (đã được validation ở Bước 1)
-                targetPrice = item.getCurrentPrice() + highest.getIncrementAmount();
-                
-                // Đảm bảo không vượt quá mức tối đa người dùng cho phép
+                targetPrice = auction.getCurrentPrice() + highest.getIncrementAmount();
                 if (targetPrice > highest.getMaxBid()) {
                     targetPrice = highest.getMaxBid();
                 }
-
-                // Đảm bảo vẫn phải đáp ứng bước giá tối thiểu của sàn (phòng hờ)
                 targetPrice = Math.max(targetPrice, minimumNextBid);
             }
 
             if (targetPrice > highest.getMaxBid() || targetPrice < minimumNextBid) {
-                if (highest.getBidderAccountname().equals(item.getWinnerAccountname())) {
+                if (highest.getBidderAccountname().equals(auction.getWinnerAccountname())) {
                     break;
                 }
                 break;
             }
 
             try {
-                applyBid(connection, item, highest.getBidderAccountname(), targetPrice, true);
+                applyBid(connection, auction, highest.getBidderAccountname(), targetPrice, true);
                 appliedAtLeastOnce = true;
-                break; 
+                break;
             } catch (BaseAppException e) {
-                autoBidDao.deactivateAutoBid(connection, item.getAuctionId(), highest.getBidderAccountname());
-                FileLogger.error("Auto bid deactivated for " + highest.getBidderAccountname() + " due to error: " + e.getMessage(), e);
-                activeBids.remove(0); 
+                autoBidDao.deactivateAutoBid(connection, auction.getAuctionId(), highest.getBidderAccountname());
+                FileLogger.error("Auto bid deactivated for " + highest.getBidderAccountname()
+                        + " due to error: " + e.getMessage(), e);
+                activeBids.remove(0);
             }
         }
         return appliedAtLeastOnce;

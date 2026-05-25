@@ -4,25 +4,26 @@ import org.example.dto.notify.AuctionEndNotify;
 import org.example.dto.notify.BidUpdateNotify;
 import org.example.dto.notify.ProductUpdateNotify;
 import org.example.dto.response.ProductResponse;
+import org.example.model.Auction;
 import org.example.model.enums.MessageType;
 import org.example.payload.Response;
 import org.example.server.network.Broadcaster;
-import org.example.server.service.product.ProductService;
+import org.example.server.service.auction.AuctionService;
 
 /**
- * Giai đoạn 1: Chịu trách nhiệm duy nhất là nhận Domain Events
- * và gửi thông báo tới clients qua Broadcaster.
+ * Listens for domain events and pushes notifications to clients via the
+ * {@link Broadcaster}.
  */
 public class NetworkNotificationListener {
 
-    private final ProductService productService;
+    private final AuctionService auctionService;
 
     /**
-     * Constructs a listener with the specified product service.
-     * @param productService The product service to fetch details for notifications.
+     * Constructs a listener.
+     * @param auctionService The auction service used to fetch details on demand.
      */
-    public NetworkNotificationListener(ProductService productService) {
-        this.productService = productService;
+    public NetworkNotificationListener(AuctionService auctionService) {
+        this.auctionService = auctionService;
     }
 
     /**
@@ -33,13 +34,9 @@ public class NetworkNotificationListener {
         publisher.subscribe(NewBidPlacedEvent.class,    this::onNewBid);
         publisher.subscribe(AuctionStartedEvent.class,  this::onAuctionStarted);
         publisher.subscribe(AuctionEndedEvent.class,    this::onAuctionEnded);
-        publisher.subscribe(ProductCreatedEvent.class,  this::onProductCreated);
+        publisher.subscribe(AuctionCreatedEvent.class,  this::onAuctionCreated);
     }
 
-    /**
-     * Handles new bid events.
-     * @param e The event.
-     */
     private void onNewBid(NewBidPlacedEvent e) {
         Broadcaster.broadcastToAuction(e.auctionId(), new Response<>(
                 MessageType.BID_UPDATE, true, "New highest bid",
@@ -47,33 +44,25 @@ public class NetworkNotificationListener {
                         e.currentPrice(), e.autoBidApplied(), e.newEndTime())));
     }
 
-    /**
-     * Handles auction started events.
-     * @param e The event.
-     */
     private void onAuctionStarted(AuctionStartedEvent e) {
         Broadcaster.broadcastToAuction(e.auctionId(), new Response<>(
                 MessageType.AUCTION_START, true,
                 "Auction '" + e.itemName() + "' has started!", null));
     }
 
-    /**
-     * Handles auction ended events.
-     * @param e The event.
-     */
     private void onAuctionEnded(AuctionEndedEvent e) {
         if (e.canceled()) {
             Broadcaster.broadcastToAuction(e.auctionId(), new Response<>(
                     MessageType.NOTIFICATION, true,
                     "Auction " + e.auctionId() + " has been canceled.", null));
         } else if (e.winnerAccountname() != null) {
-            var item = productService.getAuctionById(e.auctionId());
+            Auction auction = auctionService.getAuctionById(e.auctionId());
             Broadcaster.broadcastToAuction(e.auctionId(), new Response<>(
                     MessageType.AUCTION_END, true,
                     "Auction for '" + e.itemName() + "' has ended!",
                     new AuctionEndNotify(e.auctionId(), e.winnerAccountname(),
                             e.finalPrice(), e.itemName(),
-                            item != null ? new ProductResponse(item) : null)));
+                            auction != null ? new ProductResponse(auction) : null)));
         } else {
             Broadcaster.broadcastToAuction(e.auctionId(), new Response<>(
                     MessageType.AUCTION_END, true,
@@ -83,14 +72,10 @@ public class NetworkNotificationListener {
         }
     }
 
-    /**
-     * Handles product created events.
-     * @param e The event.
-     */
-    private void onProductCreated(ProductCreatedEvent e) {
-        var item = productService.getAuctionById(e.auctionId());
-        if (item == null) return;
+    private void onAuctionCreated(AuctionCreatedEvent e) {
+        Auction auction = auctionService.getAuctionById(e.auctionId());
+        if (auction == null) return;
         Broadcaster.broadcast(new Response<>(MessageType.PRODUCT_LIST, true,
-                "New product added!", new ProductUpdateNotify(new ProductResponse(item))));
+                "New auction opened!", new ProductUpdateNotify(new ProductResponse(auction))));
     }
 }
