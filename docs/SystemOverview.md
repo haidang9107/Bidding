@@ -1,96 +1,144 @@
 # System Architecture Overview
 
-This document provides a comprehensive, high-level overview of the Bidding System's architecture. It explores data flows, network management, and the sophisticated handling of complex business rules that power this real-time platform.
+This document provides a comprehensive, high-level overview of the Bidding System's architecture — covering module structure, network layer, event-driven design, concurrency strategy, and advanced business rules.
 
 ---
 
-## 🏗 1. Multi-Module Architecture
+## 1. Multi-Module Architecture
 
-The system is engineered using a robust multi-module structure, strictly adhering to the **Separation of Concerns** principle. It is divided into three primary components:
+The project is structured as a multi-module Maven/Gradle build with strict separation of concerns:
 
-1.  **`common` (Shared Core)**:
-    *   **Domain Models**: Houses the core business entities (`User`, `Auction`, `Product`, `Transaction`).
-    *   **Data Transfer Objects (DTOs)**: Defines the Request, Response, and Notification schemas, acting as the standard contract between the Client and Server.
-    *   **Utilities**: Contains shared utilities like `JsonConverter` and logging mechanisms to ensure seamless data serialization/deserialization across the network.
-2.  **`server` (Backend Engine)**:
-    *   A high-performance, multi-threaded TCP server built on **Java NIO (Non-blocking I/O)**.
-    *   Responsible for enforcing business rules, managing auction lifecycles, processing financial transactions, and ensuring thread-safe data access via database locking.
-3.  **`client` (Frontend Application)**:
-    *   A rich Desktop application built with **JavaFX** utilizing the Model-View-Controller (MVC) architectural pattern.
-    *   Maintains a persistent, underlying socket connection with the server to render real-time UI updates based on asynchronous server broadcasts.
+| Module | Role |
+|---|---|
+| **`common`** | Shared domain models (`Auction`, `Product`, `Bid`, `User`), DTOs (request/response/notify), enums, and utilities (`JsonConverter`, `FileLogger`, `Config`). Consumed by both `server` and `client`. |
+| **`server`** | High-performance multi-threaded TCP server. Enforces all business rules, manages auction lifecycles, processes financial transactions, and guarantees thread-safe data access via database-level locking. |
+| **`client`** | JavaFX desktop application using MVC with `.fxml` layouts. Maintains a persistent socket connection to receive asynchronous server broadcasts and update the UI in real time. |
 
 ---
 
-## 🌐 2. Network Layer & Request Dispatching
+## 2. Network Layer & Request Dispatching
 
-Unlike traditional HTTP/REST APIs, the Bidding System utilizes **persistent TCP Sockets** transmitting structured JSON data. This design choice drastically reduces overhead, enabling ultra-fast, millisecond-level responses essential for a live auction environment.
+The system uses **persistent TCP Sockets** transmitting JSON payloads — eliminating HTTP overhead and enabling millisecond-level responses critical for live auctions.
 
-### The Command & Dispatcher Pattern
-To maintain a clean and scalable codebase, the server employs the **Command Pattern** for request handling:
-1.  The Client transmits a JSON payload containing a specific `"type"` identifier (e.g., `LOGIN`, `BID_PLACE`).
-2.  The `SocketServer` reads the byte stream and delegates it to the `CommandHandler`.
-3.  The `CommandHandler` queries the `CommandRegistry` to instantiate the appropriate handler class (e.g., `LoginCommand`, `BidPlaceCommand`).
-4.  This specific Command acts as a Controller, executing the required business logic within the Service layer and generating a corresponding `Response`.
-
-### Resource & Connection Management
-*   **Heartbeat Mechanism**: An `InactivityMonitor` continuously tracks `PING` packets from clients. If a client remains unresponsive for over 60 seconds, the connection is actively terminated to reclaim RAM and socket resources.
-*   **Graceful Disconnection**: The `DisconnectionHandler` intercepts unexpected disconnects (e.g., network drops), ensuring the user's session is invalidated, they are removed from active auction rooms, and memory buffers are purged safely.
-
----
-
-## 📢 3. Event-Driven Notification System
-
-To solve the challenge of simultaneously updating hundreds of connected clients when a bid occurs, the server implements an internal **Publish-Subscribe (Pub/Sub)** architecture.
+### Command & Dispatcher Pattern
 
 ```mermaid
 graph TD
-    subgraph "Main Thread: Business Logic"
-        S[Service Layer] -- "1. Database Transaction" --> DB[(MySQL Database)]
-        S -- "2. Emit Domain Event" --> EP[EventPublisher]
+    A[Client sends JSON\ne.g. BID_PLACE] --> B[SocketServer\nNIO Selector]
+    B --> C[Worker Thread\nCommandHandler]
+    C --> D[CommandRegistry\nlookup by type]
+    D --> E[Command impl\ne.g. BidPlaceCommand]
+    E --> F[Service Layer\nBidService]
+    F --> G[(MySQL)]
+    F --> H[EventPublisher]
+```
+
+1. The client sends a JSON payload with a `type` field (e.g. `LOGIN`, `BID_PLACE`).
+2. `SocketServer` (Java NIO) multiplexes connections via a `Selector` and dispatches reads to a worker thread pool.
+3. `CommandHandler` resolves the correct `Command` from `CommandRegistry`.
+4. The `Command` calls the appropriate service, which performs a DB transaction and publishes a domain event.
+5. The direct `Response` is written back to the client's socket channel.
+
+### Connection Lifecycle Management
+
+*   **Heartbeat**: `HeartbeatRegistry` records the timestamp of every `PING` message. `InactivityMonitor` polls periodically and evicts clients silent for more than 60 seconds, reclaiming socket and memory resources.
+*   **Graceful Disconnection**: `DisconnectionHandler` cleans up on unexpected drops — invalidating the session, removing the client from all auction rooms, and flushing buffers.
+
+---
+
+## 3. Event-Driven Notification System
+
+Real-time UI updates for all watchers of an auction are driven by an internal **Publish-Subscribe** architecture, keeping domain services fully decoupled from the network layer.
+
+```mermaid
+graph TD
+    subgraph "Request Thread: Business Logic"
+        SVC[Service Layer] -- "1. DB Transaction" --> DB[(MySQL)]
+        SVC -- "2. publish(DomainEvent)" --> EP[EventPublisher]
     end
 
     subgraph "Background Thread Pool"
-        EP -- "3. Dispatch Asynchronously" --> NNL[NetworkNotificationListener]
-        NNL -- "4. Construct JSON Payload" --> B[Broadcaster]
+        EP -- "3. dispatch async" --> NNL[NetworkNotificationListener]
+        NNL -- "4. build JSON payload" --> BR[Broadcaster]
     end
 
     subgraph "Network Layer"
-        B -- "5. Push to TCP Sockets" --> C1[Client 1: Spectator]
-        B -- "5. Push to TCP Sockets" --> C2[Client 2: Spectator]
+        BR -- "5. write to TCP channels" --> C1[Client 1]
+        BR -- "5. write to TCP channels" --> C2[Client 2]
+        BR -- "5. write to TCP channels" --> CN[Client N]
     end
 ```
 
-**Architectural Benefits:**
-*   **Asynchronous Execution**: By offloading notification duties to a dedicated ThreadPool, the main request-handling thread is instantly freed, guaranteeing low latency for the user who initiated the action.
-*   **Strict Decoupling**: Financial services (like `BidService`) are completely agnostic to the networking layer. They simply declare *state changes* (e.g., "A bid was placed"), leaving the routing and broadcasting to specialized event listeners.
+**Key events published:**
+
+| Event | Trigger | Broadcast target |
+|---|---|---|
+| `NewBidPlacedEvent` | Manual or auto bid placed | All clients in the auction room |
+| `AuctionCreatedEvent` | New auction created | All connected clients |
+| `AuctionStartedEvent` | OPEN → RUNNING transition | All connected clients |
+| `AuctionEndedEvent` | Auction finalized or cancelled | All clients in the auction room |
+
+**Benefits:**
+*   The request thread returns a response to the bidder immediately, before any broadcast occurs.
+*   `BidService` has zero knowledge of sockets, channels, or JSON serialization.
 
 ---
 
-## 🛠 4. Persistence & Concurrency Control
+## 4. Persistence & Concurrency Control
 
-The database tier is the ultimate guardian against race conditions, lost updates, and financial discrepancies.
+### Connection Pooling
+`DatabaseConnectionPool` (backed by HikariCP) maintains a configured pool of ready JDBC connections, eliminating per-request TCP handshake overhead.
 
-1.  **Connection Pooling (HikariCP)**: Maintains a pool of ready-to-use MySQL connections, drastically reducing the overhead of opening and closing connections for every transaction.
-2.  **Transaction Management**: Operations that mutate state (e.g., placing a bid, transferring funds) are encapsulated within strict Database Transactions. If any step fails (e.g., insufficient funds), a complete `ROLLBACK` is triggered to maintain system consistency.
-3.  **Pessimistic Concurrency Control (Row-Level Locking)**: To handle concurrent bids on the same auction:
-    *   The system executes `SELECT ... FOR UPDATE` queries against the `auctions` and `users` tables.
-    *   This instructs the database engine to lock specific rows. If two users bid at the exact same millisecond, the database queues the second request until the first transaction completes, absolutely eliminating **Lost Update** anomalies.
+### Transaction Management
+`TransactionManager` provides three typed wrappers:
+
+| Method | Use |
+|---|---|
+| `txManager.run(action)` | Mutations with no return value |
+| `txManager.execute(action)` | Mutations that return a result |
+| `txManager.query(action)` | Read-only queries |
+
+Any unchecked exception inside the lambda triggers a full `ROLLBACK`. Successful completion triggers `COMMIT`.
+
+### Pessimistic Concurrency Control (Row-Level Locking)
+To handle concurrent bids on the same auction, the system uses `SELECT ... FOR UPDATE` on both the `auctions` row and all involved `users` rows within a single transaction. This serialises concurrent bids at the database level — eliminating lost-update anomalies without application-level `synchronized` blocks.
+
+**Deadlock prevention**: When two users must be locked simultaneously (bidder + previous winner), they are always locked in **alphabetical order** by `accountname`, ensuring a consistent acquisition order across all threads.
 
 ---
 
-## 🔥 5. Advanced Business Capabilities
+## 5. Advanced Business Capabilities
 
-### A. Automated Bidding (Auto-Bids)
-Users can establish a maximum willingness to pay (Max Bid) and an increment step. When competing bids arrive, the server autonomously generates counter-bids on behalf of the user until their limit is exhausted. This logic executes at CPU-speed entirely on the backend.
+### A. Auction Lifecycle State Machine
 
-### B. Anti-Sniper Protection
-"Snipping" involves placing a bid in the final seconds to prevent others from responding. To ensure fair market value:
-*   Any bid placed within the final `N` minutes of an auction triggers an automatic extension of the `end_time` by `M` minutes.
-*   The `AuctionMonitor` seamlessly intercepts this database update, canceling the impending closure task and scheduling a new one.
+```mermaid
+stateDiagram-v2
+    [*] --> OPEN : createAuction()
+    OPEN --> RUNNING : AuctionMonitor (startTime reached)
+    RUNNING --> FINISHED : AuctionMonitor (endTime reached) or Buy Now
+    RUNNING --> CANCELED : Admin cancelAuction()
+    OPEN --> CANCELED : Admin cancelAuction()
+    FINISHED --> [*]
+    CANCELED --> [*]
+```
 
-### C. Immediate Buyout ("Buy Now")
-Sellers can assign a definitive buyout price to an item.
-*   If a user submits a bid equal to or exceeding the `buy_now_price`, the system immediately resolves the auction at that price. It overrides all competing Auto-Bids and instantaneously rewinds the auction's `end_time` to the current timestamp, closing the event.
+### B. Auto-Bidding Engine
+Users configure a `maxBid` ceiling and `incrementAmount`. After every manual bid, `runAutoBidding()` executes within the **same transaction**:
+1. Fetches all active auto-bids for the auction, sorted by `maxBid DESC`, then `createdAt ASC` (tiebreak).
+2. Computes the minimum price required to outbid the second-highest auto-bidder.
+3. Applies the calculated bid on behalf of the top auto-bidder.
+4. If the winning auto-bidder already leads, the loop terminates immediately.
 
-### D. Precision Timekeeping (Auction Monitor)
-Rather than executing resource-intensive database polling to detect ended auctions, the system utilizes a `ScheduledExecutorService`. Upon auction creation, an exact closure task is scheduled down to the millisecond. This ensures pinpoint accuracy and near-zero CPU idle-waste.
+### C. Anti-Sniper Protection
+Any bid placed within the final `ANTI_SNIP_WINDOW_MS` (configurable) of an auction's end time automatically extends `end_time` by `ANTI_SNIP_EXTENSION_MS`. `AuctionMonitor` cancels the existing scheduled task and schedules a new one at the updated time, giving competing bidders a fair window to respond.
+
+### D. Buy Now (Immediate Buyout)
+If a seller sets a `buyNowPrice`, any bid meeting or exceeding it closes the auction instantly. The `end_time` is set to `NOW()` in the same transaction that processes the bid, and the `AuctionMonitor` reschedules accordingly.
+
+### E. Two-Step Product Listing
+Members can either:
+- **One-step**: Use `createAuction()` to create a product and list it for auction simultaneously.
+- **Two-step**: Use `createInventoryProduct()` to add a product to their inventory first, then use `openAuctionForProduct()` at a later time to create the auction. This allows sellers to prepare listings in advance.
+
+### F. Precision Timekeeping
+`AuctionMonitor` uses a `ScheduledExecutorService` to fire auction start and end callbacks at exact timestamps — no polling, no busy loops. This guarantees sub-second accuracy for auction transitions with near-zero CPU overhead.

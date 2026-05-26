@@ -1,27 +1,71 @@
-# 🏛 Bidding System Documentation
+# 🏛 Bidding System — Technical Documentation
 
-Welcome to the comprehensive technical documentation for the Bidding System. This directory serves as the definitive guide to understanding the system's architecture, data models, workflows, and core design principles.
+This directory is the definitive technical reference for the Bidding System. Every diagram is rendered with Mermaid and version-controlled alongside the source code.
 
 ## 📑 Table of Contents
 
-| Documentation | Description |
-| :--- | :--- |
-| **[1. System Overview & Architecture](./SystemOverview.md)** | A high-level view of the multi-module project structure, the Real-time Networking Layer, and the Event-Driven Engine. |
-| **[2. Core Domain Model Class Diagram](./ClassDiagram_Domain.md)** | Object-oriented design of the business entities (`User`, `Auction`, `Bid`, `Product`) and their relationships. |
-| **[3. Server Architecture Class Diagram](./ClassDiagram_Server.md)** | Internal structure of the backend server, highlighting the Command Pattern and NIO thread management. |
-| **[4. Database Schema (ERD)](./DatabaseSchema.md)** | Comprehensive Entity-Relationship Diagram outlining tables, relationships, and strict database-level constraints. |
-| **[5. Request Processing Sequence Diagram](./SequenceDiagram_Request.md)** | End-to-end trace of a client request, from the TCP socket down to the database transaction and back. |
-| **[6. System Use Case Diagram](./UseCaseDiagram.md)** | Business requirements, actors (Members, Admins, System Timer), and their available interactions. |
-
-## 🛠 Technology Stack & Core Patterns
-
-The Bidding System relies on robust engineering patterns to guarantee speed, consistency, and reliability:
-
-*   **Java NIO (Non-blocking I/O)**: Enables the server to handle thousands of concurrent TCP connections with minimal overhead.
-*   **Event-Driven Architecture**: Utilizes an internal Publish-Subscribe pattern to decouple domain logic from network broadcasting, ensuring real-time UI updates without blocking the main thread.
-*   **Command Pattern**: Maps incoming JSON requests to dedicated command handlers, ensuring the codebase remains modular and strictly adheres to the Single Responsibility Principle.
-*   **Optimistic Locking & Transaction Management**: Prevents race conditions during simultaneous bidding, ensuring absolute financial and data integrity.
-*   **Mermaid.js**: All diagrams within this documentation are rendered using Mermaid, ensuring they are version-controlled alongside the code and easy to update.
+| Document | Description |
+|:---|:---|
+| **[1. System Overview](./SystemOverview.md)** | Multi-module structure, NIO networking, event-driven architecture, concurrency model, and advanced business rules (auto-bid, anti-snipping, buy-now). |
+| **[2. Domain Model Class Diagram](ClassDiagramDomain.md)** | OOP design of all business entities — `User`, `Product`, `Auction`, `Bid`, `AutoBid`, `Transaction` — and their relationships. |
+| **[3. Server Architecture Class Diagram](ClassDiagramServer.md)** | Internal structure of the backend: NIO layer, Command Pattern, service layer, event bus, and persistence layer. |
+| **[4. Database Schema (ERD)](./DatabaseSchema.md)** | Full ERD with all tables, columns, CHECK constraints, FK cascade policies, and index rationale. |
+| **[5. Sequence Diagrams](SequenceDiagramRequest.md)** | End-to-end traces for (A) manual bid placement and (B) automated auction finalization. |
+| **[6. Use Case Diagram](./UseCaseDiagram.md)** | Business requirements mapped to actors: Member, Admin, and System Timer. |
 
 ---
-*Generated and maintained by the engineering team to ensure architectural clarity.*
+
+## 🧱 Technology Stack
+
+| Concern | Technology                          |
+|---|-------------------------------------|
+| Language | Java 25                             |
+| Networking | Java NIO (non-blocking TCP sockets) |
+| GUI | JavaFX + FXML                       |
+| Database | MySQL 9                             |
+| Connection pooling | HikariCP                            |
+| JSON | Gson                                |
+| Password hashing | BCrypt                              |
+| Build | Maven (multi-module)                |
+| Diagrams | Mermaid.js                          |
+
+---
+
+## 🔑 Core Design Patterns
+
+| Pattern | Where used |
+|---|---|
+| **Command** | `CommandRegistry` + `Command` interface — maps JSON `type` to handler class |
+| **Observer / Pub-Sub** | `EventPublisher` → `NetworkNotificationListener` → `Broadcaster` |
+| **Factory Method** | `ItemFactory.createProduct(category, json)` |
+| **Singleton (instance-scoped)** | `DatabaseConnectionPool`, `SessionManager`, `RoomManager` — created once in `ServerApp` and injected |
+| **Template Method** | `TransactionManager.run / execute / query` |
+| **Reactor (NIO)** | `SocketServer` Selector loop |
+| **Pessimistic Locking** | `SELECT ... FOR UPDATE` on `auctions` and `users` rows |
+
+---
+
+## 💾 Module Layout
+
+```
+project-root/
+├── common/          # Shared models, DTOs, enums, utilities
+│   └── src/main/java/org/example/
+│       ├── model/   # Auction, Product subtypes, Bid, AutoBid, Transaction, User
+│       ├── dto/     # Request, Response, Notify DTOs
+│       └── util/    # Config, FileLogger, JsonConverter
+├── server/          # Backend TCP server
+│   └── src/main/java/org/example/server/
+│       ├── network/     # SocketServer, CommandHandler, Broadcaster, SessionManager
+│       ├── controller/  # Thin adapter between Command and Service
+│       ├── service/     # AuctionService, BidService, ProductService, finance, user
+│       ├── repository/  # DAOs + TransactionManager + DatabaseConnectionPool
+│       ├── event/       # DomainEvent, EventPublisher, listeners
+│       └── exception/   # Typed exception hierarchy
+├── client/          # JavaFX frontend
+└── docs/            # This directory
+```
+
+---
+
+*Maintained by the engineering team. Update diagrams alongside any structural code change.*
