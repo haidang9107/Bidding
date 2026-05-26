@@ -21,7 +21,7 @@ public class AuthService {
      * @param txManager The transaction manager to use for database operations.
      */
     public AuthService(TransactionManager txManager) {
-        this.userDao = new UserDao();
+        this.userDao = UserDao.getInstance();
         this.txManager = txManager;
     }
 
@@ -70,31 +70,5 @@ public class AuthService {
             FileLogger.info("User registered successfully: " + accountname);
         });
     }
-
-    /**
-     * Checks if a user has permission to perform a specific action based on message type.
-     * @param type The message type representing the action.
-     * @param user The user performing the action.
-     * @return True if access is granted.
-     */
-    public boolean canAccess(org.example.model.enums.MessageType type, User user) {
-        if (type == org.example.model.enums.MessageType.LOGIN || 
-            type == org.example.model.enums.MessageType.SIGNUP || 
-            type == org.example.model.enums.MessageType.PING) {
-            return true;
-        }
-        
-        if (user == null) return false;
-
-        return switch (type) {
-            case ADMIN_GET_ALL_USERS, ADMIN_BAN_USER, ADMIN_CANCEL_AUCTION -> 
-                user.getRole() == org.example.model.enums.UserRole.ADMIN;
-            case BID_PLACE, AUTO_BID_SET, AUTO_BID_CANCEL, BID_HISTORY, PRODUCT_ADD,
-                 PRODUCT_CREATE, MY_PRODUCT_LIST, AUCTION_OPEN,
-                 DEPOSIT, WITHDRAW, TRANSFER,
-                 JOIN_AUCTION_ROOM, LEAVE_AUCTION_ROOM -> 
-                user.getRole() == org.example.model.enums.UserRole.MEMBER;
-            default -> true; 
-        };
-    }
 }
+

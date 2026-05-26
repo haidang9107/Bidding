@@ -1,18 +1,60 @@
 package org.example.util;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.ToNumberPolicy;
+import com.google.gson.*;
+import com.google.gson.reflect.TypeToken;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
+
+import java.io.IOException;
 import java.lang.reflect.Type;
+import java.util.Map;
 
 /**
  * Utility class for converting Java objects to JSON and vice-versa.
  */
 public class JsonConverter {
-    // Gson instance is thread-safe, so we can reuse it
+
+    /**
+     * A global adapter factory that automatically flattens any "metadata" object
+     * found in the incoming JSON payload into the root level before deserialization.
+     */
+    private static class MetadataFlatteningAdapterFactory implements TypeAdapterFactory {
+        @Override
+        public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
+            final TypeAdapter<T> delegate = gson.getDelegateAdapter(this, type);
+            final TypeAdapter<JsonElement> elementAdapter = gson.getAdapter(JsonElement.class);
+
+            return new TypeAdapter<T>() {
+                @Override
+                public void write(JsonWriter out, T value) throws IOException {
+                    delegate.write(out, value);
+                }
+
+                @Override
+                public T read(JsonReader in) throws IOException {
+                    JsonElement jsonElement = elementAdapter.read(in);
+                    if (jsonElement.isJsonObject()) {
+                        JsonObject jsonObject = jsonElement.getAsJsonObject();
+                        if (jsonObject.has("metadata") && jsonObject.get("metadata").isJsonObject()) {
+                            JsonObject metadata = jsonObject.getAsJsonObject("metadata");
+                            for (Map.Entry<String, JsonElement> entry : metadata.entrySet()) {
+                                jsonObject.add(entry.getKey(), entry.getValue());
+                            }
+                            jsonObject.remove("metadata");
+                        }
+                        return delegate.fromJsonTree(jsonObject);
+                    }
+                    return delegate.fromJsonTree(jsonElement);
+                }
+            };
+        }
+    }
+
+    // Gson instance is thread-safe, so we can reuse it. Order matters: Flattener runs first.
     private static final Gson gson = new GsonBuilder()
             .setDateFormat("yyyy-MM-dd HH:mm:ss")
             .setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE)
+            .registerTypeAdapterFactory(new MetadataFlatteningAdapterFactory())
             .create();
 
     /**

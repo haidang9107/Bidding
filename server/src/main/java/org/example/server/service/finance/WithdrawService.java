@@ -23,8 +23,8 @@ public class WithdrawService {
      * @param txManager The transaction manager.
      */
     public WithdrawService(TransactionManager txManager) {
-        this.userDao = new UserDao();
-        this.transactionDao = new TransactionDao();
+        this.userDao = UserDao.getInstance();
+        this.transactionDao = TransactionDao.getInstance();
         this.txManager = txManager;
     }
 

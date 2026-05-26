@@ -1,5 +1,7 @@
 package org.example.server.network.command;
 
+import org.example.server.annotation.RequiresRole;
+import org.example.model.enums.UserRole;
 import org.example.dto.request.ProductAddRequest;
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
@@ -14,6 +16,7 @@ import java.nio.channels.SocketChannel;
 /**
  * Command for a user to create a new product and open its first auction.
  */
+@RequiresRole(UserRole.MEMBER)
 public class AuctionCreateCommand implements Command {
     private final AuctionController auctionController;
 

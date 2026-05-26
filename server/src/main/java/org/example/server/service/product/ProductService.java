@@ -21,7 +21,7 @@ public class ProductService {
      * @param txManager The transaction manager.
      */
     public ProductService(TransactionManager txManager) {
-        this.productDao = new ProductDao();
+        this.productDao = ProductDao.getInstance();
         this.txManager = txManager;
     }
 

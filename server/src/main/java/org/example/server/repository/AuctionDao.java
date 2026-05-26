@@ -22,6 +22,10 @@ import java.util.List;
  */
 public class AuctionDao {
 
+    private static final AuctionDao INSTANCE = new AuctionDao();
+    private AuctionDao() {}
+    public static AuctionDao getInstance() { return INSTANCE; }
+
     private static final String AUCTION_SELECT_SQL =
             "SELECT a.auction_id, a.product_id, a.seller_accountname, a.winner_accountname, " +
             "       a.start_price, a.step_price, a.current_price, a.buy_now_price, " +

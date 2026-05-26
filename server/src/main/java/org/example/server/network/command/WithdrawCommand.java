@@ -1,5 +1,7 @@
 package org.example.server.network.command;
 
+import org.example.server.annotation.RequiresRole;
+import org.example.model.enums.UserRole;
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
 import org.example.payload.Request;
@@ -13,6 +15,7 @@ import java.nio.channels.SocketChannel;
 /**
  * Command for a user to withdraw funds from their account.
  */
+@RequiresRole(UserRole.MEMBER)
 public class WithdrawCommand implements Command {
     private final FinanceController financeController;
 

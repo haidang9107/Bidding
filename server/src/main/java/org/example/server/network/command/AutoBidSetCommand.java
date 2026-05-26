@@ -1,5 +1,7 @@
 package org.example.server.network.command;
 
+import org.example.server.annotation.RequiresRole;
+import org.example.model.enums.UserRole;
 import org.example.dto.request.AutoBidRequest;
 import org.example.dto.notify.AutoBidNotify;
 import org.example.model.enums.MessageType;
@@ -16,6 +18,7 @@ import java.nio.channels.SocketChannel;
 /**
  * Command for a user to set up or update auto-bidding for a specific auction.
  */
+@RequiresRole(UserRole.MEMBER)
 public class AutoBidSetCommand implements Command {
     private final BidController bidController;
 

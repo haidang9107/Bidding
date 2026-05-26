@@ -14,6 +14,10 @@ import java.util.List;
  */
 public class AutoBidDao {
 
+    private static final AutoBidDao INSTANCE = new AutoBidDao();
+    private AutoBidDao() {}
+    public static AutoBidDao getInstance() { return INSTANCE; }
+
     /**
      * Inserts or updates an automatic bid configuration.
      * @param connection The database connection.
