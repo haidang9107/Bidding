@@ -16,12 +16,11 @@
     </modules>
 
     <properties>
-        <java.version>25</java.version>
-        <maven.compiler.source>25</maven.compiler.source>
-        <maven.compiler.target>25</maven.compiler.target>
+        <java.version>21</java.version>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <!-- Versions -->
         <gson.version>2.11.0</gson.version>
         <dotenv.version>3.0.0</dotenv.version>
         <mysql.version>9.5.0</mysql.version>
@@ -30,9 +29,9 @@
         <javafx.version>21.0.6</javafx.version>
         <controlsfx.version>11.2.1</controlsfx.version>
         <bootstrapfx.version>0.4.0</bootstrapfx.version>
-        <junit.version>5.12.1</junit.version>
+        <junit.version>5.11.0</junit.version>
+        <h2.version>2.2.224</h2.version>
 
-        <!-- Plugins -->
         <compiler.plugin.version>3.13.0</compiler.plugin.version>
         <exec.plugin.version>3.5.0</exec.plugin.version>
         <javafx.plugin.version>0.0.8</javafx.plugin.version>
@@ -41,14 +40,12 @@
 
     <dependencyManagement>
         <dependencies>
-            <!-- Project Modules -->
             <dependency>
                 <groupId>org.example</groupId>
                 <artifactId>common</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
-            <!-- External Dependencies -->
             <dependency>
                 <groupId>com.google.code.gson</groupId>
                 <artifactId>gson</artifactId>
@@ -75,7 +72,6 @@
                 <version>${jbcrypt.version}</version>
             </dependency>
 
-            <!-- JavaFX -->
             <dependency>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-controls</artifactId>
@@ -97,7 +93,6 @@
                 <version>${bootstrapfx.version}</version>
             </dependency>
 
-            <!-- Testing -->
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter-api</artifactId>
@@ -108,6 +103,33 @@
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter-engine</artifactId>
                 <version>${junit.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>3.26.3</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-core</artifactId>
+                <version>5.12.0</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-junit-jupiter</artifactId>
+                <version>5.12.0</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.h2database</groupId>
+                <artifactId>h2</artifactId>
+                <version>${h2.version}</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>
@@ -137,18 +159,12 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <version>${checkstyle.version}</version>
-                <dependencies>
-                    <dependency>
-                        <groupId>com.puppycrawl.tools</groupId>
-                        <artifactId>checkstyle</artifactId>
-                        <version>10.21.2</version>
-                    </dependency>
-                </dependencies>
                 <configuration>
                     <configLocation>google_checks.xml</configLocation>
                     <consoleOutput>true</consoleOutput>
@@ -164,6 +180,12 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
             </plugin>
         </plugins>
     </build>
