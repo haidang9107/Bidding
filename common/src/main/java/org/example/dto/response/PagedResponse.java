@@ -51,6 +51,12 @@ public class PagedResponse<T> {
     public long getTotalItems() { return totalItems; }
 
     /**
+     * Alias for getTotalItems() to support existing tests.
+     * @return the total items
+     */
+    public long getTotal() { return totalItems; }
+
+    /**
      * Sets the total number of items.
      * @param totalItems the total items to set
      */

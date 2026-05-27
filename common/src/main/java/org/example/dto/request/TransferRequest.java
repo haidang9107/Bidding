@@ -29,8 +29,24 @@ public class TransferRequest {
     public String getToAccountname() { return toAccountname; }
 
     /**
+     * Sets the recipient's account name.
+     * @param toAccountname the recipient's account name to set
+     */
+    public void setToAccountname(String toAccountname) {
+        this.toAccountname = toAccountname;
+    }
+
+    /**
      * Gets the transfer amount.
      * @return the amount
      */
     public long getAmount() { return amount; }
+
+    /**
+     * Sets the transfer amount.
+     * @param amount the amount to set
+     */
+    public void setAmount(long amount) {
+        this.amount = amount;
+    }
 }
