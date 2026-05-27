@@ -42,7 +42,7 @@ class TransactionDaoTest {
         connection = DriverManager.getConnection(H2_URL, USER, PASSWORD);
         importSchema();
 
-        transactionDao = new TransactionDao();
+        transactionDao = TransactionDao.getInstance();
 
         // 1. Tạo dữ liệu người dùng mồi (Đầy đủ cả người gửi và người nhận)
         insertMockUser("user_sender", "Người Gửi", "pass1", "sender@gmail.com");

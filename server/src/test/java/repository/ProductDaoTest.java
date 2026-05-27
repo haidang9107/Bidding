@@ -35,7 +35,7 @@ class ProductDaoTest {
         // Nạp cấu trúc schema sạch vào RAM trước mỗi bài test
         importSchema();
 
-        productDao = new ProductDao();
+        productDao = ProductDao.getInstance();
 
         // BẮT BUỘC: Tạo sẵn user để thỏa mãn Khóa ngoại (Foreign Key) cho bảng products
         insertMockUser("minhanh", "Minh Anh", "pass123", "minhanh@gmail.com");

@@ -39,8 +39,8 @@ class BidDaoTest {
         connection = DriverManager.getConnection(H2_URL, USER, PASSWORD);
         importSchema();
 
-        bidDao = new BidDao();
-        auctionDao = new AuctionDao();
+        bidDao = BidDao.getInstance();
+        auctionDao = AuctionDao.getInstance();
 
         // Tạo dữ liệu giả lập cho User và Product
         insertMockUser("seller1", "Người Bán", "pass123", "seller@gmail.com");

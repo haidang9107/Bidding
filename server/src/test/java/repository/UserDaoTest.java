@@ -32,7 +32,7 @@ class UserDaoTest {
     @BeforeEach
     void setUp() throws Exception {
         Class.forName("org.h2.Driver");
-        userDao = new UserDao();
+        userDao = UserDao.getInstance();
         connection = DriverManager.getConnection(H2_URL, H2_USER, H2_PASSWORD);
 
         // Đọc và thực thi file schema.sql theo từng câu lệnh đơn lẻ cách nhau bởi dấu ";"

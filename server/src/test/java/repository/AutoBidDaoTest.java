@@ -37,7 +37,7 @@ class AutoBidDaoTest {
         connection = DriverManager.getConnection(H2_URL, USER, PASSWORD);
         importSchema();
 
-        autoBidDao = new AutoBidDao();
+        autoBidDao = AutoBidDao.getInstance();
 
         // 1. Tạo dữ liệu User giả lập (Khớp hoàn toàn các ràng buộc không null)
         insertMockUser("seller1", "Người Bán", "pass123", "seller@gmail.com");

@@ -42,8 +42,8 @@ class AuctionDaoTest {
         connection = DriverManager.getConnection(H2_URL, USER, PASSWORD);
         importSchema();
 
-        auctionDao = new AuctionDao();
-        productDao = new ProductDao();
+        auctionDao = AuctionDao.getInstance();
+        productDao = ProductDao.getInstance();
 
         insertMockUser("seller1", "Người Bán Một", "pass123", "seller1@gmail.com");
         insertMockUser("bidder1", "Người Đấu Giá Một", "pass456", "bidder1@gmail.com");

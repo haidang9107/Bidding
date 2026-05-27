@@ -19,6 +19,10 @@ public class PagedResponse<T> {
 
     /**
      * Constructs a PagedResponse with items and pagination metadata.
+     * @param items the list of items for the current page
+     * @param totalItems the total number of items across all pages
+     * @param currentPage the current page index
+     * @param pageSize the number of items per page
      */
     public PagedResponse(List<T> items, long totalItems, int currentPage, int pageSize) {
         this.items = items;
@@ -28,65 +32,69 @@ public class PagedResponse<T> {
         this.totalPages = (int) Math.ceil((double) totalItems / pageSize);
     }
 
-    // ==========================================
-    // CÁC HÀM ALIAS GIÚP FIX LỖI CODETEST CŨ
-    // ==========================================
+    /**
+     * Gets the list of items.
+     * @return the list of items
+     */
+    public List<T> getItems() { return items; }
 
     /**
-     * Alias cho hàm getItems() để tương thích với code test cũ dùng getContent()
+     * Sets the list of items.
+     * @param items the list of items to set
      */
-    public List<T> getContent() {
-        return this.items;
-    }
+    public void setItems(List<T> items) { this.items = items; }
 
     /**
-     * Alias cho hàm getTotalItems() để tương thích với code test cũ dùng getTotal()
+     * Gets the total number of items.
+     * @return the total items
      */
-    public long getTotal() {
-        return this.totalItems;
-    }
+    public long getTotalItems() { return totalItems; }
 
-    // ==========================================
-    // CÁC GETTER VÀ SETTER GỐC
-    // ==========================================
+    /**
+     * Alias for getTotalItems() to support existing tests.
+     * @return the total items
+     */
+    public long getTotal() { return totalItems; }
 
-    public List<T> getItems() {
-        return items;
-    }
+    /**
+     * Sets the total number of items.
+     * @param totalItems the total items to set
+     */
+    public void setTotalItems(long totalItems) { this.totalItems = totalItems; }
 
-    public void setItems(List<T> items) {
-        this.items = items;
-    }
+    /**
+     * Gets the total number of pages.
+     * @return the total pages
+     */
+    public int getTotalPages() { return totalPages; }
 
-    public long getTotalItems() {
-        return totalItems;
-    }
+    /**
+     * Sets the total number of pages.
+     * @param totalPages the total pages to set
+     */
+    public void setTotalPages(int totalPages) { this.totalPages = totalPages; }
 
-    public void setTotalItems(long totalItems) {
-        this.totalItems = totalItems;
-    }
+    /**
+     * Gets the current page number.
+     * @return the current page
+     */
+    public int getCurrentPage() { return currentPage; }
 
-    public int getTotalPages() {
-        return totalPages;
-    }
+    /**
+     * Sets the current page number.
+     * @param currentPage the current page to set
+     */
+    public void setCurrentPage(int currentPage) { this.currentPage = currentPage; }
 
-    public void setTotalPages(int totalPages) {
-        this.totalPages = totalPages;
-    }
+    /**
+     * Gets the page size.
+     * @return the page size
+     */
+    public int getPageSize() { return pageSize; }
 
-    public int getCurrentPage() {
-        return currentPage;
-    }
-
-    public void setCurrentPage(int currentPage) {
-        this.currentPage = currentPage;
-    }
-
-    public int getPageSize() {
-        return pageSize;
-    }
-
-    public void setPageSize(int pageSize) {
-        this.pageSize = pageSize;
-    }
+    /**
+     * Sets the page size.
+     * @param pageSize the page size to set
+     */
+    public void setPageSize(int pageSize) { this.pageSize = pageSize; }
 }
