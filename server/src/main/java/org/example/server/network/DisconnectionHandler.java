@@ -18,7 +18,7 @@ public class DisconnectionHandler {
 
     public DisconnectionHandler(TransactionManager txManager) {
         this.txManager = txManager;
-        this.auctionDao = new AuctionDao(); // Could be injected further, but this keeps it clean
+        this.auctionDao = AuctionDao.getInstance(); // Could be injected further, but this keeps it clean
     }
 
     /**

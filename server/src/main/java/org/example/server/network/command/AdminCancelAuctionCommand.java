@@ -1,5 +1,7 @@
 package org.example.server.network.command;
 
+import org.example.server.annotation.RequiresRole;
+import org.example.model.enums.UserRole;
 import org.example.dto.request.AuctionCancelRequest;
 import org.example.payload.Request;
 import org.example.payload.Response;
@@ -11,6 +13,7 @@ import java.nio.channels.SocketChannel;
 /**
  * Command for an administrator to cancel an active or scheduled auction.
  */
+@RequiresRole(UserRole.ADMIN)
 public class AdminCancelAuctionCommand implements Command {
     private final AdminController adminController;
 

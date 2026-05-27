@@ -1,5 +1,7 @@
 package org.example.server.network.command;
 
+import org.example.server.annotation.RequiresRole;
+import org.example.model.enums.UserRole;
 import org.example.dto.response.ProductResponse;
 import org.example.model.enums.MessageType;
 import org.example.model.product.Product;
@@ -18,6 +20,7 @@ import java.util.List;
  * Includes both products in the seller's stock and products currently in an
  * active auction (the client can filter by isInAuction).
  */
+@RequiresRole(UserRole.MEMBER)
 public class MyProductListCommand implements Command {
 
     private final ProductService productService;

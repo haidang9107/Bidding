@@ -21,6 +21,9 @@ import org.example.server.repository.TransactionManager;
 import org.example.server.repository.UserDao;
 import org.example.server.service.auction.AntiSnipping;
 import org.example.server.service.auction.AuctionMonitor;
+import org.example.server.service.bid.strategy.BidStrategy;
+import org.example.server.service.bid.strategy.BuyNowBidStrategy;
+import org.example.server.service.bid.strategy.NormalBidStrategy;
 import org.example.util.FileLogger;
 
 import java.sql.Connection;
@@ -47,10 +50,10 @@ public class BidService {
      * @param auctionMonitor  The auction monitor (re-scheduled when anti-snipping fires).
      */
     public BidService(TransactionManager txManager, EventPublisher eventPublisher, AuctionMonitor auctionMonitor) {
-        this.auctionDao = new AuctionDao();
-        this.bidDao = new BidDao();
-        this.userDao = new UserDao();
-        this.autoBidDao = new AutoBidDao();
+        this.auctionDao = AuctionDao.getInstance();
+        this.bidDao = BidDao.getInstance();
+        this.userDao = UserDao.getInstance();
+        this.autoBidDao = AutoBidDao.getInstance();
         this.txManager = txManager;
         this.eventPublisher = eventPublisher;
         this.auctionMonitor = auctionMonitor;
@@ -212,11 +215,13 @@ public class BidService {
         }
 
         // Buy Now Logic: Clamp the bid amount to the Buy Now price if it's met or exceeded
-        boolean isBuyNow = false;
         long finalBidAmount = bidAmount;
+        BidStrategy strategy;
         if (auction.getBuyNowPrice() != null && bidAmount >= auction.getBuyNowPrice()) {
             finalBidAmount = auction.getBuyNowPrice();
-            isBuyNow = true;
+            strategy = new BuyNowBidStrategy(auctionDao);
+        } else {
+            strategy = new NormalBidStrategy(auctionDao);
         }
 
         long extraBlocked = oldWinnerAccount != null && oldWinnerAccount.equals(bidderAccountname)
@@ -237,14 +242,7 @@ public class BidService {
         auction.setCurrentPrice(finalBidAmount);
         auction.setWinnerAccountname(bidderAccountname);
 
-        if (isBuyNow) {
-            Timestamp now = new Timestamp(System.currentTimeMillis());
-            auction.setEndTime(now);
-            auctionDao.updateAuctionEndTime(connection, auction.getAuctionId(), now);
-            FileLogger.info("Buy Now triggered for Auction " + auction.getAuctionId() + " by " + bidderAccountname);
-        } else {
-            AntiSnipping.process(connection, auction, auctionDao);
-        }
+        strategy.execute(connection, auction, bidderAccountname, finalBidAmount);
     }
 
     private boolean runAutoBidding(Connection connection, Auction auction) throws SQLException {

@@ -19,7 +19,7 @@ public class TransactionService {
      * @param txManager The transaction manager.
      */
     public TransactionService(TransactionManager txManager) {
-        this.transactionDao = new TransactionDao();
+        this.transactionDao = TransactionDao.getInstance();
         this.txManager = txManager;
     }
 

@@ -1,5 +1,7 @@
 package org.example.server.network.command;
 
+import org.example.server.annotation.RequiresRole;
+import org.example.model.enums.UserRole;
 import org.example.dto.request.AuctionRoomRequest;
 import org.example.model.enums.MessageType;
 import org.example.payload.Request;
@@ -13,6 +15,7 @@ import java.nio.channels.SocketChannel;
 /**
  * Command for a user to join a specific auction room to receive realtime updates.
  */
+@RequiresRole(UserRole.MEMBER)
 public class JoinAuctionRoomCommand implements Command {
     private final AuctionService auctionService;
 

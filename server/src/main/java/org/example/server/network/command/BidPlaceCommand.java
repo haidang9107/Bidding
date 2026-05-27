@@ -1,5 +1,7 @@
 package org.example.server.network.command;
 
+import org.example.server.annotation.RequiresRole;
+import org.example.model.enums.UserRole;
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
 import org.example.dto.request.BidRequest;
@@ -15,6 +17,7 @@ import java.nio.channels.SocketChannel;
  * Command for a user to place a manual bid on an auction.
  * Events are published by the BidService, so manual broadcast is not required here.
  */
+@RequiresRole(UserRole.MEMBER)
 public class BidPlaceCommand implements Command {
     private final BidController bidController;
 

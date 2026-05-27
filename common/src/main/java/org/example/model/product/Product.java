@@ -1,6 +1,7 @@
 package org.example.model.product;
 
 import org.example.model.enums.ItemCategory;
+import com.google.gson.annotations.JsonAdapter;
 import java.sql.Timestamp;
 
 /**
@@ -8,6 +9,7 @@ import java.sql.Timestamp;
  * A product is independent from the concept of an auction: the same product
  * can be put up for auction multiple times (1-to-many with Auction).
  */
+@JsonAdapter(ProductFactory.class)
 public abstract class Product {
 
     private int productId;

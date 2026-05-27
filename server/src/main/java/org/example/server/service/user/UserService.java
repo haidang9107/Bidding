@@ -16,7 +16,7 @@ public class UserService {
      * @param txManager The transaction manager to use for database operations.
      */
     public UserService(TransactionManager txManager) {
-        this.userDao = new UserDao();
+        this.userDao = UserDao.getInstance();
         this.txManager = txManager;
     }
 

@@ -1,6 +1,9 @@
 package org.example.server.network.command;
 
 import org.example.model.enums.MessageType;
+import org.example.model.enums.UserRole;
+import org.example.server.annotation.RequiresRole;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -10,6 +13,7 @@ import java.util.Map;
  */
 public class CommandRegistry {
     private final Map<MessageType, Command> commands = new HashMap<>();
+    private final Map<MessageType, UserRole> roleRequirements = new HashMap<>();
 
     /**
      * Registers a command for a specific message type.
@@ -19,6 +23,10 @@ public class CommandRegistry {
      */
     public void register(MessageType type, Command command) {
         commands.put(type, command);
+        RequiresRole annotation = command.getClass().getAnnotation(RequiresRole.class);
+        if (annotation != null) {
+            roleRequirements.put(type, annotation.value());
+        }
     }
 
     /**
@@ -29,5 +37,15 @@ public class CommandRegistry {
      */
     public Command get(MessageType type) {
         return commands.get(type);
+    }
+
+    /**
+     * Retrieves the required role for the given message type.
+     * 
+     * @param type the type of message
+     * @return the required UserRole, or null if no specific role is required
+     */
+    public UserRole getRequiredRole(MessageType type) {
+        return roleRequirements.get(type);
     }
 }

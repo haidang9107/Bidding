@@ -108,4 +108,46 @@ public class Auction {
 
     public Product getProduct() { return product; }
     public void setProduct(Product product) { this.product = product; }
+
+    public static class Builder {
+        private int productId;
+        private String sellerAccountname;
+        private long startingPrice;
+        private long stepPrice;
+        private Long buyNowPrice;
+        private Timestamp startTime;
+        private Timestamp endTime;
+
+        public Builder productId(int productId) { this.productId = productId; return this; }
+        public Builder seller(String seller) { this.sellerAccountname = seller; return this; }
+        public Builder startingPrice(long price) { this.startingPrice = price; return this; }
+        public Builder stepPrice(long price) { this.stepPrice = price; return this; }
+        public Builder buyNowPrice(Long price) { this.buyNowPrice = price; return this; }
+        public Builder startTime(Timestamp startTime) { this.startTime = startTime; return this; }
+        public Builder endTime(Timestamp endTime) { this.endTime = endTime; return this; }
+
+        public Auction build() {
+            if (startTime == null) {
+                startTime = new Timestamp(System.currentTimeMillis());
+            }
+            if (endTime != null && !endTime.after(startTime)) {
+                throw new IllegalArgumentException("End time must be after start time");
+            }
+            
+            Auction auction = new Auction();
+            auction.setProductId(this.productId);
+            auction.setSellerAccountname(this.sellerAccountname);
+            auction.setStartingPrice(this.startingPrice);
+            auction.setStepPrice(this.stepPrice);
+            auction.setBuyNowPrice(this.buyNowPrice);
+            auction.setStartTime(this.startTime);
+            auction.setEndTime(this.endTime);
+            
+            // Auto-calculated defaults
+            auction.setCurrentPrice(this.startingPrice);
+            auction.setStatus(AuctionStatus.OPEN);
+            
+            return auction;
+        }
+    }
 }

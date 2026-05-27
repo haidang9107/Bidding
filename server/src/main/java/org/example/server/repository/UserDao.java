@@ -12,11 +12,9 @@ import java.util.List;
  */
 public class UserDao {
 
-    /**
-     * Constructs a new UserDao.
-     */
-    public UserDao() {
-    }
+    private static final UserDao INSTANCE = new UserDao();
+    private UserDao() {}
+    public static UserDao getInstance() { return INSTANCE; }
 
     /**
      * Finds a user by their accountname.

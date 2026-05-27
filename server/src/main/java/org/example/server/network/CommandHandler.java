@@ -90,9 +90,10 @@ public class CommandHandler implements Runnable {
             }
         }
 
-        // 2. Authorization Check (RBAC) - Centralized in Service
-        if (!authService.canAccess(request.getType(), currentUser)) {
-            return new Response<>(MessageType.ERROR, false, "Forbidden: User " + (currentUser != null ? currentUser.getAccountname() : "unknown") + " doesn't have permission for " + request.getType(), null);
+        // 2. Authorization Check (RBAC) - using CommandRegistry Annotations
+        org.example.model.enums.UserRole requiredRole = commandRegistry.getRequiredRole(request.getType());
+        if (requiredRole != null && (currentUser == null || currentUser.getRole() != requiredRole)) {
+            return new Response<>(MessageType.ERROR, false, "Forbidden: User " + (currentUser != null ? currentUser.getAccountname() : "unknown") + " requires " + requiredRole + " permission.", null);
         }
 
         // 3. Command Execution (SOLID: Command Pattern)

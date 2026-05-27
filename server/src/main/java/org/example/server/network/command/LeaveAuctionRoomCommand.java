@@ -1,5 +1,7 @@
 package org.example.server.network.command;
 
+import org.example.server.annotation.RequiresRole;
+import org.example.model.enums.UserRole;
 import org.example.dto.request.AuctionRoomRequest;
 import org.example.model.enums.MessageType;
 import org.example.payload.Request;
@@ -12,6 +14,7 @@ import java.nio.channels.SocketChannel;
 /**
  * Command for a user to leave an auction room and stop receiving its updates.
  */
+@RequiresRole(UserRole.MEMBER)
 public class LeaveAuctionRoomCommand implements Command {
     /**
      * Executes the leave auction room command.

@@ -16,6 +16,10 @@ import java.util.List;
  */
 public class TransactionDao {
 
+    private static final TransactionDao INSTANCE = new TransactionDao();
+    private TransactionDao() {}
+    public static TransactionDao getInstance() { return INSTANCE; }
+
     /**
      * Inserts a new financial transaction record.
      * @param connection The database connection.

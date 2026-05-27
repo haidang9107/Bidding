@@ -1,5 +1,7 @@
 package org.example.server.network.command;
 
+import org.example.server.annotation.RequiresRole;
+import org.example.model.enums.UserRole;
 import org.example.dto.request.AdminUserControlRequest;
 import org.example.payload.Request;
 import org.example.payload.Response;
@@ -11,6 +13,7 @@ import java.nio.channels.SocketChannel;
 /**
  * Command for an administrator to ban a user from the system.
  */
+@RequiresRole(UserRole.ADMIN)
 public class AdminBanUserCommand implements Command {
     private final AdminController adminController;
 

@@ -15,6 +15,10 @@ import java.sql.Types;
  */
 public class ProductDao {
 
+    private static final ProductDao INSTANCE = new ProductDao();
+    private ProductDao() {}
+    public static ProductDao getInstance() { return INSTANCE; }
+
     private static final String PRODUCT_SELECT_SQL =
             "SELECT product_id, name, description, image_url, category, owner_accountname, " +
             "       is_in_auction, withdrawn_at, brand, warranty_months, artist, art_type, " +

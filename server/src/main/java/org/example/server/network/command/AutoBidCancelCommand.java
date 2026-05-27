@@ -1,5 +1,7 @@
 package org.example.server.network.command;
 
+import org.example.server.annotation.RequiresRole;
+import org.example.model.enums.UserRole;
 import org.example.dto.request.AutoBidRequest;
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
@@ -14,6 +16,7 @@ import java.nio.channels.SocketChannel;
 /**
  * Command for a user to cancel an existing auto-bid configuration for an auction.
  */
+@RequiresRole(UserRole.MEMBER)
 public class AutoBidCancelCommand implements Command {
     private final BidController bidController;
 

@@ -24,7 +24,7 @@ public class AdminService {
      * @param auctionService The auction service used for auction-related admin actions.
      */
     public AdminService(TransactionManager txManager, AuctionService auctionService) {
-        this.userDao = new UserDao();
+        this.userDao = UserDao.getInstance();
         this.auctionService = auctionService;
         this.txManager = txManager;
     }

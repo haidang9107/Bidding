@@ -1,5 +1,7 @@
 package org.example.server.network.command;
 
+import org.example.server.annotation.RequiresRole;
+import org.example.model.enums.UserRole;
 import org.example.dto.request.AuctionOpenRequest;
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
@@ -19,6 +21,7 @@ import java.nio.channels.SocketChannel;
  * inventory; AUCTION_OPEN then puts it on the marketplace with price and
  * schedule.
  */
+@RequiresRole(UserRole.MEMBER)
 public class AuctionOpenCommand implements Command {
 
     private final AuctionService auctionService;

@@ -1,5 +1,7 @@
 package org.example.server.network.command;
 
+import org.example.server.annotation.RequiresRole;
+import org.example.model.enums.UserRole;
 import org.example.dto.request.BidHistoryRequest;
 import org.example.model.enums.MessageType;
 import org.example.payload.Request;
@@ -12,6 +14,7 @@ import java.nio.channels.SocketChannel;
 /**
  * Command to retrieve the paged bid history of a specific auction.
  */
+@RequiresRole(UserRole.MEMBER)
 public class BidHistoryCommand implements Command {
     private final BidController bidController;
 

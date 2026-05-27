@@ -16,6 +16,10 @@ import java.util.List;
  */
 public class BidDao {
 
+    private static final BidDao INSTANCE = new BidDao();
+    private BidDao() {}
+    public static BidDao getInstance() { return INSTANCE; }
+
     /**
      * Retrieves a list of bids for an auction (used for client-facing display).
      * @param connection The database connection.

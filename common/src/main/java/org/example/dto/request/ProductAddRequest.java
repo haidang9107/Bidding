@@ -22,8 +22,7 @@ public class ProductAddRequest {
     private String description;
     private ItemCategory category;
     private Object metadata; // Category-specific fields (brand, warrantyMonths, artist, etc.)
-    private String imageBase64; // Optional: image content encoded as Base64 (data-URL or raw)
-    private String imageMimeType; // Optional: MIME type (e.g. "image/png", "image/jpeg")
+    private String imageUrl; // Direct image URL (e.g. Cloudinary)
 
     // Auction fields
     private long startingPrice;
@@ -64,11 +63,8 @@ public class ProductAddRequest {
     public Object getMetadata() { return metadata; }
     public void setMetadata(Object metadata) { this.metadata = metadata; }
 
-    public String getImageBase64() { return imageBase64; }
-    public void setImageBase64(String imageBase64) { this.imageBase64 = imageBase64; }
-
-    public String getImageMimeType() { return imageMimeType; }
-    public void setImageMimeType(String imageMimeType) { this.imageMimeType = imageMimeType; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
     // Auction getters/setters
     public long getStartingPrice() { return startingPrice; }
