@@ -29,8 +29,14 @@ public enum MessageType {
     PRODUCT_LIST,
     /** Auction/Product Management: Get product details */
     PRODUCT_DETAIL,
-    /** Auction/Product Management: Add a new product */
+    /** Auction/Product Management: Add a new product (legacy: also opens auction) */
     PRODUCT_ADD,
+    /** Auction/Product Management: Create a product in the seller's inventory only (no auction) */
+    PRODUCT_CREATE,
+    /** Auction/Product Management: Get the current user's owned products (inventory) */
+    MY_PRODUCT_LIST,
+    /** Auction/Product Management: Open an auction for an existing inventory product */
+    AUCTION_OPEN,
     
     /** Bidding Logic: Client sends a bid */
     BID_PLACE,
@@ -38,6 +44,8 @@ public enum MessageType {
     AUTO_BID_SET,
     /** Bidding Logic: Client disables automatic bidding */
     AUTO_BID_CANCEL,
+    /** Bidding Logic: Client gets bid history */
+    BID_HISTORY,
     /** Bidding Logic: Client joins a realtime auction room */
     JOIN_AUCTION_ROOM,
     /** Bidding Logic: Client leaves a realtime auction room */
@@ -51,6 +59,8 @@ public enum MessageType {
     WITHDRAW,
     /** Finance Actions: Transfer money between users */
     TRANSFER,
+    /** Finance Actions: Get transaction history */
+    TRANSACTION_HISTORY,
     
     /** Real-time Notifications: Server sends remaining time for an auction */
     TIMER_TICK,

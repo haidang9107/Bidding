@@ -1,7 +1,8 @@
 package org.example.server.network;
 
 import org.example.server.network.command.CommandRegistry;
-import org.example.server.repository.DatabaseManager;
+import org.example.server.service.auction.AuctionMonitor;
+import org.example.server.service.user.auth.AuthService;
 import org.example.util.Config;
 import org.example.util.FileLogger;
 
@@ -11,54 +12,52 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 /**
- * High-performance Non-blocking Socket Server using Java NIO.
- * Unified single-port version.
+ * SOLID: Single Responsibility - Manages the NIO Socket Server and client connections.
  */
 public class SocketServer {
-    private final int port;
-    private Selector selector;
-    private ServerSocketChannel serverChannel;
-    private volatile boolean running = true;
-    private final ExecutorService executorService = Executors.newFixedThreadPool(10);
+    private static final int PORT = Config.getInt("SERVER_PORT");
+    private static final int MAX_MESSAGE_SIZE = 64 * 1024; // 64KB
+
+    private final Selector selector;
+    private final ServerSocketChannel serverChannel;
     private final CommandRegistry commandRegistry;
-    private final org.example.server.service.user.auth.AuthService authService;
-
-    private final Map<SocketChannel, ByteArrayOutputStream> clientBuffers = new ConcurrentHashMap<>();
-    private final InactivityMonitor inactivityMonitor = new InactivityMonitor(60); // 60 seconds timeout
+    private final AuthService authService;
     private final AuctionMonitor auctionMonitor;
+    private final DisconnectionHandler disconnectionHandler;
+    private final ExecutorService executorService;
+    private final Map<SocketChannel, ByteArrayOutputStream> clientBuffers = new HashMap<>();
+    private boolean running = true;
 
-    public SocketServer(CommandRegistry commandRegistry, org.example.server.service.user.auth.AuthService authService) {
-        this(commandRegistry, authService, null);
-    }
-
-    public SocketServer(CommandRegistry commandRegistry, org.example.server.service.user.auth.AuthService authService, AuctionMonitor auctionMonitor) {
-        this.port = Config.getInt("SERVER_PORT");
+    /**
+     * Constructs a SocketServer with required dependencies.
+     * @param commandRegistry the registry for commands
+     * @param authService the auth service
+     * @param auctionMonitor the auction monitor
+     * @param disconnectionHandler the disconnection handler
+     * @throws IOException if the server socket cannot be opened or bound
+     */
+    public SocketServer(CommandRegistry commandRegistry, AuthService authService, AuctionMonitor auctionMonitor, DisconnectionHandler disconnectionHandler) throws IOException {
         this.commandRegistry = commandRegistry;
         this.authService = authService;
         this.auctionMonitor = auctionMonitor;
+        this.disconnectionHandler = disconnectionHandler;
+        this.executorService = Executors.newFixedThreadPool(10); // Standard thread pool for commands
+
+        this.selector = Selector.open();
+        this.serverChannel = ServerSocketChannel.open();
+        this.serverChannel.bind(new InetSocketAddress(PORT));
+        this.serverChannel.configureBlocking(false);
+        this.serverChannel.register(selector, SelectionKey.OP_ACCEPT);
     }
-
-    public void run(String... args) {
+    public void run() {
         try {
-            inactivityMonitor.start();
-            if (auctionMonitor != null) {
-                auctionMonitor.start();
-            }
-            selector = Selector.open();
-
-            serverChannel = ServerSocketChannel.open();
-            serverChannel.bind(new InetSocketAddress(port));
-            serverChannel.configureBlocking(false);
-            serverChannel.register(selector, SelectionKey.OP_ACCEPT);
-
-            FileLogger.info("NIO Server started on Port: " + port);
+            FileLogger.info("NIO Server started on Port: " + PORT);
 
             while (running) {
                 if (selector.select() == 0) continue;
@@ -84,6 +83,10 @@ public class SocketServer {
         }
     }
 
+    /**
+     * Handles a new incoming client connection.
+     * @throws IOException if the connection cannot be accepted
+     */
     private void handleAccept() throws IOException {
         SocketChannel clientChannel = serverChannel.accept();
         clientChannel.configureBlocking(false);
@@ -93,10 +96,14 @@ public class SocketServer {
         
         // Every connected client is added to Broadcaster to receive updates
         Broadcaster.addClient(clientChannel);
-
+        
         FileLogger.info("New connection from: " + clientChannel.getRemoteAddress());
     }
 
+    /**
+     * Handles reading data from a client channel.
+     * @param key the selection key representing the client's readable state
+     */
     private void handleRead(SelectionKey key) {
         SocketChannel clientChannel = (SocketChannel) key.channel();
         ByteArrayOutputStream buffer = clientBuffers.get(clientChannel);
@@ -105,9 +112,7 @@ public class SocketServer {
         try {
             int bytesRead = clientChannel.read(readBuffer);
             if (bytesRead == -1) {
-                DisconnectionHandler.handle(clientChannel);
-                key.cancel();
-                clientBuffers.remove(clientChannel);
+                closeChannel(key);
                 return;
             }
 
@@ -123,31 +128,37 @@ public class SocketServer {
                     }
                 } else {
                     buffer.write(b);
+                    if (buffer.size() > MAX_MESSAGE_SIZE) {
+                        FileLogger.warn("Message size exceeded limit (64KB) from " + clientChannel.getRemoteAddress() + ". Disconnecting.");
+                        closeChannel(key);
+                        return;
+                    }
                 }
             }
         } catch (IOException e) {
             FileLogger.error("Error reading from client: " + clientChannel, e);
-            DisconnectionHandler.handle(clientChannel);
-            key.cancel();
-            clientBuffers.remove(clientChannel);
+            closeChannel(key);
         }
     }
 
+    private void closeChannel(SelectionKey key) {
+        SocketChannel clientChannel = (SocketChannel) key.channel();
+        key.cancel();
+        clientBuffers.remove(clientChannel);
+        disconnectionHandler.handle(clientChannel);
+    }
+
+    /**
+     * Stops the server and releases all resources.
+     */
     public void stop() {
         running = false;
         try {
             if (selector != null) selector.close();
             if (serverChannel != null) serverChannel.close();
+            executorService.shutdown();
         } catch (IOException e) {
-            FileLogger.error("Error stopping server", e);
-        } finally {
-            if (executorService != null) {
-                executorService.shutdown();
-            }
-            if (auctionMonitor != null) {
-                auctionMonitor.stop();
-            }
-            DatabaseManager.closeConnection();
+            FileLogger.error("Error closing server: " + e.getMessage(), e);
         }
     }
 }

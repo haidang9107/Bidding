@@ -1,81 +1,79 @@
 package org.example.server.service.finance;
 
+import org.example.dto.response.BalanceResponse;
+import org.example.model.user.Member;
 import org.example.model.user.User;
-import org.example.server.repository.DatabaseManager;
+import org.example.model.enums.TransactionType;
+import org.example.server.exception.FinanceException;
 import org.example.server.repository.TransactionDao;
+import org.example.server.repository.TransactionManager;
 import org.example.server.repository.UserDao;
 import org.example.util.FileLogger;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-
 /**
- * Service for handling money transfers between users.
- * Implements deadlock prevention by locking accounts in a consistent order.
+ * Service for handling fund transfers between users.
  */
 public class TransferService {
     private final UserDao userDao;
     private final TransactionDao transactionDao;
+    private final TransactionManager txManager;
 
-    public TransferService() {
-        this.userDao = new UserDao();
-        this.transactionDao = new TransactionDao();
+    /**
+     * Constructs a new TransferService.
+     * @param txManager The transaction manager.
+     */
+    public TransferService(TransactionManager txManager) {
+        this.userDao = UserDao.getInstance();
+        this.transactionDao = TransactionDao.getInstance();
+        this.txManager = txManager;
     }
 
-    public String transfer(String fromAccount, String toAccount, long amount) {
-        if (fromAccount.equals(toAccount)) return "Cannot transfer to yourself.";
-        if (amount <= 0) return "Invalid amount. Must be greater than 0.";
+    /**
+     * Transfers funds between two member accounts.
+     * @param fromAccount The sender's account name.
+     * @param toAccount The receiver's account name.
+     * @param amount The amount to transfer.
+     * @return The sender's updated balance.
+     */
+    public BalanceResponse transfer(String fromAccount, String toAccount, long amount) {
+        if (amount <= 0) throw new FinanceException("Transfer amount must be positive");
+        if (fromAccount.equals(toAccount)) throw new FinanceException("Cannot transfer to yourself");
 
-        try (Connection connection = DatabaseManager.getConnection()) {
-            try {
-                connection.setAutoCommit(false);
-
-                // 1. Lock accounts in a consistent order (alphabetical) to prevent deadlocks
-                String firstAccount = fromAccount.compareTo(toAccount) < 0 ? fromAccount : toAccount;
-                String secondAccount = fromAccount.compareTo(toAccount) < 0 ? toAccount : fromAccount;
-
-                userDao.findByAccountnameForUpdate(connection, firstAccount);
-                userDao.findByAccountnameForUpdate(connection, secondAccount);
-
-                // 2. Refresh objects after locking
-                User fromUser = userDao.findByAccountname(connection, fromAccount);
-                User toUser = userDao.findByAccountname(connection, toAccount);
-
-                if (fromUser == null || toUser == null) {
-                    connection.rollback();
-                    return "One or both users not found.";
-                }
-
-                if (!(fromUser instanceof org.example.model.user.Member fromMember) || 
-                    !(toUser instanceof org.example.model.user.Member toMember)) {
-                    connection.rollback();
-                    return "Transfers are only available for members.";
-                }
-
-                // 3. Check balance
-                long availableBalance = fromMember.getBalance() - fromMember.getBlockedBalance();
-                if (availableBalance < amount) {
-                    connection.rollback();
-                    return "Insufficient balance. Available: " + availableBalance;
-                }
-
-                // 4. Execute transfer
-                userDao.addBalance(connection, fromAccount, -amount);
-                userDao.addBalance(connection, toAccount, amount);
-                transactionDao.insertTransaction(connection, fromAccount, toAccount, 2,
-                        null, amount, null, "Transfer");
-
-                connection.commit();
-                FileLogger.info("Transfer: " + amount + " from " + fromAccount + " to " + toAccount);
-                return "SUCCESS";
-
-            } catch (SQLException e) {
-                try { connection.rollback(); } catch (SQLException ex) { /* Ignore */ }
-                throw e;
+        return txManager.execute(conn -> {
+            // Lock in consistent order to avoid deadlocks
+            if (fromAccount.compareTo(toAccount) < 0) {
+                userDao.findByAccountnameForUpdate(conn, fromAccount);
+                userDao.findByAccountnameForUpdate(conn, toAccount);
+            } else {
+                userDao.findByAccountnameForUpdate(conn, toAccount);
+                userDao.findByAccountnameForUpdate(conn, fromAccount);
             }
-        } catch (SQLException e) {
-            FileLogger.error("Transfer error from " + fromAccount + " to " + toAccount, e);
-            return "Internal Error: " + e.getMessage();
-        }
+
+            User fromUser = userDao.findByAccountname(conn, fromAccount);
+            User toUser = userDao.findByAccountname(conn, toAccount);
+            if (fromUser == null) throw new FinanceException("Sender not found");
+            if (toUser == null) throw new FinanceException("Recipient not found");
+            
+            if (!(fromUser instanceof Member fromMember)) throw new FinanceException("Sender is not a member");
+            if (!(toUser instanceof Member)) throw new FinanceException("Recipient is not a member");
+
+            long available = fromMember.getBalance() - fromMember.getBlockedBalance();
+            if (available < amount) {
+                throw new FinanceException("Insufficient funds. Available: " + available);
+            }
+
+            if (!userDao.addBalance(conn, fromAccount, -amount)) throw new FinanceException("Debit failed");
+            if (!userDao.addBalance(conn, toAccount, amount)) throw new FinanceException("Credit failed");
+
+            transactionDao.insertTransaction(conn, fromAccount, toAccount, 
+                    TransactionType.TRANSFER, null, amount, null, "Transfer to " + toAccount);
+
+            User updatedFromUser = userDao.findByAccountname(conn, fromAccount);
+            if (updatedFromUser instanceof Member updatedFromMember) {
+                FileLogger.info("Transfer SUCCESS: " + fromAccount + " -> " + toAccount + " [" + amount + "]");
+                return new BalanceResponse(fromAccount, updatedFromMember.getBalance(), updatedFromMember.getBlockedBalance());
+            }
+            throw new FinanceException("Transfer failed during finalization");
+        });
     }
 }

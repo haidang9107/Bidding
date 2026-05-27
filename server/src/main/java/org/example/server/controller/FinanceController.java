@@ -1,68 +1,100 @@
 package org.example.server.controller;
 
-import org.example.dto.TransferRequest;
+import org.example.dto.response.BalanceResponse;
+import org.example.dto.request.PaginationRequest;
+import org.example.dto.request.TransferRequest;
+import org.example.dto.response.PagedResponse;
+import org.example.model.Transaction;
 import org.example.model.enums.MessageType;
 import org.example.payload.Response;
 import org.example.server.service.finance.DepositService;
 import org.example.server.service.finance.TransferService;
 import org.example.server.service.finance.WithdrawService;
-import org.example.util.FileLogger;
-import org.example.util.JsonConverter;
+import org.example.server.service.finance.TransactionService;
+
+import java.util.List;
 
 /**
- * Controller for handling financial operations (Deposit, Withdraw, Transfer).
+ * Controller for handling financial operations.
  */
 public class FinanceController {
     private final DepositService depositService;
     private final WithdrawService withdrawService;
     private final TransferService transferService;
+    private final TransactionService transactionService;
 
-    public FinanceController(DepositService depositService, WithdrawService withdrawService, TransferService transferService) {
+    /**
+     * Constructs a FinanceController with the specified services.
+     *
+     * @param depositService the service for deposits
+     * @param withdrawService the service for withdrawals
+     * @param transferService the service for transfers
+     * @param transactionService the service for transactions
+     */
+    public FinanceController(DepositService depositService, WithdrawService withdrawService, 
+                             TransferService transferService, TransactionService transactionService) {
         this.depositService = depositService;
         this.withdrawService = withdrawService;
         this.transferService = transferService;
+        this.transactionService = transactionService;
     }
 
-    public Response<String> handleDeposit(String accountname, Object payload) {
-        try {
-            long amount = parseAmount(payload);
-            String result = depositService.deposit(accountname, amount);
-            return new Response<>(MessageType.DEPOSIT, "SUCCESS".equals(result), result, null);
-        } catch (Exception e) {
-            FileLogger.error("Finance: Deposit error", e);
-            return new Response<>(MessageType.ERROR, false, "Invalid deposit amount format", null);
-        }
+    /**
+     * Handles a deposit request.
+     *
+     * @param accountname the account name to deposit into
+     * @param amount the amount to deposit
+     * @return a response containing the new balance
+     */
+    public Response<BalanceResponse> handleDeposit(String accountname, Long amount) {
+        BalanceResponse result = depositService.deposit(accountname, amount);
+        return new Response<>(MessageType.DEPOSIT, true, "Deposit successful", result);
     }
 
-    public Response<String> handleWithdraw(String accountname, Object payload) {
-        try {
-            long amount = parseAmount(payload);
-            String result = withdrawService.withdraw(accountname, amount);
-            return new Response<>(MessageType.WITHDRAW, "SUCCESS".equals(result), result, null);
-        } catch (Exception e) {
-            FileLogger.error("Finance: Withdrawal error", e);
-            return new Response<>(MessageType.ERROR, false, "Invalid withdrawal format", null);
-        }
+    /**
+     * Handles a withdrawal request.
+     *
+     * @param accountname the account name to withdraw from
+     * @param amount the amount to withdraw
+     * @return a response containing the new balance
+     */
+    public Response<BalanceResponse> handleWithdraw(String accountname, Long amount) {
+        BalanceResponse result = withdrawService.withdraw(accountname, amount);
+        return new Response<>(MessageType.WITHDRAW, true, "Withdrawal successful", result);
     }
 
-    public Response<String> handleTransfer(String fromAccount, Object payload) {
-        try {
-            TransferRequest transferReq = JsonConverter.fromJson(JsonConverter.toJson(payload), TransferRequest.class);
-            if (transferReq == null) {
-                return new Response<>(MessageType.ERROR, false, "Invalid transfer request", null);
-            }
-            String result = transferService.transfer(fromAccount, transferReq.getToAccountname(), transferReq.getAmount());
-            return new Response<>(MessageType.TRANSFER, "SUCCESS".equals(result), result, null);
-        } catch (Exception e) {
-            FileLogger.error("Finance: Transfer error", e);
-            return new Response<>(MessageType.ERROR, false, "Internal error in transfer", null);
-        }
+    /**
+     * Handles a transfer request between accounts.
+     * @param fromAccount The sender's account name.
+     * @param transferReq The transfer request details.
+     * @return A response containing the sender's new balance.
+     */
+    public Response<BalanceResponse> handleTransfer(String fromAccount, TransferRequest transferReq) {
+        BalanceResponse result = transferService.transfer(fromAccount, transferReq.getToAccountname(), transferReq.getAmount());
+        return new Response<>(MessageType.TRANSFER, true, "Transfer successful", result);
     }
 
-    private long parseAmount(Object payload) {
-        if (payload instanceof Number number) {
-            return number.longValue();
+    /**
+     * Handles retrieving the transaction history for a user with pagination.
+     * @param accountname The user's account name.
+     * @param pagReq The pagination request details.
+     * @return A response containing the paged list of transactions.
+     */
+    public Response<PagedResponse<Transaction>> handleGetTransactions(String accountname, PaginationRequest pagReq) {
+        if (pagReq == null) {
+            pagReq = new PaginationRequest(1, 10);
         }
-        return Long.parseLong(payload.toString());
+        PagedResponse<Transaction> transactions = transactionService.getTransactionsPaged(accountname, pagReq.getPage(), pagReq.getPageSize());
+        return new Response<>(MessageType.TRANSACTION_HISTORY, true, "Transactions retrieved successfully", transactions);
+    }
+
+    /**
+     * Handles retrieving the transaction history for a user. (Legacy/Full)
+     * @param accountname The user's account name.
+     * @return A response containing the list of transactions.
+     */
+    public Response<List<Transaction>> handleGetTransactionsFull(String accountname) {
+        List<Transaction> transactions = transactionService.getTransactions(accountname);
+        return new Response<>(MessageType.TRANSACTION_HISTORY, true, "Transactions retrieved successfully", transactions);
     }
 }

@@ -48,6 +48,11 @@ public class Broadcaster {
         writeToChannels(clients, response);
     }
 
+    /**
+     * Broadcasts a response to all clients joined in a specific auction room.
+     * @param auctionId The ID of the auction room.
+     * @param response The response to broadcast.
+     */
     public static void broadcastToAuction(int auctionId, Response<?> response) {
         writeToChannels(RoomManager.getAuctionClients(auctionId), response);
     }
@@ -77,7 +82,9 @@ public class Broadcaster {
                 RoomManager.removeChannel(channel);
                 try {
                     channel.close();
-                } catch (IOException ignored) {}
+                } catch (IOException ex) {
+                    FileLogger.debug("Error closing channel after broadcast failure: " + ex.getMessage());
+                }
             }
         }
     }

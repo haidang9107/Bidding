@@ -1,31 +1,38 @@
 package org.example.model.product;
 
 import org.example.model.enums.ItemCategory;
-import org.example.model.enums.AuctionStatus;
-import java.sql.Timestamp;
 
 /**
- * Represents a vehicle.
+ * Represents a vehicle product.
  */
-public class Vehicle extends Item {
+public class Vehicle extends Product {
 
     private String brand;
     private String model;
     private int manufactureYear;
 
+    /**
+     * Default constructor.
+     */
     public Vehicle() {
         super();
-        this.setCategory(ItemCategory.VEHICLE);
+        setCategory(ItemCategory.VEHICLE);
     }
 
-    public Vehicle(int productId, String name, String description, String imageUrl, 
-                   long startingPrice, long currentPrice, long stepPrice, 
-                   String sellerAccountname, String winnerAccountname, 
-                   AuctionStatus status, Timestamp startTime, Timestamp endTime, 
-                   int version, String brand, String model, int manufactureYear) {
-        super(productId, name, description, imageUrl, startingPrice, currentPrice, stepPrice, 
-              sellerAccountname, winnerAccountname, ItemCategory.VEHICLE, status, 
-              startTime, endTime, version);
+    /**
+     * Constructs a Vehicle product with all fields.
+     * @param productId        The unique product ID.
+     * @param name             The product name.
+     * @param description      The product description.
+     * @param imageUrl         The image URL.
+     * @param ownerAccountname The current owner of the product.
+     * @param brand            The brand.
+     * @param model            The model.
+     * @param manufactureYear  The year of manufacture.
+     */
+    public Vehicle(int productId, String name, String description, String imageUrl,
+                   String ownerAccountname, String brand, String model, int manufactureYear) {
+        super(productId, name, description, imageUrl, ItemCategory.VEHICLE, ownerAccountname);
         this.brand = brand;
         this.model = model;
         this.manufactureYear = manufactureYear;

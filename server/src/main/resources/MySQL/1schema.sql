@@ -3,18 +3,19 @@ CREATE TABLE IF NOT EXISTS users (
     fullname VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    avt VARCHAR(1024) DEFAULT NULL,
+    avt VARCHAR(500) DEFAULT NULL,
     balance BIGINT DEFAULT 0 CHECK (balance >= 0),
     blocked_balance BIGINT DEFAULT 0 CHECK (blocked_balance >= 0),
     role INT NOT NULL,
-    status INT DEFAULT 0
+    status INT DEFAULT 0,
+    CHECK (balance >= blocked_balance)
 );
 
 CREATE TABLE IF NOT EXISTS products (
     product_id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    image_url VARCHAR(1024),
+    image_url VARCHAR(500),
     category INT NOT NULL,
     owner_accountname VARCHAR(255) NOT NULL,
     is_in_auction BOOLEAN DEFAULT FALSE,
@@ -23,7 +24,7 @@ CREATE TABLE IF NOT EXISTS products (
     brand VARCHAR(255),
     warranty_months INT,
     artist VARCHAR(255),
-    art_type VARCHAR(1024),
+    art_type VARCHAR(255),
     model VARCHAR(255),
     manufacture_year INT,
     FOREIGN KEY (owner_accountname) REFERENCES users(accountname) ON DELETE CASCADE
@@ -79,13 +80,14 @@ CREATE TABLE IF NOT EXISTS transactions (
     receiver_accountname VARCHAR(255) NULL,
     type INT NOT NULL,
     product_id INT NULL,
-    amount BIGINT DEFAULT 0 CHECK (amount >= 0),
-    reference_id INT NULL,
+    amount BIGINT NOT NULL CHECK (amount >= 0),
+    auction_id INT NULL,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sender_accountname) REFERENCES users(accountname) ON DELETE SET NULL,
     FOREIGN KEY (receiver_accountname) REFERENCES users(accountname) ON DELETE SET NULL,
-    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE SET NULL
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE SET NULL,
+    FOREIGN KEY (auction_id) REFERENCES auctions(auction_id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_products_owner ON products(owner_accountname);
@@ -96,4 +98,4 @@ CREATE INDEX idx_bids_auction_amount ON bids(auction_id, bid_amount DESC);
 CREATE INDEX idx_auto_bids_auction ON auto_bids(auction_id, active, max_bid);
 CREATE INDEX idx_transactions_sender ON transactions(sender_accountname);
 CREATE INDEX idx_transactions_receiver ON transactions(receiver_accountname);
-CREATE INDEX idx_transactions_reference ON transactions(reference_id);
+CREATE INDEX idx_transactions_auction ON transactions(auction_id);

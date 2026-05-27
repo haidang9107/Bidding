@@ -1,30 +1,36 @@
 package org.example.model.product;
 
 import org.example.model.enums.ItemCategory;
-import org.example.model.enums.AuctionStatus;
-import java.sql.Timestamp;
 
 /**
  * Represents an electronic product.
  */
-public class Electronics extends Item {
+public class Electronics extends Product {
 
     private String brand;
     private int warrantyMonths;
 
+    /**
+     * Default constructor.
+     */
     public Electronics() {
         super();
-        this.setCategory(ItemCategory.ELECTRONICS);
+        setCategory(ItemCategory.ELECTRONICS);
     }
 
-    public Electronics(int productId, String name, String description, String imageUrl, 
-                       long startingPrice, long currentPrice, long stepPrice, 
-                       String sellerAccountname, String winnerAccountname, 
-                       AuctionStatus status, Timestamp startTime, Timestamp endTime, 
-                       int version, String brand, int warrantyMonths) {
-        super(productId, name, description, imageUrl, startingPrice, currentPrice, stepPrice, 
-              sellerAccountname, winnerAccountname, ItemCategory.ELECTRONICS, status, 
-              startTime, endTime, version);
+    /**
+     * Constructs an Electronics product with all fields.
+     * @param productId        The unique product ID.
+     * @param name             The product name.
+     * @param description      The product description.
+     * @param imageUrl         The image URL.
+     * @param ownerAccountname The current owner of the product.
+     * @param brand            The brand.
+     * @param warrantyMonths   The warranty duration in months.
+     */
+    public Electronics(int productId, String name, String description, String imageUrl,
+                       String ownerAccountname, String brand, int warrantyMonths) {
+        super(productId, name, description, imageUrl, ItemCategory.ELECTRONICS, ownerAccountname);
         this.brand = brand;
         this.warrantyMonths = warrantyMonths;
     }

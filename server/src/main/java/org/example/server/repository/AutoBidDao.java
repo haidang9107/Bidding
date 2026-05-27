@@ -14,6 +14,20 @@ import java.util.List;
  */
 public class AutoBidDao {
 
+    private static final AutoBidDao INSTANCE = new AutoBidDao();
+    private AutoBidDao() {}
+    public static AutoBidDao getInstance() { return INSTANCE; }
+
+    /**
+     * Inserts or updates an automatic bid configuration.
+     * @param connection The database connection.
+     * @param auctionId The ID of the auction.
+     * @param bidderAccountname The account name of the bidder.
+     * @param maxBid The maximum amount for auto-bidding.
+     * @param incrementAmount The increment amount.
+     * @return True if successful.
+     * @throws SQLException If a database error occurs.
+     */
     public boolean upsertAutoBid(Connection connection, int auctionId, String bidderAccountname,
                                  long maxBid, long incrementAmount) throws SQLException {
         String updateSql = """
@@ -44,6 +58,14 @@ public class AutoBidDao {
         }
     }
 
+    /**
+     * Deactivates an automatic bid for a specific bidder and auction.
+     * @param connection The database connection.
+     * @param auctionId The ID of the auction.
+     * @param bidderAccountname The account name of the bidder.
+     * @return True if successful.
+     * @throws SQLException If a database error occurs.
+     */
     public boolean deactivateAutoBid(Connection connection, int auctionId, String bidderAccountname)
             throws SQLException {
         String sql = """
@@ -58,42 +80,29 @@ public class AutoBidDao {
         }
     }
 
-    public List<AutoBid> findActiveCandidates(Connection connection, int auctionId,
-                                              String currentWinnerAccountname,
-                                              long minimumNextBid) throws SQLException {
+    /**
+     * Finds all active automatic bids for a specific auction, ordered by priority.
+     * @param connection The database connection.
+     * @param auctionId The ID of the auction.
+     * @return A list of active auto-bids.
+     * @throws SQLException If a database error occurs.
+     */
+    public List<AutoBid> findAllActiveForAuction(Connection connection, int auctionId) throws SQLException {
         List<AutoBid> autoBids = new ArrayList<>();
         String sql = """
                 SELECT *
                 FROM auto_bids
-                WHERE auction_id = ?
-                  AND active = TRUE
-                  AND max_bid >= ?
-                  AND bidder_accountname <> ?
-                ORDER BY max_bid DESC, updated_at ASC
+                WHERE auction_id = ? AND active = TRUE
+                ORDER BY max_bid DESC, created_at ASC
                 """;
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, auctionId);
-            ps.setLong(2, minimumNextBid);
-            ps.setString(3, currentWinnerAccountname == null ? "" : currentWinnerAccountname);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    autoBids.add(mapRow(rs));
+                    autoBids.add(ResultSetMapper.mapToAutoBid(rs));
                 }
             }
         }
         return autoBids;
-    }
-
-    private AutoBid mapRow(ResultSet rs) throws SQLException {
-        return new AutoBid(
-                rs.getInt("auto_bid_id"),
-                rs.getInt("auction_id"),
-                rs.getString("bidder_accountname"),
-                rs.getLong("max_bid"),
-                rs.getLong("increment_amount"),
-                rs.getBoolean("active"),
-                rs.getTimestamp("created_at"),
-                rs.getTimestamp("updated_at")
-        );
     }
 }

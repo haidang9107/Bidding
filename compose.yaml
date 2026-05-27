@@ -21,10 +21,10 @@ services:
       - "${DB_PORT:-3306}:3306"
     environment:
       - MYSQL_DATABASE=${MYSQL_DATABASE:-MySQL-DB}
-      - MYSQL_USER=${BID_DB_USER:-root}
-      - MYSQL_PASSWORD=${BID_DB_PASSWORD:-root}
+      - MYSQL_USER=${DB_USER:-root}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-root}
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root}
     command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes:
-      - ./src/main/resources/MySQL/1schema.sql:/docker-entrypoint-initdb.d/1schema.sql
-      - ./src/main/resources/MySQL/2data.sql:/docker-entrypoint-initdb.d/2data.sql
+      - ./server/src/main/resources/MySQL/1schema.sql:/docker-entrypoint-initdb.d/1schema.sql
+      - ./server/src/main/resources/MySQL/2data.sql:/docker-entrypoint-initdb.d/2data.sql
