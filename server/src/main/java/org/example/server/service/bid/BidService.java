@@ -76,6 +76,8 @@ public class BidService {
                 throw new NotFoundException("Auction not found or not active");
             }
 
+            String oldWinnerBeforeSequence = auction.getWinnerAccountname();
+
             applyBid(connection, auction, bidderAccountname, bidAmount, false);
             boolean autoBidApplied = runAutoBidding(connection, auction);
 
@@ -87,7 +89,7 @@ public class BidService {
             auctionMonitor.scheduleAuctionEnd(auctionId, auction.getEndTime());
 
             eventPublisher.publish(new NewBidPlacedEvent(
-                    auctionId, auction.getWinnerAccountname(),
+                    auctionId, auction.getWinnerAccountname(), oldWinnerBeforeSequence,
                     auction.getCurrentPrice(), autoBidApplied, auction.getEndTime()));
 
             return new BidResult(auctionId, auction.getWinnerAccountname(),
@@ -142,6 +144,8 @@ public class BidService {
             }
 
             autoBidDao.upsertAutoBid(connection, auctionId, bidderAccountname, maxBid, incrementAmount);
+
+            String oldWinnerBeforeSequence = auction.getWinnerAccountname();
             boolean autoBidApplied = runAutoBidding(connection, auction);
 
             FileLogger.info("Auto bid configured: User " + bidderAccountname
@@ -150,10 +154,10 @@ public class BidService {
             if (autoBidApplied) {
                 auctionMonitor.scheduleAuctionEnd(auctionId, auction.getEndTime());
                 eventPublisher.publish(new NewBidPlacedEvent(
-                        auctionId, auction.getWinnerAccountname(),
+                        auctionId, auction.getWinnerAccountname(), oldWinnerBeforeSequence,
                         auction.getCurrentPrice(), true, auction.getEndTime()));
             }
-        });
+            });
     }
 
     /**

@@ -83,6 +83,116 @@ public class AuctionDao {
     }
 
     /**
+     * Searches for auctions/products with advanced filters.
+     * <p>
+     * This method performs a LEFT JOIN between products and auctions to support
+     * searching both active auctions and products in inventory.
+     * </p>
+     * @param connection The database connection.
+     * @param req        The search criteria (keyword, category, price, status, sort).
+     * @return A {@link PagedResponse} of matching {@link Auction} objects.
+     * @throws SQLException If a database error occurs.
+     */
+    public PagedResponse<Auction> searchAuctions(Connection connection, org.example.dto.request.ProductSearchRequest req)
+            throws SQLException {
+        StringBuilder sql = new StringBuilder(
+                "FROM products p LEFT JOIN auctions a ON p.product_id = a.product_id AND a.status IN (0, 1) " +
+                "WHERE p.withdrawn_at IS NULL ");
+        List<Object> params = new ArrayList<>();
+
+        if (req.getKeyword() != null && !req.getKeyword().isBlank()) {
+            sql.append("AND (p.name LIKE ? OR p.description LIKE ?) ");
+            String pattern = "%" + req.getKeyword().trim() + "%";
+            params.add(pattern);
+            params.add(pattern);
+        }
+
+        if (req.getCategory() != null) {
+            sql.append("AND p.category = ? ");
+            params.add(req.getCategory().getValue());
+        }
+
+        if (req.getInAuction() != null) {
+            if (req.getInAuction()) {
+                sql.append("AND a.auction_id IS NOT NULL ");
+            } else {
+                sql.append("AND a.auction_id IS NULL AND p.is_in_auction = 0 ");
+            }
+        }
+
+        if (req.getMinPrice() != null) {
+            sql.append("AND (a.current_price >= ? OR (a.auction_id IS NULL AND 0 >= ?)) ");
+            params.add(req.getMinPrice());
+            params.add(req.getMinPrice());
+        }
+
+        if (req.getMaxPrice() != null) {
+            sql.append("AND (a.current_price <= ? OR (a.auction_id IS NULL AND 0 <= ?)) ");
+            params.add(req.getMaxPrice());
+            params.add(req.getMaxPrice());
+        }
+
+        // Count total
+        long total = 0;
+        String countSql = "SELECT COUNT(*) " + sql.toString();
+        try (PreparedStatement ps = connection.prepareStatement(countSql)) {
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) total = rs.getLong(1);
+            }
+        }
+
+        // Sorting
+        String sortBy = req.getSortBy();
+        if ("PRICE_ASC".equalsIgnoreCase(sortBy)) {
+            sql.append("ORDER BY COALESCE(a.current_price, 0) ASC ");
+        } else if ("PRICE_DESC".equalsIgnoreCase(sortBy)) {
+            sql.append("ORDER BY COALESCE(a.current_price, 0) DESC ");
+        } else {
+            // Default: NEWEST (based on product creation)
+            sql.append("ORDER BY p.product_id DESC ");
+        }
+
+        // Paging
+        sql.append("LIMIT ? OFFSET ?");
+        params.add(req.getPageSize());
+        params.add(req.getOffset());
+
+        List<Auction> items = new ArrayList<>();
+        String selectSql = "SELECT a.auction_id, a.product_id, a.seller_accountname, a.winner_accountname, " +
+                "       a.start_price, a.step_price, a.current_price, a.buy_now_price, " +
+                "       a.start_time, a.end_time, a.status, a.version, " +
+                "       p.name, p.description, p.image_url, p.category, p.owner_accountname, " +
+                "       p.is_in_auction, p.withdrawn_at, " +
+                "       p.brand, p.warranty_months, p.artist, p.art_type, p.model, p.manufacture_year " +
+                sql.toString();
+
+        try (PreparedStatement ps = connection.prepareStatement(selectSql)) {
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    // Reuse the mapper. If auction fields are null, it should handle them.
+                    // Note: mapToAuctionWithProduct might need a check for null auction_id.
+                    if (rs.getObject("auction_id") == null) {
+                        Auction dummy = new Auction();
+                        dummy.setProduct(ResultSetMapper.mapToProduct(rs));
+                        dummy.setProductId(dummy.getProduct().getProductId());
+                        items.add(dummy);
+                    } else {
+                        items.add(ResultSetMapper.mapToAuctionWithProduct(rs));
+                    }
+                }
+            }
+        }
+
+        return new PagedResponse<>(items, total, req.getPage(), req.getPageSize());
+    }
+
+    /**
      * Retrieves a paged list of auctions, with each auction's product eagerly loaded.
      * @param connection The database connection.
      * @param limit      The maximum number of rows.
@@ -310,5 +420,23 @@ public class AuctionDao {
             ps.setInt(2, auctionId);
             return ps.executeUpdate() > 0;
         }
+    }
+
+    /**
+     * Gets the count of auctions by status.
+     * @param connection The database connection.
+     * @param status The auction status.
+     * @return The count.
+     * @throws SQLException If a database error occurs.
+     */
+    public long countByStatus(Connection connection, AuctionStatus status) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM auctions WHERE status = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, status.getValue());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getLong(1);
+            }
+        }
+        return 0;
     }
 }

@@ -68,13 +68,24 @@ public class AuctionService {
     }
 
     /**
-     * Retrieves a single auction (with its product) by ID.
+     * Retrieves an auction by ID (basic lookup).
      * @param auctionId The auction ID.
      * @return The auction, or null if not found.
      */
     public Auction getAuctionById(int auctionId) {
         return txManager.query(conn -> auctionDao.getAuctionById(conn, auctionId));
     }
+
+    /**
+     * Logs a user's entry into an auction room.
+     * @param accountname The user's account name.
+     * @param auctionId   The auction ID.
+     */
+    public void logAuctionAccess(String accountname, int auctionId) {
+        txManager.run(conn -> org.example.server.repository.AuctionAccessDao.getInstance()
+                .logAccess(conn, accountname, auctionId));
+    }
+
 
     /**
      * Retrieves a paged list of auctions (products eagerly loaded).
@@ -84,6 +95,15 @@ public class AuctionService {
      */
     public PagedResponse<Auction> getAuctionsPaged(int page, int pageSize) {
         return txManager.query(conn -> auctionDao.getAuctionsPagedResponse(conn, page, pageSize));
+    }
+
+    /**
+     * Searches for auctions with advanced filters.
+     * @param req The search criteria.
+     * @return A paged response of auctions.
+     */
+    public PagedResponse<Auction> searchAuctions(org.example.dto.request.ProductSearchRequest req) {
+        return txManager.query(conn -> auctionDao.searchAuctions(conn, req));
     }
 
     /**
@@ -224,6 +244,8 @@ public class AuctionService {
 
             if (auctionMonitor != null) {
                 auctionMonitor.scheduleAuctionStart(auction.getAuctionId(), effectiveStart);
+                auctionMonitor.notifyWatchers(productId, 
+                    "Sản phẩm '" + product.getName() + "' bạn theo dõi vừa bắt đầu đấu giá!");
             }
             eventPublisher.publish(new AuctionCreatedEvent(auction.getAuctionId()));
         });

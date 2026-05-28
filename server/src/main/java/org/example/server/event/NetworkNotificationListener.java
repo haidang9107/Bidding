@@ -35,13 +35,32 @@ public class NetworkNotificationListener {
         publisher.subscribe(AuctionStartedEvent.class,  this::onAuctionStarted);
         publisher.subscribe(AuctionEndedEvent.class,    this::onAuctionEnded);
         publisher.subscribe(AuctionCreatedEvent.class,  this::onAuctionCreated);
+        publisher.subscribe(BalanceChangedEvent.class,  this::onBalanceChanged);
+    }
+
+    private void onBalanceChanged(BalanceChangedEvent e) {
+        Broadcaster.sendToUser(e.accountname(), new Response<>(
+                MessageType.BALANCE_UPDATE, true, "Số dư đã thay đổi",
+                new org.example.dto.response.BalanceResponse(e.accountname(), e.newBalance(), e.newBlockedBalance())));
     }
 
     private void onNewBid(NewBidPlacedEvent e) {
+        // Broadcast to the room
         Broadcaster.broadcastToAuction(e.auctionId(), new Response<>(
                 MessageType.BID_UPDATE, true, "New highest bid",
                 new BidUpdateNotify(e.auctionId(), e.winnerAccountname(),
                         e.currentPrice(), e.autoBidApplied(), e.newEndTime())));
+
+        // Private outbid notification
+        if (e.oldWinnerAccount() != null && !e.oldWinnerAccount().equals(e.winnerAccountname())) {
+            Auction auction = auctionService.getAuctionById(e.auctionId());
+            String itemName = auction != null && auction.getProduct() != null 
+                ? auction.getProduct().getName() : "sản phẩm";
+            
+            Broadcaster.sendToUser(e.oldWinnerAccount(), new Response<>(
+                    MessageType.NOTIFICATION, true,
+                    "Bạn đã bị vượt mặt tại đấu giá: " + itemName + ". Hãy quay lại trả giá ngay!", null));
+        }
     }
 
     private void onAuctionStarted(AuctionStartedEvent e) {

@@ -112,12 +112,36 @@ public class UserDao {
     }
 
     /**
+     * Updates the user's full name.
+     */
+    public boolean updateFullname(Connection connection, String accountname, String fullname) throws SQLException {
+        String sql = "UPDATE users SET fullname = ? WHERE accountname = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, fullname);
+            pstmt.setString(2, accountname);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
      * Updates the user's status (e.g., Active/Banned).
      */
     public boolean updateUserStatus(Connection connection, String accountname, int status) throws SQLException {
         String sql = "UPDATE users SET status = ? WHERE accountname = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setInt(1, status);
+            pstmt.setString(2, accountname);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Updates the user's password.
+     */
+    public boolean updatePassword(Connection connection, String accountname, String hashedPassword) throws SQLException {
+        String sql = "UPDATE users SET password = ? WHERE accountname = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, hashedPassword);
             pstmt.setString(2, accountname);
             return pstmt.executeUpdate() > 0;
         }
@@ -168,6 +192,24 @@ public class UserDao {
             }
         }
         return users;
+    }
+
+    /**
+     * Gets the count of users by status.
+     * @param connection The database connection.
+     * @param status The user status.
+     * @return The count.
+     * @throws SQLException If a database error occurs.
+     */
+    public long countUsersByStatus(Connection connection, int status) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM users WHERE status = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, status);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) return rs.getLong(1);
+            }
+        }
+        return 0;
     }
 
     /**

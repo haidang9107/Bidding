@@ -100,6 +100,9 @@ graph TD
 
 Any unchecked exception inside the lambda triggers a full `ROLLBACK`. Successful completion triggers `COMMIT`.
 
+### DAO Management
+All DAOs (e.g., `AuctionDao`, `UserDao`) are implemented as **Singletons** and accessed via `getInstance()`. This ensures a single point of data access and consistent SQL handling across all services.
+
 ### Pessimistic Concurrency Control (Row-Level Locking)
 To handle concurrent bids on the same auction, the system uses `SELECT ... FOR UPDATE` on both the `auctions` row and all involved `users` rows within a single transaction. This serialises concurrent bids at the database level — eliminating lost-update anomalies without application-level `synchronized` blocks.
 
@@ -140,5 +143,14 @@ Members can either:
 - **One-step**: Use `createAuction()` to create a product and list it for auction simultaneously.
 - **Two-step**: Use `createInventoryProduct()` to add a product to their inventory first, then use `openAuctionForProduct()` at a later time to create the auction. This allows sellers to prepare listings in advance.
 
-### F. Precision Timekeeping
+### F. Product Withdrawal (Soft Delete)
+Sellers can withdraw products from their inventory. This performs a **Soft Delete** by setting the `withdrawn_at` timestamp. A product can only be withdrawn if it is not currently in an active auction.
+
+### G. Advanced Search and Filtering
+The search logic supports keywords, categories, price ranges, and auction status (`isInAuction`) using a `LEFT JOIN` for unified results.
+
+### H. Watchlist Management
+Users can "watch" auctions to receive targeted "ending soon" notifications.
+
+### I. Precision Timekeeping
 `AuctionMonitor` uses a `ScheduledExecutorService` to fire auction start and end callbacks at exact timestamps — no polling, no busy loops. This guarantees sub-second accuracy for auction transitions with near-zero CPU overhead.

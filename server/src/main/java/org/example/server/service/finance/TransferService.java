@@ -17,15 +17,18 @@ public class TransferService {
     private final UserDao userDao;
     private final TransactionDao transactionDao;
     private final TransactionManager txManager;
+    private final org.example.server.event.EventPublisher eventPublisher;
 
     /**
      * Constructs a new TransferService.
      * @param txManager The transaction manager.
+     * @param eventPublisher The event publisher.
      */
-    public TransferService(TransactionManager txManager) {
+    public TransferService(TransactionManager txManager, org.example.server.event.EventPublisher eventPublisher) {
         this.userDao = UserDao.getInstance();
         this.transactionDao = TransactionDao.getInstance();
         this.txManager = txManager;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -39,7 +42,7 @@ public class TransferService {
         if (amount <= 0) throw new FinanceException("Transfer amount must be positive");
         if (fromAccount.equals(toAccount)) throw new FinanceException("Cannot transfer to yourself");
 
-        return txManager.execute(conn -> {
+        java.util.List<BalanceResponse> results = txManager.execute(conn -> {
             // Lock in consistent order to avoid deadlocks
             if (fromAccount.compareTo(toAccount) < 0) {
                 userDao.findByAccountnameForUpdate(conn, fromAccount);
@@ -55,7 +58,7 @@ public class TransferService {
             if (toUser == null) throw new FinanceException("Recipient not found");
             
             if (!(fromUser instanceof Member fromMember)) throw new FinanceException("Sender is not a member");
-            if (!(toUser instanceof Member)) throw new FinanceException("Recipient is not a member");
+            if (!(toUser instanceof Member toMember)) throw new FinanceException("Recipient is not a member");
 
             long available = fromMember.getBalance() - fromMember.getBlockedBalance();
             if (available < amount) {
@@ -68,12 +71,18 @@ public class TransferService {
             transactionDao.insertTransaction(conn, fromAccount, toAccount, 
                     TransactionType.TRANSFER, null, amount, null, "Transfer to " + toAccount);
 
-            User updatedFromUser = userDao.findByAccountname(conn, fromAccount);
-            if (updatedFromUser instanceof Member updatedFromMember) {
-                FileLogger.info("Transfer SUCCESS: " + fromAccount + " -> " + toAccount + " [" + amount + "]");
-                return new BalanceResponse(fromAccount, updatedFromMember.getBalance(), updatedFromMember.getBlockedBalance());
-            }
-            throw new FinanceException("Transfer failed during finalization");
+            FileLogger.info("Transfer SUCCESS: " + fromAccount + " -> " + toAccount + " [" + amount + "]");
+            
+            return java.util.List.of(
+                new BalanceResponse(fromAccount, fromMember.getBalance() - amount, fromMember.getBlockedBalance()),
+                new BalanceResponse(toAccount, toMember.getBalance() + amount, toMember.getBlockedBalance())
+            );
         });
+
+        for (BalanceResponse res : results) {
+            eventPublisher.publish(new org.example.server.event.BalanceChangedEvent(res.getAccountname(), res.getNewBalance(), res.getBlockedBalance()));
+        }
+
+        return results.get(0); // Return sender's balance
     }
 }

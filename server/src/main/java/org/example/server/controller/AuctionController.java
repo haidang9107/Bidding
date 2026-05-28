@@ -54,6 +54,32 @@ public class AuctionController {
     }
 
     /**
+     * Handles searching for auctions/products with advanced filters.
+     * @param searchReq The search request.
+     * @return A response containing the paged list of matching products/auctions.
+     */
+    public Response<?> handleSearchAuctions(org.example.dto.request.ProductSearchRequest searchReq) {
+        if (searchReq == null) {
+            searchReq = new org.example.dto.request.ProductSearchRequest();
+        }
+
+        PagedResponse<Auction> paged = auctionService.searchAuctions(searchReq);
+
+        List<ProductResponse> productResponses = paged.getItems().stream()
+                .map(ProductResponse::new)
+                .collect(Collectors.toList());
+
+        PagedResponse<ProductResponse> finalResponse = new PagedResponse<>(
+                productResponses,
+                paged.getTotalItems(),
+                paged.getCurrentPage(),
+                paged.getPageSize()
+        );
+
+        return new Response<>(MessageType.PRODUCT_SEARCH, true, "Search completed", finalResponse);
+    }
+
+    /**
      * Handles retrieving the details of a specific auction.
      * @param auctionId The auction ID.
      * @return A response containing the auction details (with product info).

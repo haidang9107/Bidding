@@ -50,6 +50,13 @@ public class JoinAuctionRoomCommand implements Command {
         }
 
         RoomManager.joinAuction(roomRequest.getAuctionId(), channel);
+
+        // Log this visit for history/analytics
+        org.example.model.user.User user = org.example.server.network.SessionManager.getUser(channel);
+        if (user != null) {
+            auctionService.logAuctionAccess(user.getAccountname(), roomRequest.getAuctionId());
+        }
+
         return new Response<>(MessageType.SUCCESS, true,
                 "Joined auction room " + roomRequest.getAuctionId(), null);
     }

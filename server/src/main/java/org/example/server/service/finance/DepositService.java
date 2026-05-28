@@ -17,15 +17,18 @@ public class DepositService {
     private final UserDao userDao;
     private final TransactionDao transactionDao;
     private final TransactionManager txManager;
+    private final org.example.server.event.EventPublisher eventPublisher;
 
     /**
      * Constructs a new DepositService.
      * @param txManager The transaction manager.
+     * @param eventPublisher The event publisher.
      */
-    public DepositService(TransactionManager txManager) {
+    public DepositService(TransactionManager txManager, org.example.server.event.EventPublisher eventPublisher) {
         this.userDao = UserDao.getInstance();
         this.transactionDao = TransactionDao.getInstance();
         this.txManager = txManager;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -37,7 +40,7 @@ public class DepositService {
     public BalanceResponse deposit(String accountname, long amount) {
         if (amount <= 0) throw new FinanceException("Deposit amount must be positive");
         
-        return txManager.execute(conn -> {
+        BalanceResponse res = txManager.execute(conn -> {
             boolean success = userDao.addBalance(conn, accountname, amount);
             if (success) {
                 User user = userDao.findByAccountname(conn, accountname);
@@ -53,5 +56,10 @@ public class DepositService {
                 throw new FinanceException("Deposit failed. User not found.");
             }
         });
+
+        if (res != null) {
+            eventPublisher.publish(new org.example.server.event.BalanceChangedEvent(res.getAccountname(), res.getNewBalance(), res.getBlockedBalance()));
+        }
+        return res;
     }
 }

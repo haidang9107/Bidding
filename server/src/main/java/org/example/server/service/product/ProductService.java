@@ -3,6 +3,7 @@ package org.example.server.service.product;
 import org.example.model.product.Product;
 import org.example.server.repository.ProductDao;
 import org.example.server.repository.TransactionManager;
+import org.example.server.repository.WatchlistDao;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -14,6 +15,7 @@ import java.sql.SQLException;
  */
 public class ProductService {
     private final ProductDao productDao;
+    private final WatchlistDao watchlistDao;
     private final TransactionManager txManager;
 
     /**
@@ -22,6 +24,7 @@ public class ProductService {
      */
     public ProductService(TransactionManager txManager) {
         this.productDao = ProductDao.getInstance();
+        this.watchlistDao = WatchlistDao.getInstance();
         this.txManager = txManager;
     }
 
@@ -62,6 +65,37 @@ public class ProductService {
     }
 
     /**
+     * Updates an existing product's information in the database.
+     * @param product The product with updated information.
+     * @return True if successful.
+     */
+    public boolean updateProduct(Product product) {
+        return txManager.execute(conn -> productDao.updateProduct(conn, product));
+    }
+
+    /**
+     * Withdraws a product from the inventory (soft delete).
+     * @param productId The ID of the product to withdraw.
+     * @param ownerAccountname The account name of the owner requesting the withdrawal.
+     * @return True if successful.
+     */
+    public boolean withdrawProduct(int productId, String ownerAccountname) {
+        return txManager.execute(conn -> {
+            Product product = productDao.getProductForUpdate(conn, productId);
+            if (product == null) {
+                throw new org.example.server.exception.NotFoundException("Product not found");
+            }
+            if (!product.getOwnerAccountname().equals(ownerAccountname)) {
+                throw new org.example.server.exception.ValidationException("You do not own this product");
+            }
+            if (product.isInAuction()) {
+                throw new org.example.server.exception.ValidationException("Cannot withdraw a product that is currently in an auction");
+            }
+            return productDao.withdrawProduct(conn, productId);
+        });
+    }
+
+    /**
      * Transfers the ownership of a product to a new account and clears the
      * in-auction flag. Designed to be called from within an existing transaction
      * (typically when an auction is being finished).
@@ -74,6 +108,11 @@ public class ProductService {
      */
     public boolean transferOwnership(Connection connection, int productId, String newOwnerAccount)
             throws SQLException {
-        return productDao.updateProductOwner(connection, productId, newOwnerAccount);
+        boolean success = productDao.updateProductOwner(connection, productId, newOwnerAccount);
+        if (success) {
+            // Clean up: new owner doesn't need to "watch" a product they now own
+            watchlistDao.removeFromWatchlist(connection, newOwnerAccount, productId);
+        }
+        return success;
     }
 }
