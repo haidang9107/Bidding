@@ -39,6 +39,11 @@ public final class SceneRouter {
     /**
      * Chuyển scene và truyền dữ liệu vào controller.
      * controllerInit được gọi sau khi FXML load xong, trước khi show.
+     *
+     * <p>Quan trọng: thay vì tạo Scene mới mỗi lần (làm window co lại về
+     * kích thước root mặc định và mất trạng thái maximized), ta chỉ
+     * setRoot() trên Scene đã có. Cách này giữ nguyên vị trí, kích thước,
+     * và trạng thái phóng to/thu nhỏ qua mọi lần điều hướng.</p>
      */
     @SuppressWarnings("unchecked")
     public static <T> void go(String fxmlPath, String title, Consumer<T> controllerInit) {
@@ -52,9 +57,24 @@ public final class SceneRouter {
                 controllerInit.accept(controller);
             }
 
-            Scene scene = new Scene(root);
+            // Lưu lại trạng thái maximized để re-apply sau (một số platform
+            // reset maximized khi đổi Scene).
+            boolean wasMaximized = primaryStage.isMaximized();
+            double w = primaryStage.getWidth();
+            double h = primaryStage.getHeight();
+
+            if (primaryStage.getScene() == null) {
+                primaryStage.setScene(new Scene(root, w > 0 ? w : 1280, h > 0 ? h : 800));
+            } else {
+                // Tái sử dụng Scene để không mất kích thước / maximized.
+                primaryStage.getScene().setRoot(root);
+            }
             primaryStage.setTitle(title);
-            primaryStage.setScene(scene);
+
+            // Re-apply maximized state if it got cleared.
+            if (wasMaximized && !primaryStage.isMaximized()) {
+                primaryStage.setMaximized(true);
+            }
         } catch (IOException e) {
             throw new RuntimeException("Không load được FXML: " + fxmlPath, e);
         }

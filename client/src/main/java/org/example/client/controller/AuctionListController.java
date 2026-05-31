@@ -3,8 +3,6 @@ package org.example.client.controller;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import javafx.application.Platform;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -57,7 +55,7 @@ public class AuctionListController {
     @FXML private Button refreshBtn;
     @FXML private Label tabHintLabel;
 
-    @FXML private ListView<String> categoryList;
+    @FXML private VBox categoryBox;          // matches <VBox fx:id="categoryBox"> in FXML
     @FXML private TabPane tabPane;
     @FXML private FlowPane allFlowPane;
     @FXML private FlowPane watchFlowPane;
@@ -97,17 +95,27 @@ public class AuctionListController {
             homeBtn.setManaged(false);
         }
 
-        // Categories
-        ObservableList<String> catItems = FXCollections.observableArrayList(CATEGORY_LABELS);
-        categoryList.setItems(catItems);
-        categoryList.getSelectionModel().select(0);
-        categoryList.getSelectionModel().selectedIndexProperty().addListener((obs, oldI, newI) -> {
-            int idx = newI == null ? 0 : newI.intValue();
-            if (idx < 0 || idx >= CATEGORIES.length) idx = 0;
-            currentCategoryFilter = CATEGORIES[idx];
-            renderAll();
-            renderWatch();
-        });
+        // Categories — build toggle buttons inside categoryBox
+        if (categoryBox != null) {
+            ToggleGroup catGroup = new ToggleGroup();
+            for (int i = 0; i < CATEGORIES.length; i++) {
+                final int idx = i;
+                ToggleButton tb = new ToggleButton(CATEGORY_LABELS[i]);
+                tb.getStyleClass().add("category-btn");
+                tb.setMaxWidth(Double.MAX_VALUE);
+                tb.setAlignment(Pos.CENTER_LEFT);
+                tb.setToggleGroup(catGroup);
+                if (i == 0) tb.setSelected(true);
+                tb.setOnAction(e -> {
+                    // Always keep one category selected.
+                    if (!tb.isSelected()) { tb.setSelected(true); return; }
+                    currentCategoryFilter = CATEGORIES[idx];
+                    renderAll();
+                    renderWatch();
+                });
+                categoryBox.getChildren().add(tb);
+            }
+        }
 
         // Search
         if (searchField != null) {
@@ -187,11 +195,27 @@ public class AuctionListController {
         }
     }
 
-    private void openDetail(int productId) {
+    @FXML
+    private void handleGoMyProducts() {
         cleanup();
+        SceneRouter.go("/view/MyProducts.fxml", "Sản phẩm của tôi");
+    }
+
+    /**
+     * Open the bidding room. The argument is the productId (what ProductCard
+     * tracks), but the server's JOIN_AUCTION_ROOM and BID_PLACE both want
+     * the {@code auctionId} (the row in the auctions table). Resolve it
+     * from {@link ProductRow} which we populated from the PRODUCT_LIST
+     * response.
+     */
+    private void openDetail(int productId) {
+        ProductRow r = findRow(productId);
+        int auctionId = (r != null && r.auctionId > 0) ? r.auctionId : productId;
+        cleanup();
+        final int aId = auctionId;
         SceneRouter.go("/view/AuctionDetail.fxml",
-                "Phiên đấu giá #" + productId,
-                (AuctionDetailController c) -> c.setAuctionId(productId));
+                "Phiên đấu giá #" + aId,
+                (AuctionDetailController c) -> c.setAuctionId(aId));
     }
 
     private void joinAuction(int productId) {
@@ -199,7 +223,6 @@ public class AuctionListController {
         // But we also register interest in MyBidsManager so the user sees it in their tab.
         ProductRow r = findRow(productId);
         if (r != null) {
-            // We don't record a bid amount until they actually place one; just mark interest.
             WatchlistManager.getInstance().add(productId);
         }
         openDetail(productId);
@@ -234,12 +257,36 @@ public class AuctionListController {
         }
         products.clear();
         String raw = JsonConverter.toJson(resp.getData());
-        Type listMapType = new TypeToken<List<Map<String, Object>>>(){}.getType();
-        List<Map<String, Object>> items;
+
+        // Server returns PagedResponse<ProductResponse> with shape
+        //   { items: [...], totalItems, currentPage, pageSize, totalPages }
+        // — NOT a raw list. We try the paged shape first; if Gson finds an
+        // "items" field we use that, otherwise we fall back to treating raw
+        // as a list (in case the server ever returns a flat list directly).
+        List<Map<String, Object>> items = null;
         try {
-            items = new Gson().fromJson(raw, listMapType);
-        } catch (Exception ex) {
-            items = new ArrayList<>();
+            Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
+            Map<String, Object> wrapper = new Gson().fromJson(raw, mapType);
+            if (wrapper != null && wrapper.get("items") instanceof List<?> list) {
+                items = new ArrayList<>();
+                for (Object o : list) {
+                    if (o instanceof Map<?, ?> mm) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> cast = (Map<String, Object>) mm;
+                        items.add(cast);
+                    }
+                }
+            }
+        } catch (Exception ignored) { /* fall through to list-shape attempt */ }
+
+        if (items == null) {
+            // Fallback: raw is already a list
+            try {
+                Type listMapType = new TypeToken<List<Map<String, Object>>>(){}.getType();
+                items = new Gson().fromJson(raw, listMapType);
+            } catch (Exception ex) {
+                items = new ArrayList<>();
+            }
         }
         if (items == null) items = new ArrayList<>();
 
@@ -485,6 +532,7 @@ public class AuctionListController {
     // ============================================================
     public static class ProductRow {
         int productId;
+        int auctionId;          // server's auction id — REQUIRED for JOIN_AUCTION_ROOM
         String name;
         String description;
         String category;
@@ -497,6 +545,7 @@ public class AuctionListController {
         static ProductRow fromMap(Map<String, Object> m, SimpleDateFormat fmt) {
             ProductRow r = new ProductRow();
             r.productId    = readInt(m.get("productId"));
+            r.auctionId    = readInt(m.get("auctionId"));
             r.name         = readStr(m.get("productName"), readStr(m.get("name"), ""));
             r.description  = readStr(m.get("description"), "");
             r.category     = readStr(m.get("category"), "OTHER");

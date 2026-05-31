@@ -50,6 +50,18 @@ public class ProductCard extends VBox {
         setMinWidth(220);
         setPrefWidth(240);
         setMaxWidth(260);
+        // Make the whole card respond to mouse — without this, clicks on the
+        // image/name/price area are ignored and the user has to hit the small
+        // "Chi tiết"/"Đấu giá" buttons exactly. Clicks land here only when
+        // they didn't already get consumed by a child button or the heart
+        // toggle, so this doesn't compete with those.
+        setStyle(getStyle() + ";-fx-cursor: hand;");
+        setOnMouseClicked(e -> {
+            if (e.getButton() == javafx.scene.input.MouseButton.PRIMARY
+                    && onDetail != null) {
+                onDetail.accept(productId);
+            }
+        });
 
         // === Image area with heart icon ===
         StackPane imageBox = buildImageBox(imageUrl);

@@ -1,6 +1,8 @@
 package org.example.client;
 
 import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import org.example.client.network.SocketClient;
 import org.example.client.util.SceneRouter;
@@ -10,10 +12,15 @@ import org.example.client.util.SceneRouter;
  *  - Kết nối tới server qua socket (Singleton SocketClient)
  *  - Khởi tạo SceneRouter (quản lý chuyển scene)
  *  - Mở màn hình Login đầu tiên.
+ *  - Cửa sổ bắt đầu ở trạng thái maximized; SceneRouter giữ kích thước qua
+ *    mọi lần đổi scene.
+ *  - Khi user nhấn nút X, ngắt socket trên background thread + exit ngay
+ *    để tránh delay (close socket có thể block đến vài giây khi server
+ *    không phản hồi).
  */
 public class ClientApp extends Application {
 
-    private static final String SERVER_HOST = "localhost";
+    private static final String SERVER_HOST = "192.168.35.37";
     private static final int SERVER_PORT = 9997;
 
     @Override
@@ -23,18 +30,41 @@ public class ClientApp extends Application {
             SocketClient.getInstance().connect(SERVER_HOST, SERVER_PORT);
             System.out.println(">>> Đã kết nối server");
 
-            // 2) Mở Login scene
+            // 2) Cấu hình stage: minimum size + maximized ngay từ đầu để
+            //    người dùng không cần phóng to bằng tay.
+            javafx.geometry.Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
+            stage.setMinWidth(1000);
+            stage.setMinHeight(700);
+            stage.setX(bounds.getMinX());
+            stage.setY(bounds.getMinY());
+            stage.setWidth(bounds.getWidth());
+            stage.setHeight(bounds.getHeight());
+            stage.setMaximized(true);
+
+            // 3) Open Login
             SceneRouter.init(stage);
             SceneRouter.go("/view/Login.fxml", "Đăng nhập");
+
+            // 4) Xử lý đóng app: chạy disconnect trên background thread để
+            //    UI không bị block (socket.close() có thể chờ đến vài giây
+            //    nếu server không phản hồi). Halt() đảm bảo JVM dừng ngay,
+            //    không chờ daemon threads.
             stage.setOnCloseRequest(e -> {
-                SocketClient.getInstance().disconnect();
-                System.exit(0);
+                e.consume();              // tự xử lý thay vì để JavaFX đóng từ từ
+                Thread t = new Thread(() -> {
+                    try { SocketClient.getInstance().disconnect(); }
+                    catch (Exception ignored) {}
+                    Platform.exit();
+                    // Bảo hiểm: nếu có thread non-daemon còn sống thì halt.
+                    Runtime.getRuntime().halt(0);
+                }, "client-shutdown");
+                t.setDaemon(true);
+                t.start();
             });
             stage.show();
         } catch (Exception e) {
             System.err.println(">>> Không kết nối được server: " + e.getMessage());
             e.printStackTrace();
-            // Hiện dialog báo lỗi rồi exit
             javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
                     javafx.scene.control.Alert.AlertType.ERROR);
             alert.setTitle("Lỗi kết nối");

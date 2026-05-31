@@ -7,7 +7,7 @@ import org.example.client.network.ServerListener;
 import org.example.client.network.SocketClient;
 import org.example.client.session.Session;
 import org.example.client.util.SceneRouter;
-import org.example.dto.LoginRequest;
+import org.example.dto.request.LoginRequest;
 import org.example.model.enums.MessageType;
 import org.example.model.enums.UserRole;
 import org.example.model.user.Admin;

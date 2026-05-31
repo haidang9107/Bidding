@@ -33,6 +33,7 @@
                 <Label fx:id="statusLabel" styleClass="badge-label" text="..."/>
                 <Label text="Còn:" styleClass="muted-label"/>
                 <Label fx:id="countdownLabel" styleClass="countdown-label" text="--:--"/>
+                <Button onAction="#handleGoHome" styleClass="ghost-btn" text="Trang chính"/>
                 <Button fx:id="backBtn" onAction="#handleBack" styleClass="ghost-btn" text="← Danh sách"/>
             </HBox>
 
@@ -108,8 +109,12 @@
                     <TextField fx:id="incrementField" styleClass="input-field"
                                GridPane.columnIndex="1" GridPane.rowIndex="1"/>
                 </GridPane>
-                <Button fx:id="autoBidBtn" maxWidth="Infinity"
-                        onAction="#handleAutoBid" styleClass="secondary-btn" text="Cài Auto-Bid"/>
+                <HBox spacing="8">
+                    <Button fx:id="autoBidBtn" maxWidth="Infinity" HBox.hgrow="ALWAYS"
+                            onAction="#handleAutoBid" styleClass="secondary-btn" text="Cài Auto-Bid"/>
+                    <Button fx:id="cancelAutoBidBtn" maxWidth="Infinity" HBox.hgrow="ALWAYS"
+                            onAction="#handleCancelAutoBid" styleClass="ghost-btn" text="Hủy"/>
+                </HBox>
             </VBox>
 
             <VBox spacing="6" styleClass="card" VBox.vgrow="ALWAYS">

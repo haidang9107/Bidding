@@ -6,7 +6,7 @@ import javafx.scene.control.*;
 import org.example.client.network.ServerListener;
 import org.example.client.network.SocketClient;
 import org.example.client.util.SceneRouter;
-import org.example.dto.SignupRequest;
+import org.example.dto.request.SignupRequest;
 import org.example.model.enums.MessageType;
 import org.example.payload.Request;
 import org.example.payload.Response;

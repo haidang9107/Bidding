@@ -1,5 +1,7 @@
 package org.example.client.dialog;
 
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -7,20 +9,26 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.example.client.network.SocketClient;
 import org.example.client.notification.NotificationService;
 import org.example.client.session.Session;
-import org.example.dto.UserProfileUpdateRequest;
+import org.example.client.util.CloudinaryUploader;
+import org.example.dto.request.UserProfileUpdateRequest;
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
 import org.example.payload.Request;
-import org.example.util.JsonConverter;
+
+import java.io.File;
 
 /**
  * Modal dialog showing the current user's profile and allowing edits.
@@ -50,16 +58,96 @@ public final class ProfileDialog {
         Label title = new Label("THÔNG TIN CÁ NHÂN");
         title.setStyle("-fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold;");
 
-        Label avatar = new Label(initials(user));
-        avatar.setMinSize(72, 72);
-        avatar.setMaxSize(72, 72);
-        avatar.setAlignment(Pos.CENTER);
-        avatar.setStyle(
+        // -------- Avatar block --------
+        // Shows the current avatar (or initials placeholder) plus a button to
+        // pick a new image and upload to Cloudinary. On a successful upload
+        // we call MessageType.USER_UPDATE_AVATAR with the returned URL so the
+        // server persists it to users.avt.
+        ImageView avatarView = new ImageView();
+        avatarView.setFitWidth(72);
+        avatarView.setFitHeight(72);
+        avatarView.setPreserveRatio(true);
+        Label avatarFallback = new Label(initials(user));
+        avatarFallback.setAlignment(Pos.CENTER);
+        avatarFallback.setMinSize(72, 72);
+        avatarFallback.setMaxSize(72, 72);
+        avatarFallback.setStyle(
                 "-fx-background-color: linear-gradient(to bottom right, #5a8dee, #2c6ad6);"
               + "-fx-background-radius: 36;"
               + "-fx-text-fill: white;"
               + "-fx-font-size: 22px;"
               + "-fx-font-weight: bold;");
+        StackPane avatarBox = new StackPane(avatarFallback, avatarView);
+        avatarBox.setMinSize(72, 72);
+        avatarBox.setMaxSize(72, 72);
+        // If the user already has an avatar URL, load it; otherwise leave the
+        // initials fallback visible underneath.
+        if (user.getAvt() != null && !user.getAvt().isBlank()) {
+            try {
+                Image img = new Image(user.getAvt(), 72, 72, true, true, true);
+                avatarView.setImage(img);
+            } catch (Exception ignored) { /* fallback to initials */ }
+        }
+
+        Button changeAvatarBtn = new Button("Đổi avatar...");
+        changeAvatarBtn.setStyle(
+                "-fx-background-color: transparent; -fx-text-fill: #c0c0d0;"
+              + "-fx-border-color: #3a3a4e; -fx-border-radius: 6;"
+              + "-fx-padding: 6 12; -fx-cursor: hand;");
+        Label avatarStatus = new Label("");
+        avatarStatus.setStyle("-fx-text-fill: #8a8aa0; -fx-font-size: 11px;");
+
+        VBox avatarSide = new VBox(6, changeAvatarBtn, avatarStatus);
+        avatarSide.setAlignment(Pos.CENTER_LEFT);
+
+        HBox avatarRow = new HBox(14, avatarBox, avatarSide);
+        avatarRow.setAlignment(Pos.CENTER_LEFT);
+
+        changeAvatarBtn.setOnAction(ev -> {
+            FileChooser fc = new FileChooser();
+            fc.setTitle("Chọn ảnh đại diện");
+            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter(
+                    "Ảnh", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp"));
+            File file = fc.showOpenDialog(stage);
+            if (file == null) return;
+            if (file.length() > 4L * 1024 * 1024) {
+                avatarStatus.setText("✗ Ảnh quá lớn (>4MB)");
+                return;
+            }
+            changeAvatarBtn.setDisable(true);
+            avatarStatus.setText("Đang tải ảnh...");
+
+            Task<String> task = new Task<>() {
+                @Override protected String call() throws Exception {
+                    return CloudinaryUploader.upload(file);
+                }
+            };
+            task.setOnSucceeded(e2 -> {
+                String url = task.getValue();
+                // Show new avatar locally
+                try {
+                    avatarView.setImage(new Image(url, 72, 72, true, true, true));
+                } catch (Exception ignored) {}
+                // Tell the server to persist this URL on the users.avt column.
+                // USER_UPDATE_AVATAR's command accepts the URL as a plain
+                // String payload (one of the few endpoints that takes a raw
+                // String — see UserUpdateAvatarCommand on the server).
+                SocketClient.getInstance().send(
+                        new Request(MessageType.USER_UPDATE_AVATAR, url));
+                user.setAvt(url);
+                avatarStatus.setText("✓ Đã đổi avatar");
+                changeAvatarBtn.setDisable(false);
+            });
+            task.setOnFailed(e2 -> {
+                Throwable ex = task.getException();
+                avatarStatus.setText("✗ Lỗi: "
+                        + (ex == null ? "(unknown)" : ex.getMessage()));
+                changeAvatarBtn.setDisable(false);
+            });
+            Thread t = new Thread(task, "avatar-upload");
+            t.setDaemon(true);
+            t.start();
+        });
 
         TextField fullnameField = new TextField(safe(user.getFullname()));
         TextField emailField    = new TextField(safe(user.getEmail()));
@@ -127,12 +215,15 @@ public final class ProfileDialog {
             user.setFullname(newFullname);
             user.setEmail(newEmail);
 
-            // Send to server (UPDATE_PROFILE). Server may answer "coming soon",
-            // but the payload is correctly structured for whenever it's added.
+            // Send the DTO object directly. The SocketClient already
+            // serialises the whole Request (including payload) once with Gson
+            // before sending — wrapping it in JsonConverter.toJson(req) here
+            // would double-encode it and the server would see a String, not
+            // an object, when it tries JsonConverter.convert(payload, ...).
             UserProfileUpdateRequest req = buildRequest(user.getAccountname(),
                     newFullname, newEmail, oldP, newP);
             SocketClient.getInstance().send(
-                    new Request(MessageType.UPDATE_PROFILE, JsonConverter.toJson(req)));
+                    new Request(MessageType.UPDATE_PROFILE, req));
 
             NotificationService.getInstance().info(
                     "Hồ sơ đã cập nhật",
@@ -143,13 +234,13 @@ public final class ProfileDialog {
         HBox actions = new HBox(10, cancelBtn, saveBtn);
         actions.setAlignment(Pos.CENTER_RIGHT);
 
-        VBox layout = new VBox(14, title, avatar, grid, status, actions);
+        VBox layout = new VBox(14, title, avatarRow, grid, status, actions);
         layout.setPadding(new Insets(24));
         layout.setAlignment(Pos.TOP_LEFT);
         layout.setMinWidth(420);
         layout.setStyle("-fx-background-color: linear-gradient(to bottom right, #1a1a2e, #16213e);");
 
-        VBox.setMargin(avatar, new Insets(0, 0, 4, 0));
+        VBox.setMargin(avatarRow, new Insets(0, 0, 4, 0));
 
         Region spacer = new Region();
         spacer.setMinHeight(4);

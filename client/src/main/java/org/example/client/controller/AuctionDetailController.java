@@ -64,6 +64,7 @@ public class AuctionDetailController {
     @FXML private TextField maxBidField;
     @FXML private TextField incrementField;
     @FXML private Button autoBidBtn;
+    @FXML private Button cancelAutoBidBtn;
 
     @FXML private ListView<String> historyList;
     @FXML private Button backBtn;
@@ -105,7 +106,15 @@ public class AuctionDetailController {
 
     public void setAuctionId(int auctionId) {
         this.auctionId = auctionId;
-        client.send(new Request(MessageType.PRODUCT_DETAIL, String.valueOf(auctionId)));
+        // Subscribe to realtime updates (BID_UPDATE / TIMER_TICK / AUCTION_END)
+        // for this auction. Server pushes them only to clients in the room.
+        client.send(new Request(MessageType.JOIN_AUCTION_ROOM,
+                new org.example.dto.request.AuctionRoomRequest(auctionId)));
+        // Fetch the initial product/auction snapshot. Server's
+        // AuctionDetailCommand expects an AuctionRoomRequest DTO (not the
+        // raw id as a String — that would fail JSON deserialization).
+        client.send(new Request(MessageType.PRODUCT_DETAIL,
+                new org.example.dto.request.AuctionRoomRequest(auctionId)));
     }
 
     @FXML
@@ -143,6 +152,12 @@ public class AuctionDetailController {
                 messageLabel.setText("Max và bước phải > 0");
                 return;
             }
+            // Server's AutoBidSetCommand: payload is AutoBidRequest
+            // {auctionId, maxBid, incrementAmount}. Server stores the config
+            // and bids on the user's behalf when outbid, up to maxBid.
+            org.example.dto.request.AutoBidRequest req =
+                    new org.example.dto.request.AutoBidRequest(auctionId, max, inc);
+            client.send(new Request(MessageType.AUTO_BID_SET, req));
             autoMaxBid = max;
             autoIncrement = inc;
             autoBidEnabled = true;
@@ -152,21 +167,53 @@ public class AuctionDetailController {
         }
     }
 
+    /**
+     * Cancels server-side auto-bid for this auction. Uses
+     * MessageType.AUTO_BID_CANCEL (server's AutoBidCancelCommand removes the
+     * config so the server stops bidding for us). This handler can be wired
+     * to a separate "Hủy auto-bid" button in the FXML.
+     */
+    @FXML
+    private void handleCancelAutoBid() {
+        if (!autoBidEnabled) {
+            messageLabel.setText("Chưa bật auto-bid.");
+            return;
+        }
+        org.example.dto.request.AutoBidRequest req =
+                new org.example.dto.request.AutoBidRequest(auctionId,
+                        autoMaxBid, autoIncrement);
+        client.send(new Request(MessageType.AUTO_BID_CANCEL, req));
+        autoBidEnabled = false;
+        autoMaxBid = 0L;
+        autoIncrement = 0L;
+        messageLabel.setText("Đã hủy auto-bid.");
+    }
+
     @FXML
     private void handleBack() {
         cleanup();
         SceneRouter.go("/view/AuctionList.fxml", "Sàn đấu giá trực tuyến");
     }
 
+    @FXML
+    private void handleGoHome() {
+        cleanup();
+        SceneRouter.go("/view/UserDashboard.fxml", "Trang người dùng");
+    }
+
     /**
-     * Send bid. Format: "productId:bidderAccountname:amount"
+     * Send a bid to the server. The server's BidPlaceCommand expects a
+     * BidRequest{auctionId, amount} DTO; the bidder identity is taken from
+     * the authenticated session. The previous colon-separated String format
+     * silently failed server-side because Gson cannot map a String to a DTO.
      */
     private void sendBid(long amount) {
         User u = Session.getInstance().getCurrentUser();
         if (u == null) return;
-        String payload = auctionId + ":" + u.getAccountname() + ":" + amount;
         bidBtn.setDisable(true);
-        client.send(new Request(MessageType.BID_PLACE, payload));
+        org.example.dto.request.BidRequest req =
+                new org.example.dto.request.BidRequest(auctionId, amount);
+        client.send(new Request(MessageType.BID_PLACE, req));
 
         // Optimistically register in MyBidsManager so the user sees the entry
         // immediately under "Đang đấu giá của tôi".
@@ -328,6 +375,13 @@ public class AuctionDetailController {
 
     private void cleanup() {
         stopCountdown();
+        // Tell the server to stop pushing updates for this room to us.
+        if (auctionId > 0) {
+            try {
+                client.send(new Request(MessageType.LEAVE_AUCTION_ROOM,
+                        new org.example.dto.request.AuctionRoomRequest(auctionId)));
+            } catch (Exception ignored) { /* best-effort on the way out */ }
+        }
         client.removeListener(listener);
     }
 

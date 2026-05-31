@@ -46,6 +46,9 @@
                 <Button fx:id="homeBtn" onAction="#handleGoHome" styleClass="ghost-btn"
                         text="Trang chính"/>
 
+                <Button onAction="#handleGoMyProducts" styleClass="ghost-btn"
+                        text="Sản phẩm của tôi"/>
+
                 <Button fx:id="avatarBtn" onAction="#handleOpenProfile"
                         styleClass="avatar-btn" text="?"/>
 
