@@ -58,7 +58,7 @@ public class ServerApp {
         EventPublisher eventPublisher = new EventPublisher();
 
         // 2. Services - Product first (used by AuctionService for ownership transfer)
-        ProductService productService = new ProductService(txManager);
+        ProductService productService = new ProductService(txManager, eventPublisher);
         AuctionService auctionService = new AuctionService(txManager, eventPublisher, productService);
 
         // 3. AuctionMonitor depends on AuctionService; wired back via setter to break the cycle

@@ -1,6 +1,8 @@
 package org.example.server.service.product;
 
 import org.example.model.product.Product;
+import org.example.server.event.EventPublisher;
+import org.example.server.event.ProductUpdatedEvent;
 import org.example.server.repository.ProductDao;
 import org.example.server.repository.TransactionManager;
 import org.example.server.repository.WatchlistDao;
@@ -17,15 +19,18 @@ public class ProductService {
     private final ProductDao productDao;
     private final WatchlistDao watchlistDao;
     private final TransactionManager txManager;
+    private final EventPublisher eventPublisher;
 
     /**
      * Constructs a ProductService.
-     * @param txManager The transaction manager.
+     * @param txManager      The transaction manager.
+     * @param eventPublisher The event publisher.
      */
-    public ProductService(TransactionManager txManager) {
+    public ProductService(TransactionManager txManager, EventPublisher eventPublisher) {
         this.productDao = ProductDao.getInstance();
         this.watchlistDao = WatchlistDao.getInstance();
         this.txManager = txManager;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -70,7 +75,13 @@ public class ProductService {
      * @return True if successful.
      */
     public boolean updateProduct(Product product) {
-        return txManager.execute(conn -> productDao.updateProduct(conn, product));
+        return txManager.execute(conn -> {
+            boolean success = productDao.updateProduct(conn, product);
+            if (success) {
+                eventPublisher.publish(new ProductUpdatedEvent(product.getProductId()));
+            }
+            return success;
+        });
     }
 
     /**

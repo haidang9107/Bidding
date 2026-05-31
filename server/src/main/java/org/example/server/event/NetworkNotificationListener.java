@@ -2,13 +2,15 @@ package org.example.server.event;
 
 import org.example.dto.notify.AuctionEndNotify;
 import org.example.dto.notify.BidUpdateNotify;
-import org.example.dto.notify.ProductUpdateNotify;
+import org.example.dto.response.PagedResponse;
 import org.example.dto.response.ProductResponse;
 import org.example.model.Auction;
 import org.example.model.enums.MessageType;
 import org.example.payload.Response;
 import org.example.server.network.Broadcaster;
 import org.example.server.service.auction.AuctionService;
+
+import java.util.List;
 
 /**
  * Listens for domain events and pushes notifications to clients via the
@@ -36,6 +38,19 @@ public class NetworkNotificationListener {
         publisher.subscribe(AuctionEndedEvent.class,    this::onAuctionEnded);
         publisher.subscribe(AuctionCreatedEvent.class,  this::onAuctionCreated);
         publisher.subscribe(BalanceChangedEvent.class,  this::onBalanceChanged);
+        publisher.subscribe(ProductUpdatedEvent.class,  this::onProductUpdated);
+    }
+
+    private void onProductUpdated(ProductUpdatedEvent e) {
+        Auction auction = auctionService.getAuctionById(e.productId());
+        if (auction == null) return;
+
+        ProductResponse productResp = new ProductResponse(auction);
+        PagedResponse<ProductResponse> pagedResponse = new PagedResponse<>(
+                List.of(productResp), 1, 1, 1);
+
+        Broadcaster.broadcast(new Response<>(MessageType.PRODUCT_LIST, true,
+                "Product information updated!", pagedResponse));
     }
 
     private void onBalanceChanged(BalanceChangedEvent e) {
@@ -94,7 +109,12 @@ public class NetworkNotificationListener {
     private void onAuctionCreated(AuctionCreatedEvent e) {
         Auction auction = auctionService.getAuctionById(e.auctionId());
         if (auction == null) return;
+
+        ProductResponse productResp = new ProductResponse(auction);
+        PagedResponse<ProductResponse> pagedResponse = new PagedResponse<>(
+                List.of(productResp), 1, 1, 1);
+
         Broadcaster.broadcast(new Response<>(MessageType.PRODUCT_LIST, true,
-                "New auction opened!", new ProductUpdateNotify(new ProductResponse(auction))));
+                "New auction opened!", pagedResponse));
     }
 }

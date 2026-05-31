@@ -34,7 +34,7 @@ public class AuctionController {
      */
     public Response<?> handleGetAllAuctions(PaginationRequest pagReq) {
         if (pagReq == null) {
-            pagReq = new PaginationRequest(1, 10);
+            pagReq = new PaginationRequest(1, 500); // Increased default to 500
         }
 
         PagedResponse<Auction> paged = auctionService.getAuctionsPaged(pagReq.getPage(), pagReq.getPageSize());
