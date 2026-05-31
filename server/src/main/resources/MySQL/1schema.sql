@@ -90,6 +90,15 @@ CREATE TABLE IF NOT EXISTS transactions (
     FOREIGN KEY (auction_id) REFERENCES auctions(auction_id) ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS watchlist (
+                                         user_accountname VARCHAR(255) NOT NULL,
+    product_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_accountname, product_id),
+    FOREIGN KEY (user_accountname) REFERENCES users(accountname) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE
+    );
+
 CREATE INDEX idx_products_owner ON products(owner_accountname);
 CREATE INDEX idx_products_auction ON products(is_in_auction);
 CREATE INDEX idx_auctions_product ON auctions(product_id);
@@ -98,29 +107,8 @@ CREATE INDEX idx_bids_auction_amount ON bids(auction_id, bid_amount DESC);
 CREATE INDEX idx_auto_bids_auction ON auto_bids(auction_id, active, max_bid);
 CREATE INDEX idx_transactions_sender ON transactions(sender_accountname);
 CREATE INDEX idx_transactions_receiver ON transactions(receiver_accountname);
+
 CREATE INDEX idx_transactions_auction ON transactions(auction_id);
-
-CREATE TABLE IF NOT EXISTS watchlist (
-    user_accountname VARCHAR(255) NOT NULL,
-    product_id INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_accountname, product_id),
-    FOREIGN KEY (user_accountname) REFERENCES users(accountname) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE
-);
-
 CREATE INDEX idx_watchlist_user ON watchlist(user_accountname);
 CREATE INDEX idx_watchlist_product ON watchlist(product_id);
-
-CREATE TABLE IF NOT EXISTS auction_access_logs (
-    user_accountname VARCHAR(255) NOT NULL,
-    auction_id INT NOT NULL,
-    access_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_accountname) REFERENCES users(accountname) ON DELETE CASCADE,
-    FOREIGN KEY (auction_id) REFERENCES auctions(auction_id) ON DELETE CASCADE
-);
-
-CREATE INDEX idx_access_logs_auction ON auction_access_logs(auction_id);
-CREATE INDEX idx_access_logs_user ON auction_access_logs(user_accountname);
-
 

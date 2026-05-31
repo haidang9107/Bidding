@@ -76,16 +76,6 @@ public class AuctionService {
         return txManager.query(conn -> auctionDao.getAuctionById(conn, auctionId));
     }
 
-    /**
-     * Logs a user's entry into an auction room.
-     * @param accountname The user's account name.
-     * @param auctionId   The auction ID.
-     */
-    public void logAuctionAccess(String accountname, int auctionId) {
-        txManager.run(conn -> org.example.server.repository.AuctionAccessDao.getInstance()
-                .logAccess(conn, accountname, auctionId));
-    }
-
 
     /**
      * Retrieves a paged list of auctions (products eagerly loaded).

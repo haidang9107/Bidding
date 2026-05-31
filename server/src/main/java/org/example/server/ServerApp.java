@@ -172,7 +172,7 @@ public class ServerApp {
         registry.register(MessageType.UPDATE_PASSWORD,    new UpdatePasswordCommand(user));
         registry.register(MessageType.USER_UPDATE_AVATAR, new UserUpdateAvatarCommand(user));
         registry.register(MessageType.ADMIN_GET_ALL_USERS,  new AdminGetAllUsersCommand(admin));
-        registry.register(MessageType.ADMIN_BAN_USER,       new AdminBanUserCommand(admin));
+        registry.register(MessageType.ADMIN_BAN_USER,       new AdminBanUserCommand(admin, disconnectionHandler));
         registry.register(MessageType.ADMIN_CANCEL_AUCTION, new AdminCancelAuctionCommand(admin));
         registry.register(MessageType.ADMIN_GET_STATS,      new AdminGetStatsCommand(admin));
 
