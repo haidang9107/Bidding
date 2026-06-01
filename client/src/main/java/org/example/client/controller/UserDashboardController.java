@@ -295,34 +295,58 @@ public class UserDashboardController {
             return;
         }
 
+        // Realtime balance push — server emits BALANCE_UPDATE via
+        // sendToUser() whenever this account's balance changes for ANY
+        // reason (own deposit/withdraw, OR receiving a transfer from someone
+        // else). data = BalanceResponse. This is how the receiver of a
+        // transfer sees their balance go up without refreshing.
+        if (t == MessageType.BALANCE_UPDATE) {
+            Platform.runLater(() -> {
+                boolean applied = applyBalanceResponse(resp.getData());
+                if (applied) {
+                    NotificationService.getInstance().info(
+                            "Số dư cập nhật",
+                            "Số dư của bạn vừa thay đổi.");
+                }
+            });
+            return;
+        }
+
+        // Generic server NOTIFICATION (outbid alert, transfer received, etc.)
+        if (t == MessageType.NOTIFICATION) {
+            Platform.runLater(() -> {
+                String body = resp.getMessage() == null ? "Bạn có thông báo mới." : resp.getMessage();
+                NotificationService.getInstance().info("Thông báo", body);
+            });
+            return;
+        }
+
         // Wallet endpoints — server's FinanceController returns Response with
         // the same MessageType as the request (DEPOSIT / WITHDRAW / TRANSFER),
         // NOT MessageType.SUCCESS. The data field carries a BalanceResponse
-        // with the new balance, so we can update the UI immediately without
-        // an extra GET_PROFILE round trip.
+        // with the new balance, so we can update the UI immediately.
         if (t == MessageType.DEPOSIT || t == MessageType.WITHDRAW
                 || t == MessageType.TRANSFER) {
             Platform.runLater(() -> {
+                String action = (t == MessageType.DEPOSIT) ? "Nạp tiền"
+                             : (t == MessageType.WITHDRAW) ? "Rút tiền"
+                             : "Chuyển tiền";
                 if (resp.isSuccess()) {
-                    String label = (t == MessageType.DEPOSIT) ? "Nạp"
-                                 : (t == MessageType.WITHDRAW) ? "Rút"
-                                 : "Chuyển";
-                    String msg = "✓ " + label + " thành công"
-                            + (resp.getMessage() == null ? "" : " — " + resp.getMessage());
-                    statusLabel.setText(msg);
-                    addHistory(msg);
-
-                    // Apply the new balance returned by the server. Falls
-                    // back to a fresh GET_PROFILE if the payload couldn't be
-                    // parsed for any reason.
+                    String body = resp.getMessage() == null
+                            ? action + " thành công." : resp.getMessage();
+                    // Toast top-right instead of a flashing status line.
+                    NotificationService.getInstance().info("✓ " + action, body);
+                    addHistory("✓ " + action + " — " + body);
+                    statusLabel.setText("");
                     boolean applied = applyBalanceResponse(resp.getData());
                     if (!applied) {
                         client.send(new Request(MessageType.GET_PROFILE, null));
                     }
                 } else {
-                    String msg = resp.getMessage() == null
-                            ? "✗ Thao tác thất bại" : "✗ " + resp.getMessage();
-                    statusLabel.setText(msg);
+                    String body = resp.getMessage() == null
+                            ? action + " thất bại." : resp.getMessage();
+                    NotificationService.getInstance().error("✗ " + action, body);
+                    statusLabel.setText("");
                 }
             });
             return;

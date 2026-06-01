@@ -119,6 +119,21 @@
                     </ScrollPane>
                 </Tab>
             </TabPane>
+
+            <!-- Pagination controls for the "Tất cả" tab -->
+            <HBox fx:id="paginationBar" alignment="CENTER" spacing="12"
+                  styleClass="pagination-bar">
+                <padding><Insets bottom="8" left="14" right="14" top="8"/></padding>
+                <Button fx:id="firstPageBtn" onAction="#handleFirstPage"
+                        styleClass="ghost-btn" text="« Đầu"/>
+                <Button fx:id="prevPageBtn" onAction="#handlePrevPage"
+                        styleClass="ghost-btn" text="‹ Trước"/>
+                <Label fx:id="pageLabel" styleClass="user-label" text="Trang 1/1"/>
+                <Button fx:id="nextPageBtn" onAction="#handleNextPage"
+                        styleClass="ghost-btn" text="Sau ›"/>
+                <Button fx:id="lastPageBtn" onAction="#handleLastPage"
+                        styleClass="ghost-btn" text="Cuối »"/>
+            </HBox>
         </VBox>
     </center>
 </BorderPane>

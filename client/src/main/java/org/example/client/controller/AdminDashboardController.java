@@ -101,6 +101,10 @@ public class AdminDashboardController {
     // ============== State ==============
     private final SocketClient client = SocketClient.getInstance();
     private ServerListener listener;
+    /** True between sending ADMIN_GET_ALL_USERS and receiving its SUCCESS
+     *  reply, so we can tell the user-list response apart from ban/cancel
+     *  acks (the server uses a generic SUCCESS envelope for all of them). */
+    private boolean awaitingUserList = false;
 
     private final ObservableList<UserRow> usersData = FXCollections.observableArrayList();
     private final ObservableList<AuctionRow> auctionsData = FXCollections.observableArrayList();
@@ -305,6 +309,7 @@ public class AdminDashboardController {
 
     private void loadUsers() {
         PaginationRequest pr = new PaginationRequest(1, 500);
+        awaitingUserList = true;
         client.send(new Request(MessageType.ADMIN_GET_ALL_USERS, pr));
         userSummaryLabel.setText("Đang tải...");
     }
@@ -333,10 +338,23 @@ public class AdminDashboardController {
         MessageType t = resp.getType();
         if (t == null) return;
         switch (t) {
+            // Server returns the user list under a generic SUCCESS envelope
+            // (data = PagedResponse<UserResponse>), so we detect it by the
+            // pending flag we set when we sent ADMIN_GET_ALL_USERS.
+            case SUCCESS -> Platform.runLater(() -> {
+                if (awaitingUserList) {
+                    awaitingUserList = false;
+                    onUserList(resp);
+                } else {
+                    onAdminSuccess(resp);
+                }
+            });
             case ADMIN_GET_ALL_USERS -> Platform.runLater(() -> onUserList(resp));
             case PRODUCT_LIST        -> Platform.runLater(() -> onAuctionList(resp));
-            case SUCCESS             -> Platform.runLater(() -> onAdminSuccess(resp));
-            case ERROR               -> Platform.runLater(() -> onAdminError(resp));
+            case ERROR               -> Platform.runLater(() -> {
+                awaitingUserList = false;
+                onAdminError(resp);
+            });
             default -> { /* ignore */ }
         }
     }
@@ -521,7 +539,8 @@ public class AdminDashboardController {
     }
 
     private void showAuctionDetailDialog(AuctionRow r) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION);
+        ButtonType enterRoom = new ButtonType("Vào phòng đấu giá", ButtonBar.ButtonData.OK_DONE);
+        Alert a = new Alert(Alert.AlertType.INFORMATION, "", enterRoom, ButtonType.CLOSE);
         a.setTitle("Chi tiết phiên đấu giá");
         a.setHeaderText("Phiên #" + r.auctionId + " — " + r.productName);
         StringBuilder sb = new StringBuilder();
@@ -539,7 +558,16 @@ public class AdminDashboardController {
         sb.append("Kết thúc:        ").append(r.endTime);
         a.setContentText(sb.toString());
         a.getDialogPane().setMinWidth(480);
-        a.showAndWait();
+
+        Optional<ButtonType> choice = a.showAndWait();
+        if (choice.isPresent() && choice.get() == enterRoom) {
+            // Open the live auction room for this specific auction.
+            cleanup();
+            final int aId = r.auctionId;
+            SceneRouter.go("/view/AuctionDetail.fxml",
+                    "Phiên đấu giá #" + aId,
+                    (AuctionDetailController c) -> c.setAuctionId(aId));
+        }
     }
 
     private boolean confirm(String title, String body) {

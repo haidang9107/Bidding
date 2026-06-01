@@ -18,6 +18,7 @@ import org.example.client.notification.NotificationService;
 import org.example.client.session.Session;
 import org.example.client.util.SceneRouter;
 import org.example.dto.request.PaginationRequest;
+import org.example.dto.request.ProductUpdateRequest;
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
 import org.example.payload.Request;
@@ -59,6 +60,9 @@ public class MyProductsController {
     @FXML private VBox soldBox;
 
     private final SocketClient client = SocketClient.getInstance();
+    /** True while waiting for a PRODUCT_UPDATE/PRODUCT_WITHDRAW reply so we
+     *  can route the generic SUCCESS/ERROR envelope correctly. */
+    private boolean awaitingMutation = false;
     private ServerListener listener;
     private final SimpleDateFormat displayFmt = new SimpleDateFormat("dd/MM/yyyy HH:mm");
 
@@ -141,9 +145,64 @@ public class MyProductsController {
             Platform.runLater(() -> onMyProductList(resp));
         } else if (t == MessageType.PRODUCT_LIST) {
             Platform.runLater(() -> onProductList(resp));
+        } else if (t == MessageType.SUCCESS && awaitingMutation) {
+            // Reply to our PRODUCT_UPDATE / PRODUCT_WITHDRAW.
+            Platform.runLater(() -> {
+                awaitingMutation = false;
+                NotificationService.getInstance().info("Thành công",
+                        resp.getMessage() == null ? "Đã cập nhật." : resp.getMessage());
+                loadProducts();
+            });
+        } else if (t == MessageType.ERROR && awaitingMutation) {
+            Platform.runLater(() -> {
+                awaitingMutation = false;
+                NotificationService.getInstance().error("Thất bại",
+                        resp.getMessage() == null ? "Không thực hiện được." : resp.getMessage());
+            });
         }
-        // Note: refresh after AUCTION_OPEN success is triggered by the dialog's
-        // onResult callback in buildRow(), not here, to avoid double-refresh.
+    }
+
+    /** Send PRODUCT_WITHDRAW {productId}. */
+    private void sendWithdraw(int productId) {
+        com.google.gson.JsonObject payload = new com.google.gson.JsonObject();
+        payload.addProperty("productId", productId);
+        awaitingMutation = true;
+        client.send(new Request(MessageType.PRODUCT_WITHDRAW, payload));
+    }
+
+    /** Simple edit dialog → PRODUCT_UPDATE with ProductUpdateRequest. */
+    private void showEditDialog(Row r) {
+        Dialog<ButtonType> dlg = new Dialog<>();
+        dlg.setTitle("Sửa sản phẩm");
+        dlg.setHeaderText("Sửa thông tin '" + safe(r.name) + "'");
+        ButtonType saveType = new ButtonType("Lưu", ButtonBar.ButtonData.OK_DONE);
+        dlg.getDialogPane().getButtonTypes().addAll(saveType, ButtonType.CANCEL);
+
+        TextField nameField = new TextField(safe(r.name));
+        TextArea descField = new TextArea("");
+        descField.setPromptText("Mô tả mới (để trống nếu không đổi)");
+        descField.setPrefRowCount(3);
+        TextField imageField = new TextField(r.imageUrl == null ? "" : r.imageUrl);
+
+        GridPane gp = new GridPane();
+        gp.setHgap(8); gp.setVgap(8);
+        gp.add(new Label("Tên:"), 0, 0);        gp.add(nameField, 1, 0);
+        gp.add(new Label("Mô tả:"), 0, 1);      gp.add(descField, 1, 1);
+        gp.add(new Label("URL ảnh:"), 0, 2);    gp.add(imageField, 1, 2);
+        dlg.getDialogPane().setContent(gp);
+
+        Optional<ButtonType> res = dlg.showAndWait();
+        if (res.isEmpty() || res.get() != saveType) return;
+
+        ProductUpdateRequest req = new ProductUpdateRequest();
+        req.setProductId(r.productId);
+        req.setName(nameField.getText() == null ? "" : nameField.getText().trim());
+        String desc = descField.getText() == null ? "" : descField.getText().trim();
+        if (!desc.isEmpty()) req.setDescription(desc);
+        String url = imageField.getText() == null ? "" : imageField.getText().trim();
+        if (!url.isEmpty()) req.setImageUrl(url);
+        awaitingMutation = true;
+        client.send(new Request(MessageType.PRODUCT_UPDATE, req));
     }
 
     @SuppressWarnings("unchecked")
@@ -319,7 +378,7 @@ public class MyProductsController {
         actions.setAlignment(Pos.CENTER_LEFT);
 
         if (isStock) {
-            // Stock items: a single primary action to open the auction dialog.
+            // Stock items: open-auction, edit, withdraw.
             Button openBtn = new Button("Đăng lên sàn");
             openBtn.getStyleClass().add("primary-btn");
             openBtn.setOnAction(ev -> OpenAuctionDialog.show(r.productId, r.name, ok -> {
@@ -331,7 +390,26 @@ public class MyProductsController {
                     loadProducts();
                 }
             }));
-            actions.getChildren().add(openBtn);
+
+            Button editBtn = new Button("Sửa");
+            editBtn.getStyleClass().add("ghost-btn");
+            editBtn.setOnAction(ev -> showEditDialog(r));
+
+            Button withdrawBtn = new Button("Rút khỏi kho");
+            withdrawBtn.getStyleClass().add("ghost-btn");
+            withdrawBtn.setOnAction(ev -> {
+                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                        "Rút sản phẩm '" + safe(r.name) + "' khỏi kho?",
+                        ButtonType.OK, ButtonType.CANCEL);
+                confirm.setHeaderText(null);
+                confirm.setTitle("Xác nhận");
+                Optional<ButtonType> c = confirm.showAndWait();
+                if (c.isPresent() && c.get() == ButtonType.OK) {
+                    sendWithdraw(r.productId);
+                }
+            });
+
+            actions.getChildren().addAll(openBtn, editBtn, withdrawBtn);
         } else {
             // "Xem chi tiết" opens a read-only product info dialog. It does
             // NOT enter the live bidding room.

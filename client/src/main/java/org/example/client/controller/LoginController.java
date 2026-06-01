@@ -95,7 +95,7 @@ public class LoginController {
 
     private void redirectByRole(User user) {
         if (user.getRole() == UserRole.ADMIN) {
-            SceneRouter.go("/view/AuctionList.fxml", "Quản trị viên");
+            SceneRouter.go("/view/AdminDashboard.fxml", "Quản trị viên");
         } else if (user.getRole() == UserRole.MEMBER) {
             SceneRouter.go("/view/UserDashboard.fxml", "Trang người dùng");
         } else {

@@ -1,5 +1,10 @@
 package org.example.client.watchlist;
 
+import com.google.gson.JsonObject;
+import org.example.client.network.SocketClient;
+import org.example.model.enums.MessageType;
+import org.example.payload.Request;
+
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -7,12 +12,14 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 /**
- * In-memory tracking of "products I am interested in" (watchlist).
+ * Tracking of "products I am interested in" (watchlist), now backed by the
+ * server (WATCHLIST_ADD / WATCHLIST_REMOVE / WATCHLIST_GET).
  *
- * Pure client-side state — does not modify any existing server logic.
- * Persists for the lifetime of the JVM only.
- *
- * Used by AuctionList to render the "Sản phẩm mình quan tâm" tab.
+ * <p>The local Set is a cache for instant UI feedback (heart toggle); the
+ * authoritative state lives on the server. {@link #refreshFromServer()}
+ * requests the server copy, and {@link #syncFromServer(Set)} applies the
+ * WATCHLIST_GET response. add/remove update the cache optimistically AND
+ * tell the server.</p>
  *
  * Singleton.
  */
@@ -36,21 +43,45 @@ public final class WatchlistManager {
 
     public void add(int productId) {
         if (watched.add(productId)) {
+            sendToServer(MessageType.WATCHLIST_ADD, productId);
             fire();
         }
     }
 
     public void remove(int productId) {
         if (watched.remove(productId)) {
+            sendToServer(MessageType.WATCHLIST_REMOVE, productId);
             fire();
         }
     }
 
     public void toggle(int productId) {
+        boolean nowWatched;
         synchronized (watched) {
-            if (!watched.add(productId)) {
+            if (watched.add(productId)) {
+                nowWatched = true;
+            } else {
                 watched.remove(productId);
+                nowWatched = false;
             }
+        }
+        sendToServer(nowWatched ? MessageType.WATCHLIST_ADD : MessageType.WATCHLIST_REMOVE, productId);
+        fire();
+    }
+
+    /** Ask the server for the authoritative watchlist (response handled by
+     *  whichever controller is listening, which then calls syncFromServer). */
+    public void refreshFromServer() {
+        try {
+            SocketClient.getInstance().send(new Request(MessageType.WATCHLIST_GET, null));
+        } catch (Exception ignored) {}
+    }
+
+    /** Replace the local cache with the server's set of product ids. */
+    public void syncFromServer(Set<Integer> serverIds) {
+        synchronized (watched) {
+            watched.clear();
+            if (serverIds != null) watched.addAll(serverIds);
         }
         fire();
     }
@@ -68,6 +99,17 @@ public final class WatchlistManager {
 
     public void unsubscribe(Consumer<Set<Integer>> listener) {
         listeners.remove(listener);
+    }
+
+    private void sendToServer(MessageType type, int productId) {
+        try {
+            JsonObject payload = new JsonObject();
+            payload.addProperty("productId", productId);
+            SocketClient.getInstance().send(new Request(type, payload));
+        } catch (Exception ignored) {
+            // Network hiccup — local cache still updated; a later
+            // refreshFromServer() will reconcile.
+        }
     }
 
     private void fire() {

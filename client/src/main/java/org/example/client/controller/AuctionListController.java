@@ -16,6 +16,8 @@ import org.example.client.dialog.ProfileDialog;
 import org.example.client.network.ServerListener;
 import org.example.client.network.SocketClient;
 import org.example.client.notification.NotificationService;
+import org.example.client.dialog.ProductDetailDialog;
+import org.example.dto.request.PaginationRequest;
 import org.example.client.session.Session;
 import org.example.client.util.SceneRouter;
 import org.example.client.watchlist.MyBidsManager;
@@ -66,6 +68,20 @@ public class AuctionListController {
     private final SocketClient client = SocketClient.getInstance();
     private ServerListener listener;
     private final List<ProductRow> products = new ArrayList<>();
+
+    // Pagination state for the "Tất cả" tab.
+    @FXML private Label pageLabel;
+    @FXML private Button firstPageBtn;
+    @FXML private Button prevPageBtn;
+    @FXML private Button nextPageBtn;
+    @FXML private Button lastPageBtn;
+    private int currentPage = 1;
+    private int totalPages = 1;
+    private static final int PAGE_SIZE = 12;
+    /** When true, the next PRODUCT_LIST response is a full page we requested
+     *  (replace grid + update page label); when false it's a realtime
+     *  single-item broadcast (merge in place, don't touch pagination). */
+    private boolean awaitingPage = false;
     private final SimpleDateFormat displayFmt = new SimpleDateFormat("dd/MM/yyyy HH:mm");
     private String currentCategoryFilter = "ALL";
 
@@ -155,6 +171,8 @@ public class AuctionListController {
 
         // Load auctions from server
         loadAuctions();
+        // Load my watchlist from the server (authoritative).
+        WatchlistManager.getInstance().refreshFromServer();
     }
 
     // ============================================================
@@ -202,37 +220,90 @@ public class AuctionListController {
     }
 
     /**
-     * Open the bidding room. The argument is the productId (what ProductCard
-     * tracks), but the server's JOIN_AUCTION_ROOM and BID_PLACE both want
-     * the {@code auctionId} (the row in the auctions table). Resolve it
-     * from {@link ProductRow} which we populated from the PRODUCT_LIST
-     * response.
+     * "Chi tiết" — show the product info dialog (read-only). Does NOT enter
+     * the auction room. This is the seller-posted product information.
      */
-    private void openDetail(int productId) {
+    private void showProductInfo(int productId) {
         ProductRow r = findRow(productId);
         int auctionId = (r != null && r.auctionId > 0) ? r.auctionId : productId;
+        ProductDetailDialog.show(auctionId);
+    }
+
+    /**
+     * "Xem phòng" — open the auction room in view-only mode: live updates
+     * but no bidding and we don't register as a participant.
+     */
+    private void viewRoom(int productId) {
+        ProductRow r = findRow(productId);
+        if (r == null) {
+            NotificationService.getInstance().error("Không tìm thấy phiên",
+                    "Hãy bấm Làm mới rồi thử lại.");
+            return;
+        }
+        int auctionId = r.auctionId > 0 ? r.auctionId : productId;
+        cleanup();
+        final int aId = auctionId;
+        SceneRouter.go("/view/AuctionDetail.fxml",
+                "Xem phiên #" + aId,
+                (AuctionDetailController c) -> c.setAuctionId(aId, true));
+    }
+
+    /**
+     * "Đấu giá" — enter the auction room as a participant (joins the room so
+     * the server pushes realtime updates and accepts our bids).
+     */
+    private void joinAuction(int productId) {
+        ProductRow r = findRow(productId);
+        if (r == null) {
+            NotificationService.getInstance().error("Không tìm thấy phiên",
+                    "Hãy bấm Làm mới rồi thử lại.");
+            return;
+        }
+        int auctionId = r.auctionId > 0 ? r.auctionId : productId;
         cleanup();
         final int aId = auctionId;
         SceneRouter.go("/view/AuctionDetail.fxml",
                 "Phiên đấu giá #" + aId,
-                (AuctionDetailController c) -> c.setAuctionId(aId));
+                (AuctionDetailController c) -> c.setAuctionId(aId, false));
     }
 
-    private void joinAuction(int productId) {
-        // Same target as openDetail — the auction detail screen IS the bidding room.
-        // But we also register interest in MyBidsManager so the user sees it in their tab.
-        ProductRow r = findRow(productId);
-        if (r != null) {
-            WatchlistManager.getInstance().add(productId);
-        }
-        openDetail(productId);
+    /** Used by the "Vào phiên" button in the My-Bids list. */
+    private void openDetail(int productId) {
+        joinAuction(productId);
     }
 
     // ============================================================
     // Network
     // ============================================================
     private void loadAuctions() {
-        client.send(new Request(MessageType.PRODUCT_LIST, null));
+        loadPage(currentPage);
+    }
+
+    /**
+     * Request a specific page of auctions from the server. We send a real
+     * PaginationRequest{page, pageSize} so the user can page through ALL
+     * products — the previous code sent null, which made the server return
+     * only its default window and hid anything beyond it.
+     */
+    private void loadPage(int page) {
+        if (page < 1) page = 1;
+        currentPage = page;
+        awaitingPage = true;
+        client.send(new Request(MessageType.PRODUCT_LIST,
+                new PaginationRequest(page, PAGE_SIZE)));
+    }
+
+    @FXML private void handleFirstPage() { if (currentPage != 1) loadPage(1); }
+    @FXML private void handlePrevPage()  { if (currentPage > 1) loadPage(currentPage - 1); }
+    @FXML private void handleNextPage()  { if (currentPage < totalPages) loadPage(currentPage + 1); }
+    @FXML private void handleLastPage()  { if (currentPage != totalPages) loadPage(totalPages); }
+
+    private void updatePageControls() {
+        if (pageLabel != null) pageLabel.setText("Trang " + currentPage + "/" + Math.max(1, totalPages));
+        if (firstPageBtn != null) firstPageBtn.setDisable(currentPage <= 1);
+        if (prevPageBtn != null)  prevPageBtn.setDisable(currentPage <= 1);
+        if (nextPageBtn != null)  nextPageBtn.setDisable(currentPage >= totalPages);
+        if (lastPageBtn != null)  lastPageBtn.setDisable(currentPage >= totalPages);
     }
 
     private void handleResponse(Response resp) {
@@ -243,8 +314,33 @@ public class AuctionListController {
             case PRODUCT_LIST -> Platform.runLater(() -> onProductList(resp));
             case BID_UPDATE   -> Platform.runLater(() -> onBidUpdate(resp));
             case AUCTION_END  -> Platform.runLater(() -> onAuctionEnd(resp));
+            case WATCHLIST_GET -> Platform.runLater(() -> onWatchlistGet(resp));
+            case NOTIFICATION -> Platform.runLater(() -> {
+                String body = resp.getMessage() == null ? "Thông báo" : resp.getMessage();
+                NotificationService.getInstance().info("Thông báo", body);
+            });
             default -> { /* ignore */ }
         }
+    }
+
+    /** Server WATCHLIST_GET → data is List<ProductResponse>; extract product
+     *  ids and sync the local watchlist cache. */
+    @SuppressWarnings("unchecked")
+    private void onWatchlistGet(Response resp) {
+        if (!resp.isSuccess() || resp.getData() == null) return;
+        try {
+            String raw = JsonConverter.toJson(resp.getData());
+            Type listType = new TypeToken<List<Map<String, Object>>>(){}.getType();
+            List<Map<String, Object>> list = new Gson().fromJson(raw, listType);
+            java.util.Set<Integer> ids = new java.util.LinkedHashSet<>();
+            if (list != null) {
+                for (Map<String, Object> m : list) {
+                    int pid = readInt(m.get("productId"));
+                    if (pid != 0) ids.add(pid);
+                }
+            }
+            WatchlistManager.getInstance().syncFromServer(ids);
+        } catch (Exception ignored) {}
     }
 
     @SuppressWarnings("unchecked")
@@ -253,34 +349,30 @@ public class AuctionListController {
             NotificationService.getInstance().error(
                     "Không tải được danh sách",
                     resp.getMessage() == null ? "Lỗi không xác định" : resp.getMessage());
+            awaitingPage = false;
             return;
         }
-        products.clear();
         String raw = JsonConverter.toJson(resp.getData());
 
-        // Server returns PagedResponse<ProductResponse> with shape
-        //   { items: [...], totalItems, currentPage, pageSize, totalPages }
-        // — NOT a raw list. We try the paged shape first; if Gson finds an
-        // "items" field we use that, otherwise we fall back to treating raw
-        // as a list (in case the server ever returns a flat list directly).
+        // Parse the PagedResponse wrapper { items, totalItems, currentPage,
+        // pageSize, totalPages }.
         List<Map<String, Object>> items = null;
+        int respPage = currentPage;
+        int respTotalPages = totalPages;
         try {
             Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
             Map<String, Object> wrapper = new Gson().fromJson(raw, mapType);
             if (wrapper != null && wrapper.get("items") instanceof List<?> list) {
                 items = new ArrayList<>();
                 for (Object o : list) {
-                    if (o instanceof Map<?, ?> mm) {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> cast = (Map<String, Object>) mm;
-                        items.add(cast);
-                    }
+                    if (o instanceof Map<?, ?> mm) items.add((Map<String, Object>) mm);
                 }
+                if (wrapper.get("currentPage") != null) respPage = readInt(wrapper.get("currentPage"));
+                if (wrapper.get("totalPages") != null) respTotalPages = readInt(wrapper.get("totalPages"));
             }
-        } catch (Exception ignored) { /* fall through to list-shape attempt */ }
+        } catch (Exception ignored) {}
 
         if (items == null) {
-            // Fallback: raw is already a list
             try {
                 Type listMapType = new TypeToken<List<Map<String, Object>>>(){}.getType();
                 items = new Gson().fromJson(raw, listMapType);
@@ -290,8 +382,35 @@ public class AuctionListController {
         }
         if (items == null) items = new ArrayList<>();
 
-        for (Map<String, Object> m : items) {
-            products.add(ProductRow.fromMap(m, displayFmt));
+        if (awaitingPage) {
+            // This is a page we explicitly requested — replace the grid and
+            // sync pagination state.
+            awaitingPage = false;
+            currentPage = respPage > 0 ? respPage : currentPage;
+            totalPages = Math.max(1, respTotalPages);
+            products.clear();
+            for (Map<String, Object> m : items) {
+                products.add(ProductRow.fromMap(m, displayFmt));
+            }
+            updatePageControls();
+        } else {
+            // Unsolicited realtime broadcast (product changed / new auction).
+            // Merge each item in place without disturbing pagination. If the
+            // changed product isn't on the current page we just ignore it
+            // (it'll appear when the user navigates there / refreshes).
+            for (Map<String, Object> mm : items) {
+                ProductRow incoming = ProductRow.fromMap(mm, displayFmt);
+                boolean replaced = false;
+                for (int i = 0; i < products.size(); i++) {
+                    if (products.get(i).productId == incoming.productId) {
+                        products.set(i, incoming);
+                        replaced = true;
+                        break;
+                    }
+                }
+                // Only add brand-new items if we're on the first page (newest first).
+                if (!replaced && currentPage == 1) products.add(0, incoming);
+            }
         }
         renderAll();
         renderWatch();
@@ -306,13 +425,15 @@ public class AuctionListController {
         Map<String, Object> m = new Gson().fromJson(raw, mapType);
         if (m == null) return;
 
-        int pid = readInt(m.get("productId"));
-        long price = readLong(m.get("currentPrice"));
-        String name = readStr(m.get("productName"), readStr(m.get("name"), null));
-        String leader = readStr(m.get("winnerAccountname"), readStr(m.get("currentLeader"), null));
+        // Server payload is BidUpdateNotify { auctionId, bidderAccountname,
+        // amount, autoBidApplied, newEndTime } — NOT productId/currentPrice.
+        int auctionId = readInt(m.get("auctionId"));
+        long price    = readLong(m.get("amount"));
+        String leader = readStr(m.get("bidderAccountname"),
+                        readStr(m.get("winnerAccountname"), null));
 
-        // Update local product row if present
-        ProductRow row = findRow(pid);
+        // Map auctionId -> our product row.
+        ProductRow row = findRowByAuction(auctionId);
         if (row != null) {
             row.currentPrice = price;
             row.currentLeader = leader;
@@ -320,9 +441,10 @@ public class AuctionListController {
             renderWatch();
         }
 
-        // Tell MyBidsManager so it can fire notifications
         User u = Session.getInstance().getCurrentUser();
         String me = u == null ? null : u.getAccountname();
+        int pid = row != null ? row.productId : auctionId;
+        String name = row != null ? row.name : null;
         MyBidsManager.getInstance().onPriceUpdate(pid, name, price, leader, me);
     }
 
@@ -333,15 +455,19 @@ public class AuctionListController {
         Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
         Map<String, Object> m = new Gson().fromJson(raw, mapType);
         if (m == null) return;
-        int pid = readInt(m.get("productId"));
-        long price = readLong(m.get("currentPrice"));
+        // AuctionEndNotify { auctionId, winnerAccountname, finalPrice,
+        // productName, productDetail }
+        int auctionId = readInt(m.get("auctionId"));
+        long price = readLong(m.get("finalPrice"));
         String winner = readStr(m.get("winnerAccountname"), null);
+
+        ProductRow row = findRowByAuction(auctionId);
+        int pid = row != null ? row.productId : auctionId;
         User u = Session.getInstance().getCurrentUser();
         String me = u == null ? null : u.getAccountname();
         MyBidsManager.getInstance().onAuctionEnd(pid, winner, price, me);
 
         // Update local row status
-        ProductRow row = findRow(pid);
         if (row != null) {
             row.status = "FINISHED";
             row.currentPrice = price;
@@ -415,7 +541,9 @@ public class AuctionListController {
     private ProductCard buildCard(ProductRow r) {
         return new ProductCard(
                 r.productId, r.name, r.category, r.currentPrice, r.status, r.imageUrl,
-                this::openDetail, this::joinAuction);
+                this::showProductInfo,   // "Chi tiết" + click card → info dialog (no room)
+                this::viewRoom,          // "Xem phòng" → AuctionDetail view-only
+                this::joinAuction);      // "Đấu giá" → AuctionDetail join room
     }
 
     private VBox buildMyBidRow(MyBidsManager.Entry e) {
@@ -482,6 +610,13 @@ public class AuctionListController {
     private ProductRow findRow(int productId) {
         for (ProductRow r : products) {
             if (r.productId == productId) return r;
+        }
+        return null;
+    }
+
+    private ProductRow findRowByAuction(int auctionId) {
+        for (ProductRow r : products) {
+            if (r.auctionId == auctionId) return r;
         }
         return null;
     }

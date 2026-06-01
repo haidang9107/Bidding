@@ -104,17 +104,42 @@ public class AuctionDetailController {
         client.addListener(listener);
     }
 
+    /** When true the user is only viewing (watching) the room, not
+     *  participating — bidding controls are hidden and we don't JOIN. */
+    private boolean viewOnly = false;
+
     public void setAuctionId(int auctionId) {
+        setAuctionId(auctionId, false);
+    }
+
+    /**
+     * @param viewOnly if true, the user only watches: we skip JOIN_AUCTION_ROOM
+     *                 (so the server won't count them as a participant) but
+     *                 still fetch the snapshot and listen for broadcasts to
+     *                 keep the view live. Bidding controls are disabled.
+     */
+    public void setAuctionId(int auctionId, boolean viewOnly) {
         this.auctionId = auctionId;
-        // Subscribe to realtime updates (BID_UPDATE / TIMER_TICK / AUCTION_END)
-        // for this auction. Server pushes them only to clients in the room.
-        client.send(new Request(MessageType.JOIN_AUCTION_ROOM,
-                new org.example.dto.request.AuctionRoomRequest(auctionId)));
-        // Fetch the initial product/auction snapshot. Server's
-        // AuctionDetailCommand expects an AuctionRoomRequest DTO (not the
-        // raw id as a String — that would fail JSON deserialization).
+        this.viewOnly = viewOnly;
+        if (!viewOnly) {
+            // Join the room so the server pushes BID_UPDATE / TIMER_TICK /
+            // AUCTION_END to us.
+            client.send(new Request(MessageType.JOIN_AUCTION_ROOM,
+                    new org.example.dto.request.AuctionRoomRequest(auctionId)));
+        }
+        // Always fetch the initial snapshot.
         client.send(new Request(MessageType.PRODUCT_DETAIL,
                 new org.example.dto.request.AuctionRoomRequest(auctionId)));
+
+        if (viewOnly) {
+            // Disable bidding controls — best-effort, only if the fields exist.
+            Platform.runLater(() -> {
+                if (bidBtn != null) { bidBtn.setDisable(true); bidBtn.setText("Chế độ xem"); }
+                if (bidAmountField != null) bidAmountField.setDisable(true);
+                if (autoBidBtn != null) autoBidBtn.setDisable(true);
+                if (cancelAutoBidBtn != null) cancelAutoBidBtn.setDisable(true);
+            });
+        }
     }
 
     @FXML
@@ -231,22 +256,144 @@ public class AuctionDetailController {
 
         switch (t) {
             case PRODUCT_DETAIL -> Platform.runLater(() -> applyProductData(resp, false));
-            case BID_UPDATE     -> Platform.runLater(() -> applyProductData(resp, true));
-            case SUCCESS        -> Platform.runLater(() ->
-                    messageLabel.setText("✓ " + (resp.getMessage() == null ? "OK" : resp.getMessage())));
-            case ERROR          -> Platform.runLater(() ->
-                    messageLabel.setText("✗ " + (resp.getMessage() == null ? "Lỗi" : resp.getMessage())));
-            case AUCTION_END    -> Platform.runLater(() -> {
-                statusLabel.setText("FINISHED");
-                messageLabel.setText("Phiên đã kết thúc!");
-                stopCountdown();
-                // Forward to MyBidsManager so a win toast can fire if applicable
-                User u = Session.getInstance().getCurrentUser();
-                String me = u == null ? null : u.getAccountname();
-                MyBidsManager.getInstance().onAuctionEnd(auctionId, leaderAccount, currentPrice, me);
+            case BID_UPDATE     -> Platform.runLater(() -> applyBidUpdate(resp));
+            case TIMER_TICK     -> Platform.runLater(() -> applyTimerTick(resp));
+            case NOTIFICATION   -> Platform.runLater(() -> {
+                String body = resp.getMessage() == null ? "Thông báo" : resp.getMessage();
+                NotificationService.getInstance().info("Thông báo", body);
             });
+            case SUCCESS        -> Platform.runLater(() -> {
+                String body = resp.getMessage() == null
+                        ? "Đặt giá thành công." : resp.getMessage();
+                NotificationService.getInstance().info("✓ Đặt giá", body);
+                messageLabel.setText("");
+            });
+            case ERROR          -> Platform.runLater(() -> {
+                String body = resp.getMessage() == null ? "Lỗi" : resp.getMessage();
+                NotificationService.getInstance().error("✗ Lỗi", body);
+                messageLabel.setText("");
+            });
+            case AUCTION_END    -> Platform.runLater(() -> applyAuctionEnd(resp));
             default -> { /* ignore */ }
         }
+    }
+
+    /**
+     * Realtime bid update. Server payload is BidUpdateNotify
+     * { auctionId, bidderAccountname, amount, autoBidApplied, newEndTime }.
+     * Reads those exact fields (the previous code looked for productId/
+     * currentPrice which don't exist on this DTO, so prices never updated
+     * live — the user had to leave and re-enter the room).
+     */
+    @SuppressWarnings("unchecked")
+    private void applyBidUpdate(Response resp) {
+        if (!resp.isSuccess() || resp.getData() == null) return;
+        String raw = JsonConverter.toJson(resp.getData());
+        Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
+        Map<String, Object> m;
+        try { m = new Gson().fromJson(raw, mapType); }
+        catch (Exception ex) { return; }
+        if (m == null) return;
+
+        int aId = readInt(m.get("auctionId"));
+        if (aId != 0 && aId != auctionId) return;   // not our room
+        long amount   = readLong(m.get("amount"));
+        String bidder = readStr(m.get("bidderAccountname"));
+        long newEnd   = readEpoch(m.get("newEndTime"));
+
+        boolean changed = amount != currentPrice || !equalsSafe(bidder, leaderAccount);
+        this.currentPrice = amount;
+        this.leaderAccount = (bidder == null || bidder.isEmpty()) ? null : bidder;
+        if (newEnd > 0) this.endEpoch = newEnd;
+
+        currentPriceLabel.setText(formatPrice(amount));
+        leaderLabel.setText(leaderAccount == null ? "(Chưa có)" : leaderAccount);
+
+        if (changed) {
+            String line = String.format("[%s] %s đặt: %s",
+                    displayFmt.format(new Date()),
+                    leaderAccount == null ? "?" : leaderAccount,
+                    formatPrice(amount));
+            historyData.add(0, line);
+            addChartPoint(amount);
+
+            User u = Session.getInstance().getCurrentUser();
+            String me = u == null ? null : u.getAccountname();
+            MyBidsManager.getInstance().onPriceUpdate(auctionId, productName, amount, leaderAccount, me);
+
+            // Toast when someone else outbids — but not for our own bid.
+            if (me != null && leaderAccount != null && !me.equals(leaderAccount)) {
+                NotificationService.getInstance().info("Có người trả giá cao hơn",
+                        leaderAccount + " vừa đặt " + formatPrice(amount));
+            }
+            triggerAutoBidIfNeeded();
+        }
+        startCountdownIfNeeded();
+    }
+
+    /** Server TIMER_TICK — optional remaining-time push. Best-effort. */
+    @SuppressWarnings("unchecked")
+    private void applyTimerTick(Response resp) {
+        if (resp.getData() == null) return;
+        try {
+            String raw = JsonConverter.toJson(resp.getData());
+            Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
+            Map<String, Object> m = new Gson().fromJson(raw, mapType);
+            if (m == null) return;
+            long endTs = readEpoch(m.get("endTime"));
+            if (endTs > 0) { this.endEpoch = endTs; startCountdownIfNeeded(); }
+        } catch (Exception ignored) {}
+    }
+
+    /**
+     * Auction finished. Server payload is AuctionEndNotify
+     * { auctionId, winnerAccountname, finalPrice, productName, productDetail }.
+     */
+    @SuppressWarnings("unchecked")
+    private void applyAuctionEnd(Response resp) {
+        statusLabel.setText("FINISHED");
+        stopCountdown();
+        String winner = null;
+        long finalPrice = currentPrice;
+        if (resp.getData() != null) {
+            try {
+                String raw = JsonConverter.toJson(resp.getData());
+                Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
+                Map<String, Object> m = new Gson().fromJson(raw, mapType);
+                if (m != null) {
+                    winner = readStr(m.get("winnerAccountname"));
+                    long fp = readLong(m.get("finalPrice"));
+                    if (fp > 0) finalPrice = fp;
+                }
+            } catch (Exception ignored) {}
+        }
+        this.currentPrice = finalPrice;
+        this.leaderAccount = winner;
+        currentPriceLabel.setText(formatPrice(finalPrice));
+        leaderLabel.setText(winner == null ? "(Không có người thắng)" : winner);
+
+        User u = Session.getInstance().getCurrentUser();
+        String me = u == null ? null : u.getAccountname();
+        MyBidsManager.getInstance().onAuctionEnd(auctionId, winner, finalPrice, me);
+
+        if (winner != null && winner.equals(me)) {
+            messageLabel.setText("");
+            NotificationService.getInstance().win("🎉 Chúc mừng!",
+                    "Bạn đã thắng phiên đấu giá với giá " + formatPrice(finalPrice)
+                  + ". Sản phẩm đã vào kho của bạn.");
+        } else if (winner != null) {
+            messageLabel.setText("Phiên đã kết thúc. Người thắng: " + winner);
+            NotificationService.getInstance().info("Phiên kết thúc",
+                    "Người thắng: " + winner);
+        } else {
+            messageLabel.setText("Phiên đã kết thúc, không có người thắng.");
+            NotificationService.getInstance().info("Phiên kết thúc",
+                    "Không có người thắng.");
+        }
+    }
+
+    private static boolean equalsSafe(String a, String b) {
+        return a == null ? b == null : a.equals(b);
     }
 
     private void applyProductData(Response resp, boolean isBroadcast) {

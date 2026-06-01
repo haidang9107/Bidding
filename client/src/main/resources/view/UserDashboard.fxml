@@ -125,8 +125,7 @@
 
             <Label styleClass="section-title" text="ĐIỀU HƯỚNG"/>
 
-            <VBox styleClass="nav-tile" spacing="6"
-                  onMouseClicked="#handleGoAuctionList">
+            <VBox styleClass="nav-tile" spacing="6">
                 <Label styleClass="nav-tile-title" text="🏷  Sàn đấu giá"/>
                 <Label styleClass="nav-tile-desc"
                        text="Xem danh sách và vào màn hình đấu giá trực tiếp."/>
@@ -135,8 +134,7 @@
             </VBox>
 
             <!-- Renamed from "Bán hàng" -> "Sản phẩm của tôi" per BTL requirement -->
-            <VBox styleClass="nav-tile" spacing="6"
-                  onMouseClicked="#handleGoSellerDashboard">
+            <VBox styleClass="nav-tile" spacing="6">
                 <Label styleClass="nav-tile-title" text="📦  Sản phẩm của tôi"/>
                 <Label styleClass="nav-tile-desc"
                        text="Quản lý sản phẩm bạn đăng đấu giá."/>

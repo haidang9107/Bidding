@@ -42,6 +42,7 @@ public class ProductCard extends VBox {
                        String status,
                        String imageUrl,
                        Consumer<Integer> onDetail,
+                       Consumer<Integer> onView,
                        Consumer<Integer> onJoin) {
         this.productId = productId;
         getStyleClass().add("product-card");
@@ -50,11 +51,8 @@ public class ProductCard extends VBox {
         setMinWidth(220);
         setPrefWidth(240);
         setMaxWidth(260);
-        // Make the whole card respond to mouse — without this, clicks on the
-        // image/name/price area are ignored and the user has to hit the small
-        // "Chi tiết"/"Đấu giá" buttons exactly. Clicks land here only when
-        // they didn't already get consumed by a child button or the heart
-        // toggle, so this doesn't compete with those.
+        // Click anywhere on the card (outside the buttons/heart) opens the
+        // product info dialog — same as the "Chi tiết" button.
         setStyle(getStyle() + ";-fx-cursor: hand;");
         setOnMouseClicked(e -> {
             if (e.getButton() == javafx.scene.input.MouseButton.PRIMARY
@@ -95,13 +93,19 @@ public class ProductCard extends VBox {
         detailBtn.setMaxWidth(Double.MAX_VALUE);
         detailBtn.setOnAction(e -> { if (onDetail != null) onDetail.accept(productId); });
 
+        Button viewBtn = new Button("Xem phòng");
+        viewBtn.getStyleClass().add("card-detail-btn");
+        viewBtn.setMaxWidth(Double.MAX_VALUE);
+        viewBtn.setOnAction(e -> { if (onView != null) onView.accept(productId); });
+
         Button joinBtn = new Button("Đấu giá");
         joinBtn.getStyleClass().add("card-join-btn");
         joinBtn.setMaxWidth(Double.MAX_VALUE);
         joinBtn.setOnAction(e -> { if (onJoin != null) onJoin.accept(productId); });
 
-        HBox actions = new HBox(8, detailBtn, joinBtn);
+        HBox actions = new HBox(6, detailBtn, viewBtn, joinBtn);
         HBox.setHgrow(detailBtn, javafx.scene.layout.Priority.ALWAYS);
+        HBox.setHgrow(viewBtn,   javafx.scene.layout.Priority.ALWAYS);
         HBox.setHgrow(joinBtn,   javafx.scene.layout.Priority.ALWAYS);
 
         body.getChildren().addAll(nameLabel, metaRow, priceLabel, actions);
