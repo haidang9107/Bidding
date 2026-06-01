@@ -15,6 +15,8 @@ public enum MessageType {
     GET_PROFILE,
     /** User Actions: Update user profile */
     UPDATE_PROFILE,
+    /** User Actions: Update user password */
+    UPDATE_PASSWORD,
     /** User Actions: Update user avatar */
     USER_UPDATE_AVATAR,
     
@@ -24,19 +26,32 @@ public enum MessageType {
     ADMIN_BAN_USER,
     /** Admin Actions: Cancel an ongoing auction */
     ADMIN_CANCEL_AUCTION,
+    /** Admin Actions: Get system-wide statistics */
+    ADMIN_GET_STATS,
     
     /** Auction/Product Management: Get list of products */
     PRODUCT_LIST,
+    /** Auction/Product Management: Search and filter products/auctions */
+    PRODUCT_SEARCH,
     /** Auction/Product Management: Get product details */
     PRODUCT_DETAIL,
     /** Auction/Product Management: Add a new product (legacy: also opens auction) */
     PRODUCT_ADD,
     /** Auction/Product Management: Create a product in the seller's inventory only (no auction) */
     PRODUCT_CREATE,
+    /** Auction/Product Management: Update an existing inventory product */
+    PRODUCT_UPDATE,
+    /** Auction/Product Management: Withdraw a product from inventory (soft delete) */
+    PRODUCT_WITHDRAW,
     /** Auction/Product Management: Get the current user's owned products (inventory) */
     MY_PRODUCT_LIST,
     /** Auction/Product Management: Open an auction for an existing inventory product */
     AUCTION_OPEN,
+    
+    /** Watchlist Actions */
+    WATCHLIST_ADD,
+    WATCHLIST_REMOVE,
+    WATCHLIST_GET,
     
     /** Bidding Logic: Client sends a bid */
     BID_PLACE,
@@ -52,6 +67,8 @@ public enum MessageType {
     LEAVE_AUCTION_ROOM,
     /** Bidding Logic: Server broadcasts new highest bid to all clients */
     BID_UPDATE,
+    /** Bidding Logic: Server notifies a specific user about balance change */
+    BALANCE_UPDATE,
     
     /** Finance Actions: Deposit money */
     DEPOSIT,

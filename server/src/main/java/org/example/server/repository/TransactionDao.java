@@ -7,6 +7,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
@@ -145,6 +146,34 @@ public class TransactionDao {
                     return rs.getLong(1);
                 }
             }
+        }
+        return 0;
+    }
+
+    /**
+     * Gets the total number of transactions in the system.
+     * @param connection The database connection.
+     * @return The total count.
+     * @throws SQLException If a database error occurs.
+     */
+    public long getGlobalTotalTransactionsCount(Connection connection) throws SQLException {
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM transactions")) {
+            if (rs.next()) return rs.getLong(1);
+        }
+        return 0;
+    }
+
+    /**
+     * Gets the total transaction volume (sum of all amounts).
+     * @param connection The database connection.
+     * @return The total volume.
+     * @throws SQLException If a database error occurs.
+     */
+    public long getTotalTransactionVolume(Connection connection) throws SQLException {
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT SUM(amount) FROM transactions")) {
+            if (rs.next()) return rs.getLong(1);
         }
         return 0;
     }

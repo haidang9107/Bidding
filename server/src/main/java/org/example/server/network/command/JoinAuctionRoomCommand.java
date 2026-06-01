@@ -50,6 +50,7 @@ public class JoinAuctionRoomCommand implements Command {
         }
 
         RoomManager.joinAuction(roomRequest.getAuctionId(), channel);
+
         return new Response<>(MessageType.SUCCESS, true,
                 "Joined auction room " + roomRequest.getAuctionId(), null);
     }

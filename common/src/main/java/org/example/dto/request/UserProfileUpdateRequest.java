@@ -6,6 +6,7 @@ package org.example.dto.request;
 public class UserProfileUpdateRequest {
     private String email;
     private String avt;
+    private String fullname;
 
     /**
      * Default constructor for UserProfileUpdateRequest.
@@ -13,14 +14,16 @@ public class UserProfileUpdateRequest {
     public UserProfileUpdateRequest() {}
 
     /**
-     * Constructs a UserProfileUpdateRequest with specified email and avatar URL.
-     * @param email the user's email
-     * @param avt the user's avatar URL or identifier
+     * Gets the fullname.
+     * @return the fullname
      */
-    public UserProfileUpdateRequest(String email, String avt) {
-        this.email = email;
-        this.avt = avt;
-    }
+    public String getFullname() { return fullname; }
+
+    /**
+     * Sets the fullname.
+     * @param fullname the fullname to set
+     */
+    public void setFullname(String fullname) { this.fullname = fullname; }
 
     /**
      * Gets the email.

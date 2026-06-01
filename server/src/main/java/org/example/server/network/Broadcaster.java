@@ -57,6 +57,18 @@ public class Broadcaster {
         writeToChannels(RoomManager.getAuctionClients(auctionId), response);
     }
 
+    /**
+     * Sends a response to a specific user by account name.
+     * @param accountname The user's account name.
+     * @param response The response to send.
+     */
+    public static void sendToUser(String accountname, Response<?> response) {
+        SocketChannel channel = SessionManager.findChannelByUsername(accountname);
+        if (channel != null && channel.isOpen()) {
+            writeToChannels(List.of(channel), response);
+        }
+    }
+
     private static void writeToChannels(Collection<SocketChannel> channels, Response<?> response) {
         String jsonMessage = JsonConverter.toJson(response) + "\n";
         byte[] messageBytes = jsonMessage.getBytes(StandardCharsets.UTF_8);

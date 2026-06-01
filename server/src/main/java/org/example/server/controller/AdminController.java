@@ -2,8 +2,9 @@ package org.example.server.controller;
 
 import org.example.dto.request.AdminUserControlRequest;
 import org.example.dto.request.AuctionCancelRequest;
-import org.example.dto.response.PagedResponse;
 import org.example.dto.request.PaginationRequest;
+import org.example.dto.response.AdminStatsResponse;
+import org.example.dto.response.PagedResponse;
 import org.example.dto.response.UserResponse;
 import org.example.model.enums.MessageType;
 import org.example.model.user.User;
@@ -107,6 +108,20 @@ public class AdminController {
         } catch (Exception e) {
             FileLogger.error("Admin: Failed to cancel auction", e);
             return new Response<>(MessageType.ERROR, false, "Invalid payload or internal error", null);
+        }
+    }
+
+    /**
+     * Handles the request to retrieve system statistics.
+     * @return a response containing the system statistics
+     */
+    public Response<AdminStatsResponse> handleGetStats() {
+        try {
+            AdminStatsResponse stats = adminService.getSystemStats();
+            return new Response<>(MessageType.SUCCESS, true, "System stats fetched successfully", stats);
+        } catch (Exception e) {
+            FileLogger.error("Admin: Failed to fetch system stats", e);
+            return new Response<>(MessageType.ERROR, false, "Internal error fetching stats", null);
         }
     }
 }

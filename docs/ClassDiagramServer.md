@@ -92,7 +92,7 @@ classDiagram
         +getAuctionsPaged(int page, int size) PagedResponse
     }
 
-    %% Bid Services
+    %% Bid Services & Strategy
     class BidService {
         -AuctionDao auctionDao
         -BidDao bidDao
@@ -105,6 +105,20 @@ classDiagram
         +configureAutoBid(int auctionId, String bidder, long maxBid, long increment)
         +cancelAutoBid(int auctionId, String bidder)
         +getBidHistoryPaged(int auctionId, int page, int size) PagedResponse
+        -applyBid(Connection conn, Auction auction, ...)
+    }
+
+    class BidStrategy {
+        <<interface>>
+        +execute(Connection conn, Auction auction, String bidder, long amount)
+    }
+
+    class NormalBidStrategy {
+        +execute(...)
+    }
+
+    class BuyNowBidStrategy {
+        +execute(...)
     }
 
     class AntiSnipping {
@@ -118,7 +132,7 @@ classDiagram
     class ProductService {
         -ProductDao productDao
         -TransactionManager txManager
-        +createInventoryProduct(ProductCreateRequest req, String owner)
+        +createInventoryProduct(Product product) int
         +getProductsByOwner(String owner) List
         +transferOwnership(Connection conn, int productId, String newOwner)
     }
@@ -136,10 +150,11 @@ classDiagram
     }
 
     class Broadcaster {
-        -SessionManager sessionManager
-        -RoomManager roomManager
-        +broadcastToRoom(int auctionId, String json)
-        +sendToSession(SocketChannel channel, String json)
+        -List~SocketChannel~ clients
+        +addClient(SocketChannel channel)
+        +removeClient(SocketChannel channel)
+        +broadcast(Response response)
+        +broadcastToAuction(int auctionId, Response response)
     }
 
     %% Persistence
@@ -148,6 +163,12 @@ classDiagram
         +run(TxConsumer action)
         +execute(TxFunction action) T
         +query(TxFunction action) T
+    }
+
+    class AuctionDao {
+        <<Singleton>>
+        -static AuctionDao instance
+        +getInstance() AuctionDao
     }
 
     %% Relationships
@@ -162,13 +183,17 @@ classDiagram
     Command <|.. BidPlaceCommand : implements
     Command <|.. AuctionCreateCommand : implements
     Command <|.. LoginCommand : implements
+    Command <|.. ProductCreateCommand : implements
+    Command <|.. UserUpdateAvatarCommand : implements
 
     BidPlaceCommand --> BidService : invokes
-    AuctionCreateCommand --> AuctionService : invokes
+    BidService --> BidStrategy : uses
+    BidStrategy <|.. NormalBidStrategy : implements
+    BidStrategy <|.. BuyNowBidStrategy : implements
 
+    NormalBidStrategy ..> AntiSnipping : calls
     BidService --> AuctionMonitor : reschedule on anti-snip
     BidService --> EventPublisher : publish(NewBidPlacedEvent)
-    BidService --> AntiSnipping : process()
 
     AuctionService --> AuctionMonitor : scheduleStart / scheduleEnd
     AuctionService --> EventPublisher : publish(AuctionEndedEvent, ...)
@@ -180,6 +205,9 @@ classDiagram
 
     AuctionService --> TransactionManager : txManager.run()
     BidService --> TransactionManager : txManager.execute()
+    
+    AuctionService ..> AuctionDao : AuctionDao.getInstance()
+    ProductService ..> ProductDao : ProductDao.getInstance()
 ```
 
 ## 3. Key Design Patterns

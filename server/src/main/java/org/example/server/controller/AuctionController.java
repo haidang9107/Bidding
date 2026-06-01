@@ -34,7 +34,7 @@ public class AuctionController {
      */
     public Response<?> handleGetAllAuctions(PaginationRequest pagReq) {
         if (pagReq == null) {
-            pagReq = new PaginationRequest(1, 10);
+            pagReq = new PaginationRequest(1, 500); // Increased default to 500
         }
 
         PagedResponse<Auction> paged = auctionService.getAuctionsPaged(pagReq.getPage(), pagReq.getPageSize());
@@ -51,6 +51,32 @@ public class AuctionController {
         );
 
         return new Response<>(MessageType.PRODUCT_LIST, true, "Auctions fetched successfully", finalResponse);
+    }
+
+    /**
+     * Handles searching for auctions/products with advanced filters.
+     * @param searchReq The search request.
+     * @return A response containing the paged list of matching products/auctions.
+     */
+    public Response<?> handleSearchAuctions(org.example.dto.request.ProductSearchRequest searchReq) {
+        if (searchReq == null) {
+            searchReq = new org.example.dto.request.ProductSearchRequest();
+        }
+
+        PagedResponse<Auction> paged = auctionService.searchAuctions(searchReq);
+
+        List<ProductResponse> productResponses = paged.getItems().stream()
+                .map(ProductResponse::new)
+                .collect(Collectors.toList());
+
+        PagedResponse<ProductResponse> finalResponse = new PagedResponse<>(
+                productResponses,
+                paged.getTotalItems(),
+                paged.getCurrentPage(),
+                paged.getPageSize()
+        );
+
+        return new Response<>(MessageType.PRODUCT_SEARCH, true, "Search completed", finalResponse);
     }
 
     /**

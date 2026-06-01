@@ -5,6 +5,11 @@ import org.example.model.user.User;
 import org.example.server.repository.TransactionManager;
 import org.example.server.repository.UserDao;
 import org.example.server.service.auction.AuctionService;
+import org.example.dto.response.AdminStatsResponse;
+import org.example.model.enums.AuctionStatus;
+import org.example.server.repository.AuctionDao;
+import org.example.server.repository.ProductDao;
+import org.example.server.repository.TransactionDao;
 import org.example.util.FileLogger;
 
 import java.util.List;
@@ -15,6 +20,9 @@ import java.util.List;
  */
 public class AdminService {
     private final UserDao userDao;
+    private final AuctionDao auctionDao;
+    private final ProductDao productDao;
+    private final TransactionDao transactionDao;
     private final AuctionService auctionService;
     private final TransactionManager txManager;
 
@@ -25,8 +33,41 @@ public class AdminService {
      */
     public AdminService(TransactionManager txManager, AuctionService auctionService) {
         this.userDao = UserDao.getInstance();
+        this.auctionDao = AuctionDao.getInstance();
+        this.productDao = ProductDao.getInstance();
+        this.transactionDao = TransactionDao.getInstance();
         this.auctionService = auctionService;
         this.txManager = txManager;
+    }
+
+    /**
+     * Gathers system-wide statistics for the administrator.
+     * @return The statistics response.
+     */
+    public AdminStatsResponse getSystemStats() {
+        return txManager.query(conn -> {
+            long totalUsers = userDao.getTotalUsersCount(conn);
+            long activeUsers = userDao.countUsersByStatus(conn, 0);
+            long bannedUsers = userDao.countUsersByStatus(conn, 1);
+            
+            long totalProducts = productDao.getTotalProductsCount(conn);
+            long productsInInventory = productDao.countProductsByAuctionFlag(conn, false);
+            long productsInAuction = productDao.countProductsByAuctionFlag(conn, true);
+            
+            long activeAuctions = auctionDao.countByStatus(conn, AuctionStatus.RUNNING);
+            long completedAuctions = auctionDao.countByStatus(conn, AuctionStatus.FINISHED);
+            long canceledAuctions = auctionDao.countByStatus(conn, AuctionStatus.CANCELED);
+            
+            long totalTransactions = transactionDao.getGlobalTotalTransactionsCount(conn);
+            long totalVolume = transactionDao.getTotalTransactionVolume(conn);
+            
+            return new AdminStatsResponse(
+                totalUsers, activeUsers, bannedUsers,
+                totalProducts, productsInInventory, productsInAuction,
+                activeAuctions, completedAuctions, canceledAuctions,
+                totalTransactions, totalVolume
+            );
+        });
     }
 
     /**

@@ -140,8 +140,9 @@ classDiagram
     Auction --> Product : eagerly loaded
 ```
 
-## 3. Design Decisions & Patterns
-
+## Design Decisions & Patterns
+    
+*   **Singleton DAO Pattern**: All data access objects (`UserDao`, `ProductDao`, `AuctionDao`, etc.) follow the Singleton pattern to ensure global access points for database operations and consistent statement caching if applicable.
 *   **Separation of Product and Auction**: `Product` represents a physical asset the user owns. `Auction` is a time-bounded event referencing that product. This 1-to-many relationship allows a product to be re-auctioned after a failed or cancelled session.
 *   **Inheritance (IS-A Relationship)**: `User` and `Product` are abstract base classes, enabling polymorphic behavior across specific user roles and product categories.
 *   **Factory Method Pattern**: `ItemFactory.createProduct(category, json)` encapsulates instantiation of the correct `Product` subclass at runtime.
