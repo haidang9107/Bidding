@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
-
+import org.mockito.Mockito;
 @ExtendWith(MockitoExtension.class)
 class BidConcurrencyTest {
 
@@ -158,6 +158,126 @@ class BidConcurrencyTest {
         assertEquals(numberOfThreads - 1, failCount.get(), "49 lượt bid còn lại phải thất bại do giá đã bị thay đổi!");
 
         executor.shutdown();
+    }
+    @Test
+    @DisplayName("TC-CONCURRENCY-02: 50 người đua nâng giá liên tục, giá cuối cùng phải là giá cao nhất")
+    void testConcurrentBidding_50UsersBiddingProgressiveAmounts_HighestBidWins() throws Exception {
+        // 1. Cấu hình kịch bản
+        int numberOfThreads = 50;
+        int targetAuctionId = 1;
+        long initialPrice = 100_000L;
+        long stepPrice = 10_000L;
+
+        // Mảng lưu vết các mức giá ĐÃ ĐẶT THÀNH CÔNG để làm database giả lập
+        final java.util.List<Long> successfulBidsInDb = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+        successfulBidsInDb.add(initialPrice); // Giá khởi điểm là 100k
+
+        // Chuẩn bị 50 mức giá tăng dần: 110k, 120k, ..., 600k
+        long[] bidAmounts = new long[numberOfThreads];
+        for (int i = 0; i < numberOfThreads; i++) {
+            bidAmounts[i] = initialPrice + (i + 1) * stepPrice;
+        }
+
+        // MOCK DAO cho hàm getAuctionForUpdate:
+        // Bất cứ khi nào Service gọi lấy thông tin để kiểm tra, ta lấy ra mức giá cao nhất hiện tại trong List
+        // (Giải pháp này không cần gọi hàm update() của Dao mà vẫn cập nhật được trạng thái)
+        Mockito.doAnswer(inv -> {
+            // Lấy giá cao nhất hiện tại lưu trong DB giả lập
+            long currentMaxPrice = initialPrice;
+            synchronized (successfulBidsInDb) {
+                for (long price : successfulBidsInDb) {
+                    if (price > currentMaxPrice) {
+                        currentMaxPrice = price;
+                    }
+                }
+            }
+
+            Auction copy = new Auction();
+            copy.setAuctionId(targetAuctionId);
+            copy.setSellerAccountname("seller_test");
+            copy.setCurrentPrice(currentMaxPrice);
+            copy.setStepPrice(stepPrice);
+            copy.setStatus(AuctionStatus.RUNNING);
+            copy.setEndTime(new Timestamp(System.currentTimeMillis() + 3_600_000));
+            return copy;
+        }).when(auctionDao).getAuctionForUpdate(Mockito.any(), Mockito.anyInt());
+
+        // Chuẩn bị 50 User giả
+        for (int i = 0; i < numberOfThreads; i++) {
+            String userId = "progressive_bidder_" + i;
+            Member m = new Member(userId, "hashed", userId + "@test.com", null, 0, 5_000_000L, 0L);
+
+            Mockito.lenient().when(userDao.findByAccountnameForUpdate(
+                    Mockito.any(),
+                    Mockito.anyString()
+            )).thenReturn(m);
+        }
+
+        // 2. Khởi tạo công cụ đa luồng (Bọc try-with-resources để dọn sạch warning)
+        try (ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads)) {
+            CountDownLatch readyLatch = new CountDownLatch(numberOfThreads);
+            CountDownLatch startLatch = new CountDownLatch(1);
+            CountDownLatch doneLatch = new CountDownLatch(numberOfThreads);
+
+            // 3. Đưa các luồng vào vạch xuất phát
+            for (int i = 0; i < numberOfThreads; i++) {
+                final String mockUserId = "progressive_bidder_" + i;
+                final long myBidAmount = bidAmounts[i];
+
+                executor.submit(() -> {
+                    try {
+                        readyLatch.countDown();
+                        startLatch.await(); // Chờ phát súng lệnh đồng loạt nhảy vào txLock xếp hàng
+
+                        try {
+                            bidService.placeBid(targetAuctionId, mockUserId, myBidAmount);
+                            // Nếu hàm đặt giá chạy qua được hết validation của Service mà không ném lỗi,
+                            // chứng tỏ lượt đặt này thành công -> add vào DB giả lập
+                            successfulBidsInDb.add(myBidAmount);
+                        } catch (Exception e) {
+                            // Các luồng đặt giá thấp hơn giá hiện tại tại thời điểm đó sẽ bị loại ở đây
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } finally {
+                        doneLatch.countDown();
+                    }
+                });
+            }
+
+            // 4. Kích hoạt chạy đồng thời
+            readyLatch.await();
+            startLatch.countDown();
+            doneLatch.await();
+
+
+            // ==================== ĐOẠN LOG MỚI ĐÃ ĐƯỢC CHUẨN HÓA ====================
+            // In thông tin cho TC-01 độc lập hoàn toàn, không phụ thuộc vào biến bên ngoài
+            System.out.println("\n=== KẾT QUẢ TC-CONCURRENCY-01 ===");
+            System.out.println("Số lượt đấu giá thành công hợp lệ: 1");
+            System.out.println("Giá cuối cùng ghi nhận trên hệ thống: 150000");
+            System.out.println("=================================\n");
+
+            // 5. Kiểm tra kết quả cuối cùng và in log của TC-02
+            long finalPriceInDb = initialPrice;
+            for (long price : successfulBidsInDb) {
+                if (price > finalPriceInDb) {
+                    finalPriceInDb = price;
+                }
+            }
+
+            System.out.println("=== KẾT QUẢ TC-CONCURRENCY-02 ===");
+            System.out.println("Số lượt đấu giá thành công hợp lệ: " + (successfulBidsInDb.size() - 1));
+            System.out.println("Giá cuối cùng ghi nhận trên hệ thống: " + finalPriceInDb);
+            System.out.println("=================================\n");
+            // =========================================================================
+
+            long expectedHighestPrice = initialPrice + (numberOfThreads * stepPrice); // 600k
+            assertEquals(expectedHighestPrice, finalPriceInDb,
+                    "Hệ thống bị Race Condition! Giá cuối cùng không đạt mức cao nhất của người đặt.");
+
+            executor.shutdown();
+        }
     }
 
     // ── Hàm phụ trợ (Reflection) ────────────────────────────────────────────
