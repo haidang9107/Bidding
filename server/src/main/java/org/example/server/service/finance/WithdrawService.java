@@ -17,15 +17,18 @@ public class WithdrawService {
     private final UserDao userDao;
     private final TransactionDao transactionDao;
     private final TransactionManager txManager;
+    private final org.example.server.event.EventPublisher eventPublisher;
 
     /**
      * Constructs a new WithdrawService.
      * @param txManager The transaction manager.
+     * @param eventPublisher The event publisher.
      */
-    public WithdrawService(TransactionManager txManager) {
+    public WithdrawService(TransactionManager txManager, org.example.server.event.EventPublisher eventPublisher) {
         this.userDao = UserDao.getInstance();
         this.transactionDao = TransactionDao.getInstance();
         this.txManager = txManager;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -37,7 +40,7 @@ public class WithdrawService {
     public BalanceResponse withdraw(String accountname, long amount) {
         if (amount <= 0) throw new FinanceException("Withdrawal amount must be positive");
         
-        return txManager.execute(conn -> {
+        BalanceResponse res = txManager.execute(conn -> {
             User user = userDao.findByAccountnameForUpdate(conn, accountname);
             if (!(user instanceof Member member)) {
                 throw new FinanceException("User not found or not a member.");
@@ -59,5 +62,10 @@ public class WithdrawService {
                 throw new FinanceException("Withdrawal failed.");
             }
         });
+
+        if (res != null) {
+            eventPublisher.publish(new org.example.server.event.BalanceChangedEvent(res.getAccountname(), res.getNewBalance(), res.getBlockedBalance()));
+        }
+        return res;
     }
 }

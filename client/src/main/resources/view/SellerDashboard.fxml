@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<!--
+    Seller Dashboard - create a new product + auction.
+
+    Changes (per BTL requirements):
+      - Image picker with preview: seller chooses an image from disk, the
+        controller reads it, encodes as Base64 and sends it on the
+        PRODUCT_ADD request so the server can persist it.
+      - Category-driven form: only fields relevant to the selected category
+        are shown (electronicsPane / artPane / vehiclePane). OTHER hides all.
+-->
+<BorderPane prefHeight="780.0" prefWidth="860.0"
+            styleClass="seller-root"
+            stylesheets="@../css/seller-dashboard.css"
+            xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.client.controller.SellerDashboardController">
+
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="14" styleClass="topbar">
+            <padding><Insets bottom="14" left="20" right="20" top="14"/></padding>
+            <Label styleClass="title-label" text="THÊM SẢN PHẨM VÀO KHO"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="userLabel" styleClass="user-label" text=""/>
+            <Button onAction="#handleGoHome" styleClass="ghost-btn" text="Trang chủ"/>
+            <Button fx:id="backBtn" onAction="#handleBack" styleClass="ghost-btn" text="Sản phẩm của tôi"/>
+            <Button fx:id="viewAuctionsBtn" onAction="#handleViewAuctions" styleClass="ghost-btn" text="Sàn đấu giá"/>
+            <Button fx:id="logoutBtn" onAction="#handleLogout" styleClass="ghost-btn" text="Đăng xuất"/>
+        </HBox>
+    </top>
+
+    <center>
+        <ScrollPane fitToWidth="true" styleClass="grid-scroll">
+            <VBox alignment="TOP_CENTER" spacing="14">
+                <padding><Insets bottom="20" left="40" right="40" top="20"/></padding>
+
+                <VBox spacing="12" styleClass="card" maxWidth="720">
+                    <padding><Insets bottom="20" left="20" right="20" top="20"/></padding>
+                    <Label styleClass="section-title" text="THÔNG TIN SẢN PHẨM"/>
+
+                    <!-- ============== Image picker ============== -->
+                    <HBox spacing="16" alignment="CENTER_LEFT">
+                        <StackPane styleClass="image-preview-box"
+                                   prefWidth="180" prefHeight="180"
+                                   maxWidth="180" maxHeight="180">
+                            <Label fx:id="imageHintLabel" text="Chưa chọn ảnh"
+                                   styleClass="muted-label"/>
+                            <ImageView fx:id="imagePreview"
+                                       fitWidth="176" fitHeight="176"
+                                       preserveRatio="true" smooth="true"/>
+                        </StackPane>
+                        <VBox spacing="8">
+                            <Label styleClass="muted-label"
+                                   text="Chọn ảnh sản phẩm (JPG, PNG, GIF, WEBP, &lt;= 4 MB)"/>
+                            <HBox spacing="8">
+                                <Button fx:id="chooseImageBtn" onAction="#handleChooseImage"
+                                        styleClass="ghost-btn" text="Chọn ảnh..."/>
+                                <Button fx:id="clearImageBtn" onAction="#handleClearImage"
+                                        styleClass="ghost-btn" text="Xóa ảnh"/>
+                            </HBox>
+                            <Label fx:id="imageNameLabel" styleClass="muted-label" text=""/>
+                        </VBox>
+                    </HBox>
+
+                    <!-- ============== Common product fields ============== -->
+                    <GridPane hgap="12" vgap="10">
+                        <Label styleClass="muted-label" text="Tên sản phẩm"
+                               GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                        <TextField fx:id="nameField" styleClass="input-field"
+                                   GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+
+                        <Label styleClass="muted-label" text="Mô tả"
+                               GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                        <TextArea fx:id="descArea" prefRowCount="3" styleClass="input-field"
+                                  GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+
+                        <Label styleClass="muted-label" text="Loại sản phẩm"
+                               GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                        <ChoiceBox fx:id="categoryBox" maxWidth="Infinity" styleClass="input-field"
+                                   GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                    </GridPane>
+
+                    <!-- ============== Category-specific panes ============== -->
+                    <VBox fx:id="electronicsPane" spacing="8" managed="false" visible="false"
+                          styleClass="subcard">
+                        <padding><Insets bottom="10" left="12" right="12" top="10"/></padding>
+                        <Label styleClass="subsection-title" text="Thông tin đồ điện tử"/>
+                        <GridPane hgap="12" vgap="8">
+                            <Label styleClass="muted-label" text="Hãng"
+                                   GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                            <TextField fx:id="brandField" styleClass="input-field"
+                                       GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                            <Label styleClass="muted-label" text="Bảo hành (tháng)"
+                                   GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                            <TextField fx:id="warrantyField" styleClass="input-field"
+                                       GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                        </GridPane>
+                    </VBox>
+
+                    <VBox fx:id="artPane" spacing="8" managed="false" visible="false"
+                          styleClass="subcard">
+                        <padding><Insets bottom="10" left="12" right="12" top="10"/></padding>
+                        <Label styleClass="subsection-title" text="Thông tin tác phẩm nghệ thuật"/>
+                        <GridPane hgap="12" vgap="8">
+                            <Label styleClass="muted-label" text="Nghệ sĩ"
+                                   GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                            <TextField fx:id="artistField" styleClass="input-field"
+                                       GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                            <Label styleClass="muted-label" text="Loại hình (tranh, tượng, ...)"
+                                   GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                            <TextField fx:id="artTypeField" styleClass="input-field"
+                                       GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                        </GridPane>
+                    </VBox>
+
+                    <VBox fx:id="vehiclePane" spacing="8" managed="false" visible="false"
+                          styleClass="subcard">
+                        <padding><Insets bottom="10" left="12" right="12" top="10"/></padding>
+                        <Label styleClass="subsection-title" text="Thông tin phương tiện"/>
+                        <GridPane hgap="12" vgap="8">
+                            <Label styleClass="muted-label" text="Hãng"
+                                   GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                            <TextField fx:id="vehicleBrandField" styleClass="input-field"
+                                       GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                            <Label styleClass="muted-label" text="Model"
+                                   GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                            <TextField fx:id="modelField" styleClass="input-field"
+                                       GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                            <Label styleClass="muted-label" text="Năm sản xuất"
+                                   GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                            <TextField fx:id="yearField" styleClass="input-field"
+                                       GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                        </GridPane>
+                    </VBox>
+
+                    <VBox fx:id="otherPane" spacing="6" managed="false" visible="false"
+                          styleClass="subcard">
+                        <padding><Insets bottom="10" left="12" right="12" top="10"/></padding>
+                        <Label styleClass="muted-label"
+                               text="Loại 'Khác': không có thông tin chuyên biệt — chỉ cần tên, mô tả và ảnh."/>
+                    </VBox>
+
+                    <Label styleClass="muted-label"
+                           text="Sau khi thêm vào kho, vào 'Sản phẩm của tôi' và bấm 'Đăng lên sàn' để đặt giá và thời gian đấu giá."/>
+
+                    <Button fx:id="createBtn" defaultButton="true" maxWidth="Infinity"
+                            onAction="#handleCreate" styleClass="primary-btn" text="Thêm vào kho"/>
+
+                    <Label fx:id="statusLabel" styleClass="status-label" text=""/>
+                </VBox>
+            </VBox>
+        </ScrollPane>
+    </center>
+</BorderPane>

@@ -6,6 +6,7 @@ import java.sql.Timestamp;
 public record NewBidPlacedEvent(
         int     auctionId,
         String  winnerAccountname,
+        String  oldWinnerAccount,
         long    currentPrice,
         boolean autoBidApplied,
         Timestamp newEndTime

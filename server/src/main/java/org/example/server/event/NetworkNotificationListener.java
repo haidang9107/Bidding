@@ -2,13 +2,15 @@ package org.example.server.event;
 
 import org.example.dto.notify.AuctionEndNotify;
 import org.example.dto.notify.BidUpdateNotify;
-import org.example.dto.notify.ProductUpdateNotify;
+import org.example.dto.response.PagedResponse;
 import org.example.dto.response.ProductResponse;
 import org.example.model.Auction;
 import org.example.model.enums.MessageType;
 import org.example.payload.Response;
 import org.example.server.network.Broadcaster;
 import org.example.server.service.auction.AuctionService;
+
+import java.util.List;
 
 /**
  * Listens for domain events and pushes notifications to clients via the
@@ -35,13 +37,45 @@ public class NetworkNotificationListener {
         publisher.subscribe(AuctionStartedEvent.class,  this::onAuctionStarted);
         publisher.subscribe(AuctionEndedEvent.class,    this::onAuctionEnded);
         publisher.subscribe(AuctionCreatedEvent.class,  this::onAuctionCreated);
+        publisher.subscribe(BalanceChangedEvent.class,  this::onBalanceChanged);
+        publisher.subscribe(ProductUpdatedEvent.class,  this::onProductUpdated);
+    }
+
+    private void onProductUpdated(ProductUpdatedEvent e) {
+        Auction auction = auctionService.getAuctionById(e.productId());
+        if (auction == null) return;
+
+        ProductResponse productResp = new ProductResponse(auction);
+        PagedResponse<ProductResponse> pagedResponse = new PagedResponse<>(
+                List.of(productResp), 1, 1, 1);
+
+        Broadcaster.broadcast(new Response<>(MessageType.PRODUCT_LIST, true,
+                "Product information updated!", pagedResponse));
+    }
+
+    private void onBalanceChanged(BalanceChangedEvent e) {
+        Broadcaster.sendToUser(e.accountname(), new Response<>(
+                MessageType.BALANCE_UPDATE, true, "Số dư đã thay đổi",
+                new org.example.dto.response.BalanceResponse(e.accountname(), e.newBalance(), e.newBlockedBalance())));
     }
 
     private void onNewBid(NewBidPlacedEvent e) {
+        // Broadcast to the room
         Broadcaster.broadcastToAuction(e.auctionId(), new Response<>(
                 MessageType.BID_UPDATE, true, "New highest bid",
                 new BidUpdateNotify(e.auctionId(), e.winnerAccountname(),
                         e.currentPrice(), e.autoBidApplied(), e.newEndTime())));
+
+        // Private outbid notification
+        if (e.oldWinnerAccount() != null && !e.oldWinnerAccount().equals(e.winnerAccountname())) {
+            Auction auction = auctionService.getAuctionById(e.auctionId());
+            String itemName = auction != null && auction.getProduct() != null 
+                ? auction.getProduct().getName() : "sản phẩm";
+            
+            Broadcaster.sendToUser(e.oldWinnerAccount(), new Response<>(
+                    MessageType.NOTIFICATION, true,
+                    "Bạn đã bị vượt mặt tại đấu giá: " + itemName + ". Hãy quay lại trả giá ngay!", null));
+        }
     }
 
     private void onAuctionStarted(AuctionStartedEvent e) {
@@ -75,7 +109,12 @@ public class NetworkNotificationListener {
     private void onAuctionCreated(AuctionCreatedEvent e) {
         Auction auction = auctionService.getAuctionById(e.auctionId());
         if (auction == null) return;
+
+        ProductResponse productResp = new ProductResponse(auction);
+        PagedResponse<ProductResponse> pagedResponse = new PagedResponse<>(
+                List.of(productResp), 1, 1, 1);
+
         Broadcaster.broadcast(new Response<>(MessageType.PRODUCT_LIST, true,
-                "New auction opened!", new ProductUpdateNotify(new ProductResponse(auction))));
+                "New auction opened!", pagedResponse));
     }
 }

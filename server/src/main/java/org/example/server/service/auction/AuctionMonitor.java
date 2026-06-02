@@ -1,6 +1,7 @@
 package org.example.server.service.auction;
 
 import org.example.model.Auction;
+import org.example.server.service.user.WatchlistService;
 import org.example.util.FileLogger;
 
 import java.sql.Timestamp;
@@ -10,63 +11,47 @@ import java.util.concurrent.*;
 
 /**
  * Background worker that schedules precise auction-start and auction-end events.
- *
- * <p>Instead of polling the database, this monitor uses a
- * {@link ScheduledExecutorService} to fire the start/end logic exactly at the
- * scheduled times. A low-frequency safety net (every minute) still runs in case
- * the server was restarted and missed a deadline.
  */
 public class AuctionMonitor {
+    private static final long WARNING_BEFORE_END_MS = 5 * 60 * 1000; // 5 minutes
+
     private final AuctionService auctionService;
+    private WatchlistService watchlistService;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
     private final Map<Integer, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
+    private final Map<Integer, ScheduledFuture<?>> warningTasks = new ConcurrentHashMap<>();
 
-    /**
-     * Constructs an AuctionMonitor.
-     * @param auctionService The auction service used to start / finish auctions.
-     */
     public AuctionMonitor(AuctionService auctionService) {
         this.auctionService = auctionService;
     }
 
-    /**
-     * Schedules end-events for every auction currently in RUNNING state and starts the
-     * recurring safety-net sweep.
-     */
-    public void start() {
-        FileLogger.info("AuctionMonitor started: Monitoring precise auction ends.");
+    public void setWatchlistService(WatchlistService watchlistService) {
+        this.watchlistService = watchlistService;
+    }
 
+    public void start() {
+        FileLogger.info("AuctionMonitor started.");
         try {
             List<Auction> runningAuctions = auctionService.getAllRunningAuctions();
             for (Auction a : runningAuctions) {
                 scheduleAuctionEnd(a.getAuctionId(), a.getEndTime());
             }
-            FileLogger.info("Scheduled " + runningAuctions.size() + " existing running auctions.");
         } catch (Exception e) {
-            FileLogger.error("Failed to schedule existing running auctions on startup", e);
+            FileLogger.error("Failed to schedule existing running auctions", e);
         }
 
-        // Safety net: 1-minute sweep in case the precise scheduling missed something
-        scheduler.scheduleAtFixedRate(
-                () -> {
-                    auctionService.processUpcomingAuctions();
-                    auctionService.processExpiredAuctions();
-                },
-                1, 1, TimeUnit.MINUTES
-        );
+        scheduler.scheduleAtFixedRate(() -> {
+            auctionService.processUpcomingAuctions();
+            auctionService.processExpiredAuctions();
+        }, 1, 1, TimeUnit.MINUTES);
     }
 
-    /**
-     * Schedules a precise end-task for an auction. If a previous task exists (e.g. because
-     * anti-snipping extended the end time), it is cancelled and replaced.
-     *
-     * @param auctionId The auction ID.
-     * @param endTime   The auction's end time.
-     */
     public void scheduleAuctionEnd(int auctionId, Timestamp endTime) {
         cancelTask(auctionId);
+        cancelWarningTask(auctionId);
 
-        long delay = endTime.getTime() - System.currentTimeMillis();
+        long now = System.currentTimeMillis();
+        long delay = endTime.getTime() - now;
         if (delay < 0) delay = 0;
 
         ScheduledFuture<?> future = scheduler.schedule(() -> {
@@ -74,50 +59,72 @@ public class AuctionMonitor {
                 auctionService.processAuctionEnd(auctionId);
                 scheduledTasks.remove(auctionId);
             } catch (Exception e) {
-                FileLogger.error("Failed to process scheduled end for Auction " + auctionId, e);
+                FileLogger.error("Error processing end for Auction " + auctionId, e);
             }
         }, delay, TimeUnit.MILLISECONDS);
-
         scheduledTasks.put(auctionId, future);
+
+        long warningDelay = delay - WARNING_BEFORE_END_MS;
+        if (warningDelay > 0) {
+            ScheduledFuture<?> warningFuture = scheduler.schedule(() -> {
+                try {
+                    sendNearingEndNotifications(auctionId);
+                    warningTasks.remove(auctionId);
+                } catch (Exception e) {
+                    FileLogger.error("Error sending warning for Auction " + auctionId, e);
+                }
+            }, warningDelay, TimeUnit.MILLISECONDS);
+            warningTasks.put(auctionId, warningFuture);
+        }
+    }
+
+    private void sendNearingEndNotifications(int auctionId) {
+        if (watchlistService == null) return;
+        Auction auction = auctionService.getAuctionById(auctionId);
+        if (auction == null || auction.getStatus() != org.example.model.enums.AuctionStatus.RUNNING) return;
+
+        notifyWatchers(auction.getProductId(), 
+            "Cuộc đấu giá cho '" + auction.getProduct().getName() + "' sắp kết thúc (còn 5 phút)!");
     }
 
     /**
-     * Schedules a precise start-task for an auction.
-     * @param auctionId The auction ID.
-     * @param startTime The auction's start time.
+     * Notifies all users watching a specific product with a given message.
+     * Used for "Auction Started" and "Auction Ending Soon" alerts.
+     * @param productId The ID of the product.
+     * @param message   The notification message text.
      */
+    public void notifyWatchers(int productId, String message) {
+        if (watchlistService == null) return;
+        List<String> watchers = watchlistService.getUsersWatchingProduct(productId);
+        for (String accountname : watchers) {
+            org.example.server.network.Broadcaster.sendToUser(accountname, new org.example.payload.Response<>(
+                    org.example.model.enums.MessageType.NOTIFICATION, true, message, null));
+        }
+    }
+
     public void scheduleAuctionStart(int auctionId, Timestamp startTime) {
         long delay = startTime.getTime() - System.currentTimeMillis();
         if (delay < 0) delay = 0;
-
         scheduler.schedule(() -> {
             try {
                 auctionService.startAuction(auctionId);
             } catch (Exception e) {
-                FileLogger.error("Failed to process scheduled start for Auction " + auctionId, e);
+                FileLogger.error("Error starting Auction " + auctionId, e);
             }
         }, delay, TimeUnit.MILLISECONDS);
     }
 
     private void cancelTask(int auctionId) {
         ScheduledFuture<?> future = scheduledTasks.remove(auctionId);
-        if (future != null && !future.isDone()) {
-            future.cancel(false);
-        }
+        if (future != null) future.cancel(false);
     }
 
-    /**
-     * Stops the background monitor gracefully.
-     */
+    private void cancelWarningTask(int auctionId) {
+        ScheduledFuture<?> future = warningTasks.remove(auctionId);
+        if (future != null) future.cancel(false);
+    }
+
     public void stop() {
         scheduler.shutdown();
-        try {
-            if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
-                scheduler.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            scheduler.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
     }
 }

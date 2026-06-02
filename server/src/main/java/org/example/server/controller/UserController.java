@@ -58,6 +58,11 @@ public class UserController {
                 success = userService.updateEmail(currentUser.getAccountname(), request.getEmail());
                 if (success) currentUser.setEmail(request.getEmail());
             }
+
+            if (success && request.getFullname() != null && !request.getFullname().isBlank()) {
+                success = userService.updateFullname(currentUser.getAccountname(), request.getFullname());
+                if (success) currentUser.setFullname(request.getFullname());
+            }
             
             if (success && request.getAvt() != null) {
                 success = userService.updateAvatar(currentUser.getAccountname(), request.getAvt());
@@ -100,6 +105,36 @@ public class UserController {
             }
         } catch (Exception e) {
             FileLogger.error("Error updating avatar", e);
+            return new Response<>(MessageType.ERROR, false, "Internal server error", null);
+        }
+    }
+
+    /**
+     * Handles the request to change the password of the current user.
+     * @param request The password update request.
+     * @param channel The socket channel.
+     * @return A success or error response.
+     */
+    public Response<String> handleUpdatePassword(org.example.dto.request.UpdatePasswordRequest request, SocketChannel channel) {
+        if (request == null || request.getOldPassword() == null || request.getNewPassword() == null) {
+            return new Response<>(MessageType.ERROR, false, "Old and new password required", null);
+        }
+
+        User currentUser = SessionManager.getUser(channel);
+        if (currentUser == null) return new Response<>(MessageType.ERROR, false, "Unauthorized", null);
+
+        try {
+            boolean success = userService.updatePassword(currentUser.getAccountname(), request.getOldPassword(), request.getNewPassword());
+            if (success) {
+                FileLogger.info("User " + currentUser.getAccountname() + " changed their password.");
+                return new Response<>(MessageType.SUCCESS, true, "Password changed successfully", null);
+            } else {
+                return new Response<>(MessageType.ERROR, false, "Failed to change password", null);
+            }
+        } catch (org.example.server.exception.AuthException e) {
+            return new Response<>(MessageType.ERROR, false, e.getMessage(), null);
+        } catch (Exception e) {
+            FileLogger.error("Error changing password", e);
             return new Response<>(MessageType.ERROR, false, "Internal server error", null);
         }
     }

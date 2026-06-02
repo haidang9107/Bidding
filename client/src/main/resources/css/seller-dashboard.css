@@ -1,0 +1,179 @@
+/* ==================================================
+   Seller dashboard screen
+   ================================================== */
+
+.seller-root {
+    -fx-background-color: linear-gradient(to bottom right, #1a1a2e, #16213e);
+}
+
+.topbar {
+    -fx-background-color: #14142b;
+    -fx-border-color: transparent transparent #2a2a3e transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.title-label {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.user-label {
+    -fx-text-fill: #c0c0d0;
+    -fx-font-size: 13px;
+}
+
+.card {
+    -fx-background-color: #1f1f33;
+    -fx-background-radius: 10;
+}
+
+.section-title {
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.muted-label {
+    -fx-text-fill: #8a8aa0;
+    -fx-font-size: 12px;
+}
+
+/* ------------------ Form fields ------------------
+ * In JavaFX, -fx-text-fill on a TextField/TextArea root doesn't actually
+ * color the typed text — that's controlled by -fx-text-inner-color (or the
+ * .text sub-node). Setting both makes the typed text visible on the dark
+ * background. ChoiceBox needs separate rules for its label + popup.
+ */
+.input-field {
+    -fx-background-color: #2a2a3e;
+    -fx-text-fill: white;
+    -fx-text-inner-color: white;
+    -fx-prompt-text-fill: #7a7a90;
+    -fx-highlight-fill: #5a8dee;
+    -fx-highlight-text-fill: white;
+    -fx-padding: 8 10;
+    -fx-background-radius: 6;
+    -fx-font-size: 13px;
+}
+
+/* Make sure the actual typed glyphs and the caret are also white. Without
+ * this, TextField/TextArea render the text in the default (dark) color and
+ * it disappears against the dark background. */
+.input-field .text {
+    -fx-fill: white;
+}
+
+.input-field {
+    -fx-caret-color: white;
+}
+
+/* TextArea has an inner ".content" region that draws its own background;
+ * if we don't override it we get a white block under the typed text. */
+.input-field.text-area .content,
+.text-area.input-field .content {
+    -fx-background-color: #2a2a3e;
+    -fx-background-radius: 6;
+}
+
+/* ChoiceBox is a Region with a .label child showing the selected value.
+ * We style both the closed state and the popup menu items. */
+.input-field.choice-box,
+.choice-box.input-field {
+    -fx-background-color: #2a2a3e;
+    -fx-background-radius: 6;
+    -fx-padding: 4 8;
+}
+
+.input-field.choice-box .label,
+.choice-box.input-field .label {
+    -fx-text-fill: white;
+}
+
+.input-field.choice-box .open-button .arrow,
+.choice-box.input-field .open-button .arrow {
+    -fx-background-color: #c0c0d0;
+}
+
+/* Popup of the ChoiceBox — its items are MenuItems on a context-menu. */
+.choice-box-popup .context-menu,
+.context-menu {
+    -fx-background-color: #2a2a3e;
+    -fx-text-fill: white;
+}
+
+.context-menu .menu-item .label {
+    -fx-text-fill: white;
+}
+
+.context-menu .menu-item:focused,
+.context-menu .menu-item:hover {
+    -fx-background-color: #3a3a4e;
+}
+
+.input-field:focused {
+    -fx-border-color: #5a8dee;
+    -fx-border-radius: 6;
+    -fx-border-width: 1.5;
+}
+
+.primary-btn {
+    -fx-background-color: #5a8dee;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 10 20;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.primary-btn:hover {
+    -fx-background-color: #4a7dde;
+}
+
+.ghost-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #c0c0d0;
+    -fx-border-color: #3a3a4e;
+    -fx-border-radius: 6;
+    -fx-padding: 6 14;
+    -fx-cursor: hand;
+}
+
+.ghost-btn:hover {
+    -fx-background-color: #2a2a3e;
+    -fx-text-fill: white;
+}
+
+.status-label {
+    -fx-text-fill: #ffd166;
+    -fx-font-size: 12px;
+}
+
+.subsection-title {
+    -fx-text-fill: #c0c0d0;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.subcard {
+    -fx-background-color: #15152a;
+    -fx-background-radius: 8;
+    -fx-border-color: #2a2a3e;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+}
+
+.image-preview-box {
+    -fx-background-color: #15152a;
+    -fx-background-radius: 8;
+    -fx-border-color: #2a2a3e;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-border-style: dashed;
+}
+
+.grid-scroll {
+    -fx-background: transparent;
+    -fx-background-color: transparent;
+}
+.grid-scroll > .viewport { -fx-background-color: transparent; }

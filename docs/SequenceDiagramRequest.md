@@ -18,9 +18,10 @@ sequenceDiagram
     participant CommandHandler as Command Dispatcher
     participant BidPlaceCommand as BidPlaceCommand
     participant BidService as BidService
-    participant AuctionDao as AuctionDao (FOR UPDATE)
-    participant UserDao as UserDao (FOR UPDATE)
-    participant BidDao as BidDao
+    participant BidStrategy as BidStrategy (Normal/BuyNow)
+    participant AuctionDao as AuctionDao (Singleton)
+    participant UserDao as UserDao (Singleton)
+    participant BidDao as BidDao (Singleton)
     participant AntiSnipping as AntiSnipping
     participant AuctionMonitor as AuctionMonitor
     participant EventPublisher as EventPublisher
@@ -37,9 +38,11 @@ sequenceDiagram
     BidPlaceCommand->>BidService: placeBid(auctionId, bidder, amount)
     activate BidService
 
+    BidService->>AuctionDao: AuctionDao.getInstance()
     BidService->>AuctionDao: BEGIN TX — getAuctionForUpdate(auctionId)
     AuctionDao-->>BidService: Auction (row locked)
 
+    BidService->>UserDao: UserDao.getInstance()
     BidService->>UserDao: findByAccountnameForUpdate(bidder)
     BidService->>UserDao: findByAccountnameForUpdate(prevWinner) [if different]
     UserDao-->>BidService: Member objects (rows locked)
@@ -47,16 +50,21 @@ sequenceDiagram
     BidService->>BidService: Validate bid amount >= currentPrice + stepPrice
     BidService->>BidService: Check available balance (balance - blockedBalance)
 
-    alt Buy Now triggered (bidAmount >= buyNowPrice)
-        BidService->>AuctionDao: updateAuctionEndTime(now)
-    else Normal bid
-        BidService->>AntiSnipping: process(conn, auction, auctionDao)
+    BidService->>BidStrategy: execute(connection, auction, bidder, amount)
+    activate BidStrategy
+    alt Buy Now Strategy
+        BidStrategy->>AuctionDao: updateAuctionEndTime(now)
+    else Normal Strategy
+        BidStrategy->>AntiSnipping: process(conn, auction, auctionDao)
         AntiSnipping->>AuctionDao: updateAuctionEndTime(extended) [if in snip window]
     end
+    deactivate BidStrategy
 
     BidService->>UserDao: addBlockedBalance(prevWinner, -currentPrice) [if different]
     BidService->>UserDao: addBlockedBalance(bidder, +extraBlocked)
     BidService->>AuctionDao: updateBidLocked(auctionId, newPrice, bidder)
+    
+    BidService->>BidDao: BidDao.getInstance()
     BidService->>BidDao: insertBid(auctionId, bidder, amount, isAuto)
 
     BidService->>BidService: runAutoBidding() [may loop, place counter-bids]

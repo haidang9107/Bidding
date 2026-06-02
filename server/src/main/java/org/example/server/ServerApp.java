@@ -18,6 +18,7 @@ import org.example.server.service.finance.TransferService;
 import org.example.server.service.finance.WithdrawService;
 import org.example.server.service.product.ProductService;
 import org.example.server.service.user.UserService;
+import org.example.server.service.user.WatchlistService;
 import org.example.server.service.user.admin.AdminService;
 import org.example.server.service.user.auth.AuthService;
 import org.example.util.FileLogger;
@@ -57,7 +58,7 @@ public class ServerApp {
         EventPublisher eventPublisher = new EventPublisher();
 
         // 2. Services - Product first (used by AuctionService for ownership transfer)
-        ProductService productService = new ProductService(txManager);
+        ProductService productService = new ProductService(txManager, eventPublisher);
         AuctionService auctionService = new AuctionService(txManager, eventPublisher, productService);
 
         // 3. AuctionMonitor depends on AuctionService; wired back via setter to break the cycle
@@ -68,10 +69,12 @@ public class ServerApp {
         AuthService authService = new AuthService(txManager);
         BidService bidService = new BidService(txManager, eventPublisher, auctionMonitor);
         UserService userService = new UserService(txManager);
+        WatchlistService watchlistService = new WatchlistService(txManager);
+        auctionMonitor.setWatchlistService(watchlistService);
         AdminService adminService = new AdminService(txManager, auctionService);
-        DepositService depositService = new DepositService(txManager);
-        WithdrawService withdrawService = new WithdrawService(txManager);
-        TransferService transferService = new TransferService(txManager);
+        DepositService depositService = new DepositService(txManager, eventPublisher);
+        WithdrawService withdrawService = new WithdrawService(txManager, eventPublisher);
+        TransferService transferService = new TransferService(txManager, eventPublisher);
         TransactionService transactionService = new TransactionService(txManager);
 
         // 5. Notification & Connection wiring
@@ -91,7 +94,8 @@ public class ServerApp {
         // 7. Command Registry
         CommandRegistry registry = new CommandRegistry();
         registerCommands(registry, authController, auctionController, bidController,
-                adminController, userController, financeController, auctionService, productService, disconnectionHandler);
+                adminController, userController, financeController, auctionService, productService, 
+                watchlistService, disconnectionHandler);
 
         // 8. Socket Server
         SocketServer server = new SocketServer(registry, authService, auctionMonitor, disconnectionHandler);
@@ -128,6 +132,7 @@ public class ServerApp {
             BidController bid, AdminController admin,
             UserController user, FinanceController finance,
             AuctionService auctionService, ProductService productService,
+            WatchlistService watchlistService,
             DisconnectionHandler disconnectionHandler) {
 
         // Auth
@@ -136,15 +141,24 @@ public class ServerApp {
         registry.register(MessageType.LOGOUT, new LogoutCommand());
         registry.register(MessageType.PING,   new PingCommand());
 
-        // Auction (product list / detail / create)
+        // Auction (product list / detail / create / search)
         registry.register(MessageType.PRODUCT_LIST,       new AuctionListCommand(auction));
+        registry.register(MessageType.PRODUCT_SEARCH,     new ProductSearchCommand(auction));
         registry.register(MessageType.PRODUCT_DETAIL,     new AuctionDetailCommand(auction));
         registry.register(MessageType.PRODUCT_ADD,        new AuctionCreateCommand(auction));
         registry.register(MessageType.PRODUCT_CREATE,     new ProductCreateCommand(productService));
+        registry.register(MessageType.PRODUCT_UPDATE,     new ProductUpdateCommand(productService));
+        registry.register(MessageType.PRODUCT_WITHDRAW,   new ProductWithdrawCommand(productService));
         registry.register(MessageType.MY_PRODUCT_LIST,    new MyProductListCommand(productService));
         registry.register(MessageType.AUCTION_OPEN,       new AuctionOpenCommand(auctionService));
         registry.register(MessageType.JOIN_AUCTION_ROOM,  new JoinAuctionRoomCommand(auctionService));
         registry.register(MessageType.LEAVE_AUCTION_ROOM, new LeaveAuctionRoomCommand());
+
+        // Watchlist
+        WatchlistCommand watchlistCmd = new WatchlistCommand(watchlistService);
+        registry.register(MessageType.WATCHLIST_ADD,    watchlistCmd);
+        registry.register(MessageType.WATCHLIST_REMOVE, watchlistCmd);
+        registry.register(MessageType.WATCHLIST_GET,    watchlistCmd);
 
         // Bidding
         registry.register(MessageType.BID_PLACE,       new BidPlaceCommand(bid));
@@ -155,10 +169,12 @@ public class ServerApp {
         // User & Admin
         registry.register(MessageType.GET_PROFILE,        new GetProfileCommand(user));
         registry.register(MessageType.UPDATE_PROFILE,     new UpdateProfileCommand(user));
+        registry.register(MessageType.UPDATE_PASSWORD,    new UpdatePasswordCommand(user));
         registry.register(MessageType.USER_UPDATE_AVATAR, new UserUpdateAvatarCommand(user));
         registry.register(MessageType.ADMIN_GET_ALL_USERS,  new AdminGetAllUsersCommand(admin));
-        registry.register(MessageType.ADMIN_BAN_USER,       new AdminBanUserCommand(admin));
+        registry.register(MessageType.ADMIN_BAN_USER,       new AdminBanUserCommand(admin, disconnectionHandler));
         registry.register(MessageType.ADMIN_CANCEL_AUCTION, new AdminCancelAuctionCommand(admin));
+        registry.register(MessageType.ADMIN_GET_STATS,      new AdminGetStatsCommand(admin));
 
         // Finance
         registry.register(MessageType.DEPOSIT,             new DepositCommand(finance));

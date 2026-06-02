@@ -66,8 +66,8 @@ public class ProductDao {
     }
 
     /**
-     * Retrieves all products owned by a given account. Useful for the
-     * seller's "my inventory" screen.
+     * Retrieves all products owned by a given account that have not been withdrawn.
+     * Useful for the seller's "my inventory" screen.
      * @param connection       The database connection.
      * @param ownerAccountname The owner's account name.
      * @return A list of products (possibly empty).
@@ -75,7 +75,7 @@ public class ProductDao {
      */
     public java.util.List<Product> getProductsByOwner(Connection connection,
                                                       String ownerAccountname) throws SQLException {
-        String sql = PRODUCT_SELECT_SQL + "WHERE owner_accountname = ? ORDER BY product_id DESC";
+        String sql = PRODUCT_SELECT_SQL + "WHERE owner_accountname = ? AND withdrawn_at IS NULL ORDER BY product_id DESC";
         java.util.List<Product> out = new java.util.ArrayList<>();
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, ownerAccountname);
@@ -86,6 +86,21 @@ public class ProductDao {
             }
         }
         return out;
+    }
+
+    /**
+     * Marks a product as withdrawn by setting the withdrawn_at timestamp.
+     * @param connection The database connection.
+     * @param productId  The product ID.
+     * @return True if a row was updated.
+     * @throws SQLException If a database error occurs.
+     */
+    public boolean withdrawProduct(Connection connection, int productId) throws SQLException {
+        String sql = "UPDATE products SET withdrawn_at = CURRENT_TIMESTAMP WHERE product_id = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, productId);
+            return ps.executeUpdate() > 0;
+        }
     }
 
     /**
@@ -110,7 +125,7 @@ public class ProductDao {
             ps.setInt(4, product.getCategory().getValue());
             ps.setString(5, product.getOwnerAccountname());
             ps.setBoolean(6, product.isInAuction());
-            bindCategoryFields(ps, product);
+            bindCategoryFields(ps, product, 7);
 
             if (ps.executeUpdate() == 0) {
                 return false;
@@ -122,6 +137,33 @@ public class ProductDao {
             }
         }
         return true;
+    }
+
+    /**
+     * Updates an existing product's information.
+     * @param connection The database connection.
+     * @param product    The product with updated information.
+     * @return True if successful.
+     * @throws SQLException If a database error occurs.
+     */
+    public boolean updateProduct(Connection connection, Product product) throws SQLException {
+        String sql = """
+                UPDATE products SET
+                    name = ?, description = ?, image_url = ?,
+                    brand = ?, warranty_months = ?, artist = ?, art_type = ?,
+                    model = ?, manufacture_year = ?
+                WHERE product_id = ?
+                """;
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, product.getName());
+            ps.setString(2, product.getDescription());
+            ps.setString(3, product.getImageUrl());
+            bindCategoryFields(ps, product, 4);
+            ps.setInt(10, product.getProductId());
+
+            return ps.executeUpdate() > 0;
+        }
     }
 
     /**
@@ -160,36 +202,68 @@ public class ProductDao {
         }
     }
 
-    private void bindCategoryFields(PreparedStatement ps, Product product) throws SQLException {
+    /**
+     * Gets the total number of products.
+     * @param connection The database connection.
+     * @return The total count.
+     * @throws SQLException If a database error occurs.
+     */
+    public long getTotalProductsCount(Connection connection) throws SQLException {
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM products")) {
+            if (rs.next()) return rs.getLong(1);
+        }
+        return 0;
+    }
+
+    /**
+     * Gets the count of products by auction flag.
+     * @param connection The database connection.
+     * @param inAuction The in-auction flag.
+     * @return The count.
+     * @throws SQLException If a database error occurs.
+     */
+    public long countProductsByAuctionFlag(Connection connection, boolean inAuction) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM products WHERE is_in_auction = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setBoolean(1, inAuction);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getLong(1);
+            }
+        }
+        return 0;
+    }
+
+    private void bindCategoryFields(PreparedStatement ps, Product product, int startIndex) throws SQLException {
         if (product instanceof Electronics e) {
-            ps.setString(7, e.getBrand());
-            ps.setInt(8, e.getWarrantyMonths());
-            ps.setNull(9, Types.VARCHAR);
-            ps.setNull(10, Types.VARCHAR);
-            ps.setNull(11, Types.VARCHAR);
-            ps.setNull(12, Types.INTEGER);
+            ps.setString(startIndex, e.getBrand());
+            ps.setInt(startIndex + 1, e.getWarrantyMonths());
+            ps.setNull(startIndex + 2, Types.VARCHAR);
+            ps.setNull(startIndex + 3, Types.VARCHAR);
+            ps.setNull(startIndex + 4, Types.VARCHAR);
+            ps.setNull(startIndex + 5, Types.INTEGER);
         } else if (product instanceof Art a) {
-            ps.setNull(7, Types.VARCHAR);
-            ps.setNull(8, Types.INTEGER);
-            ps.setString(9, a.getArtist());
-            ps.setString(10, a.getArtType());
-            ps.setNull(11, Types.VARCHAR);
-            ps.setNull(12, Types.INTEGER);
+            ps.setNull(startIndex, Types.VARCHAR);
+            ps.setNull(startIndex + 1, Types.INTEGER);
+            ps.setString(startIndex + 2, a.getArtist());
+            ps.setString(startIndex + 3, a.getArtType());
+            ps.setNull(startIndex + 4, Types.VARCHAR);
+            ps.setNull(startIndex + 5, Types.INTEGER);
         } else if (product instanceof Vehicle v) {
-            ps.setString(7, v.getBrand());
-            ps.setNull(8, Types.INTEGER);
-            ps.setNull(9, Types.VARCHAR);
-            ps.setNull(10, Types.VARCHAR);
-            ps.setString(11, v.getModel());
-            ps.setInt(12, v.getManufactureYear());
+            ps.setString(startIndex, v.getBrand());
+            ps.setNull(startIndex + 1, Types.INTEGER);
+            ps.setNull(startIndex + 2, Types.VARCHAR);
+            ps.setNull(startIndex + 3, Types.VARCHAR);
+            ps.setString(startIndex + 4, v.getModel());
+            ps.setInt(startIndex + 5, v.getManufactureYear());
         } else {
             // OtherItem or any other generic Product
-            ps.setNull(7, Types.VARCHAR);
-            ps.setNull(8, Types.INTEGER);
-            ps.setNull(9, Types.VARCHAR);
-            ps.setNull(10, Types.VARCHAR);
-            ps.setNull(11, Types.VARCHAR);
-            ps.setNull(12, Types.INTEGER);
+            ps.setNull(startIndex, Types.VARCHAR);
+            ps.setNull(startIndex + 1, Types.INTEGER);
+            ps.setNull(startIndex + 2, Types.VARCHAR);
+            ps.setNull(startIndex + 3, Types.VARCHAR);
+            ps.setNull(startIndex + 4, Types.VARCHAR);
+            ps.setNull(startIndex + 5, Types.INTEGER);
         }
     }
 }

@@ -97,6 +97,12 @@ erDiagram
         text description
         timestamp created_at
     }
+
+    WATCHLIST {
+        varchar user_accountname PK, FK
+        int auction_id PK, FK
+        timestamp created_at
+    }
 ```
 
 ## 2. Data Integrity Constraints
@@ -131,7 +137,10 @@ Critical financial and business rules are enforced directly in MySQL using `CHEC
 |---|---|
 | `CHECK (bid_amount > 0)` | Every bid must be a positive amount |
 
-## 3. Foreign Key Cascade Policies
+## 3. Data Access Objects (DAO)
+All persistence logic is encapsulated in Singleton DAOs (e.g., `AuctionDao.getInstance()`), ensuring thread-safe access to the database via the `TransactionManager`.
+
+## 4. Foreign Key Cascade Policies
 
 | Relationship | On Delete |
 |---|---|
@@ -147,6 +156,8 @@ Critical financial and business rules are enforced directly in MySQL using `CHEC
 | `transactions.receiver_accountname → users` | `SET NULL` |
 | `transactions.product_id → products` | `SET NULL` |
 | `transactions.auction_id → auctions` | `SET NULL` |
+| `watchlist.user_accountname → users` | `CASCADE` |
+| `watchlist.product_id → products` | `CASCADE` |
 
 ## 4. Indexes
 
@@ -158,6 +169,8 @@ Critical financial and business rules are enforced directly in MySQL using `CHEC
 | `idx_auctions_status_end_time` | `(status, end_time)` | AuctionMonitor expired/upcoming lookups |
 | `idx_bids_auction_amount` | `(auction_id, bid_amount DESC)` | Auto-bidding sort |
 | `idx_auto_bids_auction` | `(auction_id, active, max_bid)` | Active auto-bid lookups |
+| `idx_watchlist_user` | `user_accountname` | User's watchlist lookup |
+| `idx_watchlist_product` | `product_id` | Find all watchers of a product |
 | `idx_transactions_sender` | `sender_accountname` | Transaction history |
 | `idx_transactions_receiver` | `receiver_accountname` | Transaction history |
 | `idx_transactions_auction` | `auction_id` | Auction payment lookups |

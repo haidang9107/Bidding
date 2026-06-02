@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<!--
+    User Dashboard - main hub of a logged-in member.
+
+    Changes (per BTL requirements):
+      - "Bán hàng" navigation tile renamed to "Sản phẩm của tôi".
+      - Avatar button placed next to "Đăng xuất" - clicking it opens the
+        ProfileDialog so the user can view and edit personal information.
+      - Win notification: subscribes to MyBidsManager and shows a toast when
+        the user wins an auction (the actual toast is rendered by
+        NotificationService).
+-->
+<BorderPane styleClass="user-root"
+            stylesheets="@../css/user-dashboard.css"
+            xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.client.controller.UserDashboardController">
+
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="14" styleClass="topbar">
+            <padding><Insets bottom="14" left="20" right="20" top="14"/></padding>
+            <Label styleClass="title-label" text="TRANG NGƯỜI DÙNG"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="userLabel" styleClass="user-label" text=""/>
+            <Button fx:id="refreshBtn" onAction="#handleRefresh" styleClass="ghost-btn" text="Làm mới"/>
+            <Button fx:id="logoutBtn" onAction="#handleLogout" styleClass="ghost-btn" text="Đăng xuất"/>
+            <Button fx:id="avatarBtn" onAction="#handleOpenProfile" styleClass="avatar-btn" text="?"/>
+        </HBox>
+    </top>
+
+    <!-- Center: wallet + cards + history -->
+    <center>
+        <VBox spacing="14">
+            <padding><Insets bottom="20" left="20" right="20" top="20"/></padding>
+
+            <!-- Wallet card -->
+            <VBox spacing="10" styleClass="wallet-card">
+                <Label styleClass="wallet-title" text="VÍ CỦA TÔI"/>
+                <HBox alignment="CENTER_LEFT" spacing="40">
+                    <VBox spacing="4">
+                        <Label styleClass="wallet-title" text="Số dư khả dụng"/>
+                        <Label fx:id="balanceLabel" styleClass="balance-label" text="0 đ"/>
+                    </VBox>
+                    <Separator orientation="VERTICAL"/>
+                    <VBox spacing="4">
+                        <Label styleClass="wallet-title" text="Đang khóa (đặt giá)"/>
+                        <Label fx:id="blockedLabel" styleClass="blocked-label" text="0 đ"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <HBox spacing="14" VBox.vgrow="ALWAYS">
+                <VBox spacing="10" styleClass="card" HBox.hgrow="ALWAYS" prefWidth="320">
+                    <padding><Insets bottom="16" left="16" right="16" top="16"/></padding>
+                    <Label styleClass="section-title" text="NẠP TIỀN"/>
+                    <Label styleClass="muted-label" text="Số tiền (VNĐ)"/>
+                    <TextField fx:id="topUpField" promptText="Ví dụ: 1000000" styleClass="input-field"/>
+                    <HBox spacing="8">
+                        <Button onAction="#handleTopUpQuick100k" styleClass="ghost-btn" text="+100K"/>
+                        <Button onAction="#handleTopUpQuick500k" styleClass="ghost-btn" text="+500K"/>
+                        <Button onAction="#handleTopUpQuick1m" styleClass="ghost-btn" text="+1M"/>
+                    </HBox>
+                    <Button fx:id="topUpBtn" defaultButton="true" maxWidth="Infinity"
+                            onAction="#handleTopUp" styleClass="success-btn" text="Nạp tiền"/>
+                </VBox>
+
+                <VBox spacing="10" styleClass="card" HBox.hgrow="ALWAYS" prefWidth="320">
+                    <padding><Insets bottom="16" left="16" right="16" top="16"/></padding>
+                    <Label styleClass="section-title" text="CHUYỂN TIỀN"/>
+                    <GridPane hgap="8" vgap="6">
+                        <Label styleClass="muted-label" text="Người nhận (username)"
+                               GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                        <TextField fx:id="transferTargetField" styleClass="input-field"
+                                   GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+
+                        <Label styleClass="muted-label" text="Số tiền (VNĐ)"
+                               GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                        <TextField fx:id="transferAmountField" styleClass="input-field"
+                                   GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+
+                        <Label styleClass="muted-label" text="Ghi chú (tùy chọn)"
+                               GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                        <TextField fx:id="transferNoteField" styleClass="input-field"
+                                   GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                    </GridPane>
+                    <Button fx:id="transferBtn" maxWidth="Infinity"
+                            onAction="#handleTransfer" styleClass="warning-btn" text="Chuyển tiền"/>
+                </VBox>
+
+                <VBox spacing="10" styleClass="card" HBox.hgrow="ALWAYS" prefWidth="280">
+                    <padding><Insets bottom="16" left="16" right="16" top="16"/></padding>
+                    <Label styleClass="section-title" text="RÚT TIỀN"/>
+                    <Label styleClass="muted-label" text="Số tiền (VNĐ)"/>
+                    <TextField fx:id="withdrawField" promptText="Số tiền cần rút" styleClass="input-field"/>
+                    <Button fx:id="withdrawBtn" maxWidth="Infinity"
+                            onAction="#handleWithdraw" styleClass="primary-btn" text="Rút tiền"/>
+                    <Label fx:id="statusLabel" styleClass="status-label" text=""/>
+                </VBox>
+            </HBox>
+
+            <VBox spacing="8" styleClass="card" VBox.vgrow="ALWAYS">
+                <padding><Insets bottom="14" left="16" right="16" top="14"/></padding>
+                <Label styleClass="section-title" text="LỊCH SỬ GIAO DỊCH (PHIÊN HIỆN TẠI)"/>
+                <ListView fx:id="historyList" styleClass="history-list" VBox.vgrow="ALWAYS" prefHeight="160"/>
+            </VBox>
+        </VBox>
+    </center>
+
+    <right>
+        <VBox prefWidth="280" spacing="14">
+            <padding><Insets bottom="20" left="0" right="20" top="20"/></padding>
+
+            <Label styleClass="section-title" text="ĐIỀU HƯỚNG"/>
+
+            <VBox styleClass="nav-tile" spacing="6">
+                <Label styleClass="nav-tile-title" text="🏷  Sàn đấu giá"/>
+                <Label styleClass="nav-tile-desc"
+                       text="Xem danh sách và vào màn hình đấu giá trực tiếp."/>
+                <Region prefHeight="6"/>
+                <Button onAction="#handleGoAuctionList" styleClass="primary-btn" text="Vào sàn đấu giá"/>
+            </VBox>
+
+            <!-- Renamed from "Bán hàng" -> "Sản phẩm của tôi" per BTL requirement -->
+            <VBox styleClass="nav-tile" spacing="6">
+                <Label styleClass="nav-tile-title" text="📦  Sản phẩm của tôi"/>
+                <Label styleClass="nav-tile-desc"
+                       text="Quản lý sản phẩm bạn đăng đấu giá."/>
+                <Region prefHeight="6"/>
+                <Button onAction="#handleGoSellerDashboard" styleClass="primary-btn" text="Mở quản lý sản phẩm"/>
+            </VBox>
+
+            <Region VBox.vgrow="ALWAYS"/>
+
+            <VBox styleClass="card" spacing="6">
+                <padding><Insets bottom="12" left="14" right="14" top="12"/></padding>
+                <Label styleClass="section-title" text="MẸO"/>
+                <Label styleClass="muted-label" text="Hãy nạp đủ tiền trước khi tham gia đấu giá. Số dư khả dụng phải lớn hơn hoặc bằng giá đặt."/>
+            </VBox>
+        </VBox>
+    </right>
+</BorderPane>
