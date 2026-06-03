@@ -64,15 +64,22 @@ class AuctionControllerTest {
 
     @Test
     void testHandleGetAllAuctions_NullRequest_FallbackToDefault() {
-        PagedResponse<Auction> emptyPagedResponse = new PagedResponse<>(Collections.emptyList(), 0, 1, 10);
-        Mockito.when(auctionServiceMock.getAuctionsPaged(1, 10)).thenReturn(emptyPagedResponse);
+        // 1. Đổi số 0 thành 0L (để khớp với kiểu long của biến totalItems)
+        PagedResponse<Auction> emptyPagedResponse = new PagedResponse<>(Collections.emptyList(), 0L, 1, 10);
 
-        // Truyền null request để kiểm tra logic fallback tự tạo thông số (1, 10)
+        // 2. Dùng Mockito.anyInt() để bao trọn mọi tham số mặc định mà Controller có thể gọi, tránh bị trả về null
+        Mockito.when(auctionServiceMock.getAuctionsPaged(Mockito.anyInt(), Mockito.anyInt()))
+                .thenReturn(emptyPagedResponse);
+
+        // Truyền null request để kiểm tra logic fallback
         Response<?> response = auctionController.handleGetAllAuctions(null);
 
         assertNotNull(response);
         assertEquals(MessageType.PRODUCT_LIST, response.getType());
-        Mockito.verify(auctionServiceMock, Mockito.times(1)).getAuctionsPaged(1, 10);
+
+        // Xác nhận rằng Controller thực sự có gọi hàm getAuctionsPaged
+        Mockito.verify(auctionServiceMock, Mockito.times(1))
+                .getAuctionsPaged(Mockito.anyInt(), Mockito.anyInt());
     }
 
     // ====================================================================

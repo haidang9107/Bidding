@@ -249,7 +249,7 @@ class AuctionServiceTest {
         }
 
         @Test
-        @DisplayName("TC-OPEN-02: endTime trước startTime ném ValidationException")
+        @DisplayName("TC-OPEN-02: endTime trước startTime ném IllegalArgumentException")
         void endBeforeStart_throws() throws Exception {
             Product p = mock(Product.class);
             when(p.getOwnerAccountname()).thenReturn("seller");
@@ -259,7 +259,8 @@ class AuctionServiceTest {
             Timestamp start = new Timestamp(System.currentTimeMillis() + 3_600_000);
             Timestamp end   = new Timestamp(System.currentTimeMillis());           // trước start
 
-            assertThrows(ValidationException.class, () ->
+            // SỬA Ở ĐÂY: Bắt đúng IllegalArgumentException do Auction.Builder ném ra
+            assertThrows(IllegalArgumentException.class, () ->
                     auctionService.openAuctionForProduct(1, "seller", 500L, null, null, start, end));
         }
 

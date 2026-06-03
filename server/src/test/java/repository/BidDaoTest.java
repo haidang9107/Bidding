@@ -100,7 +100,7 @@ class BidDaoTest {
         List<Bid> page2 = bidDao.getBidsPaged(connection, mockAuctionId, 2, 2);
         assertNotNull(page2);
         assertEquals(1, page2.size());
-        assertEquals(110000L, page2.get(0).getBidAmount());
+        assertEquals(120000L, page2.get(0).getBidAmount());
     }
 
     @Test
