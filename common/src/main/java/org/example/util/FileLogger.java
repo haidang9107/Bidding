@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.BlockingQueue;
@@ -41,7 +40,9 @@ public class FileLogger {
 
         File dir = new File(LOG_DIR);
         if (!dir.exists()) {
-            dir.mkdirs();
+            if (!dir.mkdirs()) {
+                System.err.println("CRITICAL: Could not create log directory at " + LOG_DIR);
+            }
         }
 
         // 2. Read Configuration
@@ -103,7 +104,10 @@ public class FileLogger {
     }
 
     private static void enqueue(String level, String message, Throwable throwable) {
-        logQueue.offer(new LogEntry(LocalDateTime.now(), level, message, throwable, Thread.currentThread().getName()));
+        boolean added = logQueue.offer(new LogEntry(LocalDateTime.now(), level, message, throwable, Thread.currentThread().getName()));
+        if (!added) {
+            System.err.println("WARN: Log queue is full. Dropped log: [" + level + "] " + message);
+        }
     }
 
     private static void processQueue() {

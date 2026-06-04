@@ -107,7 +107,6 @@ CREATE INDEX idx_bids_auction_amount ON bids(auction_id, bid_amount DESC);
 CREATE INDEX idx_auto_bids_auction ON auto_bids(auction_id, active, max_bid);
 CREATE INDEX idx_transactions_sender ON transactions(sender_accountname);
 CREATE INDEX idx_transactions_receiver ON transactions(receiver_accountname);
-
 CREATE INDEX idx_transactions_auction ON transactions(auction_id);
 CREATE INDEX idx_watchlist_user ON watchlist(user_accountname);
 CREATE INDEX idx_watchlist_product ON watchlist(product_id);

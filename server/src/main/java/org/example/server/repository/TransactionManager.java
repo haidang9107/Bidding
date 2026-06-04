@@ -66,10 +66,9 @@ public class TransactionManager {
             } catch (SQLException e) {
                 rollbackQuietly(conn);
                 throw new DatabaseException("Transaction failed: " + e.getMessage(), e);
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
                 rollbackQuietly(conn);
-                if (e instanceof RuntimeException re) throw re;
-                throw new DatabaseException("Unexpected error during transaction", e);
+                throw e;
             }
         } catch (SQLException e) {
             throw new DatabaseException("Could not obtain connection: " + e.getMessage(), e);

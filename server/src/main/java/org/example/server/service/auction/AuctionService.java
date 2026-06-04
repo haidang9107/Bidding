@@ -287,8 +287,7 @@ public class AuctionService {
 
             boolean success = auctionDao.updateStatus(conn, auctionId, AuctionStatus.FINISHED);
             if (success && winner != null) {
-                userDao.addBalance(conn, winner, -finalPrice);
-                userDao.addBlockedBalance(conn, winner, -finalPrice);
+                userDao.addBalances(conn, winner, -finalPrice, -finalPrice);
                 userDao.addBalance(conn, seller, finalPrice);
                 productService.transferOwnership(conn, productId, winner);
 

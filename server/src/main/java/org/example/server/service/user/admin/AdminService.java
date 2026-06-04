@@ -1,6 +1,7 @@
 package org.example.server.service.user.admin;
 
 import org.example.dto.response.PagedResponse;
+import org.example.model.Auction;
 import org.example.model.user.User;
 import org.example.server.repository.TransactionManager;
 import org.example.server.repository.UserDao;
@@ -11,6 +12,7 @@ import org.example.server.repository.AuctionDao;
 import org.example.server.repository.ProductDao;
 import org.example.server.repository.TransactionDao;
 import org.example.util.FileLogger;
+import org.example.server.event.EventPublisher;
 
 import java.util.List;
 
@@ -25,19 +27,22 @@ public class AdminService {
     private final TransactionDao transactionDao;
     private final AuctionService auctionService;
     private final TransactionManager txManager;
+    private final EventPublisher eventPublisher;
 
     /**
-     * Constructs a new AdminService.
+     * Constructs an AdminService.
      * @param txManager      The transaction manager.
      * @param auctionService The auction service used for auction-related admin actions.
+     * @param eventPublisher The event publisher for notifications.
      */
-    public AdminService(TransactionManager txManager, AuctionService auctionService) {
+    public AdminService(TransactionManager txManager, AuctionService auctionService, EventPublisher eventPublisher) {
         this.userDao = UserDao.getInstance();
         this.auctionDao = AuctionDao.getInstance();
         this.productDao = ProductDao.getInstance();
         this.transactionDao = TransactionDao.getInstance();
         this.auctionService = auctionService;
         this.txManager = txManager;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -104,9 +109,45 @@ public class AdminService {
             if (success) {
                 String action = (status == 1) ? "BANNED" : "UNBANNED";
                 FileLogger.info("Admin action: User " + accountname + " has been " + action);
+
+                if (status == 1) {
+                    cleanupBannedUser(conn, accountname);
+                }
             }
             return success;
         });
+    }
+
+    private void cleanupBannedUser(java.sql.Connection conn, String accountname) {
+        try {
+            List<Auction> winningAuctions = auctionDao.findAuctionsByWinner(conn, accountname);
+            if (winningAuctions.isEmpty()) return;
+
+            FileLogger.info("Cleaning up " + winningAuctions.size() + " active bids for banned user: " + accountname + " (Option 2: Keep Price, Remove Winner)");
+            for (Auction auction : winningAuctions) {
+                // 1. Remove as winner but KEEP current price
+                auctionDao.updateWinner(conn, auction.getAuctionId(), null);
+                
+                // 2. Refund blocked balance to balance
+                long refundAmount = auction.getCurrentPrice();
+                userDao.addBlockedBalance(conn, accountname, -refundAmount);
+                userDao.addBalance(conn, accountname, refundAmount);
+                
+                FileLogger.info("Auction " + auction.getAuctionId() + ": Removed winner " + accountname + ", kept price " + refundAmount + ", and refunded balance.");
+
+                // 3. Notify room subscribers that the winner has changed (to null)
+                eventPublisher.publish(new org.example.server.event.NewBidPlacedEvent(
+                    auction.getAuctionId(),
+                    null,             // New winner is null
+                    accountname,      // Old winner was the banned user
+                    auction.getCurrentPrice(),
+                    false,           // Not an auto-bid
+                    auction.getEndTime()
+                ));
+            }
+        } catch (java.sql.SQLException e) {
+            FileLogger.error("Failed to cleanup banned user " + accountname, e);
+        }
     }
 
     /**

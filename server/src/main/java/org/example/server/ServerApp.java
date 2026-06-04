@@ -4,6 +4,7 @@ import org.example.model.enums.MessageType;
 import org.example.server.controller.*;
 import org.example.server.event.EventPublisher;
 import org.example.server.event.NetworkNotificationListener;
+import org.example.server.network.Broadcaster;
 import org.example.server.network.DisconnectionHandler;
 import org.example.server.network.SocketServer;
 import org.example.server.network.command.*;
@@ -38,7 +39,6 @@ public class ServerApp {
         try {
             bootstrap();
         } catch (Exception e) {
-            e.printStackTrace();
             FileLogger.error("CRITICAL: Server failed to start", e);
             try { Thread.sleep(500); } catch (InterruptedException ignored) {}
             System.exit(1);
@@ -71,7 +71,7 @@ public class ServerApp {
         UserService userService = new UserService(txManager);
         WatchlistService watchlistService = new WatchlistService(txManager);
         auctionMonitor.setWatchlistService(watchlistService);
-        AdminService adminService = new AdminService(txManager, auctionService);
+        AdminService adminService = new AdminService(txManager, auctionService, eventPublisher);
         DepositService depositService = new DepositService(txManager, eventPublisher);
         WithdrawService withdrawService = new WithdrawService(txManager, eventPublisher);
         TransferService transferService = new TransferService(txManager, eventPublisher);
@@ -81,6 +81,7 @@ public class ServerApp {
         NetworkNotificationListener notifListener = new NetworkNotificationListener(auctionService);
         notifListener.registerAll(eventPublisher);
         DisconnectionHandler disconnectionHandler = new DisconnectionHandler(txManager);
+        Broadcaster.setDisconnectionHandler(disconnectionHandler);
 
         // 6. Controllers
         AuthController authController = new AuthController(authService);

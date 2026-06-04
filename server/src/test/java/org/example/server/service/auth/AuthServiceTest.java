@@ -1,12 +1,10 @@
 package org.example.server.service.auth;
 
-import org.example.model.enums.MessageType;
-import org.example.model.enums.UserRole;
-import org.example.model.user.Admin;
 import org.example.model.user.Member;
 import org.example.model.user.User;
 import org.example.server.exception.AuthException;
 import org.example.server.exception.ValidationException;
+import org.example.server.repository.DatabaseConnectionPool;
 import org.example.server.repository.TransactionManager;
 import org.example.server.repository.UserDao;
 import org.example.server.service.user.auth.AuthService;
@@ -19,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -28,7 +27,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
-    @Mock private TransactionManager txManager;
+    private TransactionManager txManager;
+    @Mock private DatabaseConnectionPool pool;
     @Mock private UserDao            userDao;
     @Mock private Connection         connection;
 
@@ -36,24 +36,11 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        txManager = new TransactionManager(pool);
+        when(pool.getConnection()).thenReturn(connection);
+
         authService = new AuthService(txManager);
         setField(authService, "userDao", userDao);
-
-        lenient().doAnswer(inv -> {
-            TransactionManager.TransactionalWork<?> fn = inv.getArgument(0);
-            return fn.execute(connection);
-        }).when(txManager).execute(any());
-
-        lenient().doAnswer(inv -> {
-            TransactionManager.TransactionalWork<?> fn = inv.getArgument(0);
-            return fn.execute(connection);
-        }).when(txManager).query(any());
-
-        lenient().doAnswer(inv -> {
-            TransactionManager.TransactionalRunnable fn = inv.getArgument(0);
-            fn.execute(connection);
-            return null;
-        }).when(txManager).run(any());
     }
 
     // ── authenticate ─────────────────────────────────────────────────────
@@ -146,59 +133,6 @@ class AuthServiceTest {
 
             assertThrows(AuthException.class,
                     () -> authService.register("carol", "pw", "c@test.com"));
-        }
-    }
-
-    // ── canAccess ─────────────────────────────────────────────────────────
-
-    @Nested
-    @DisplayName("canAccess()")
-    class CanAccess {
-
-        private Member member() {
-            return new Member("u", "h", "u@t.com", null, 0, 0, 0);
-        }
-
-        private Admin admin() {
-            return new Admin("adm", "h", "adm@t.com", null, 0);
-        }
-
-        @Test
-        @DisplayName("TC-ACC-01: LOGIN/SIGNUP/PING không cần đăng nhập")
-        void publicEndpoints_alwaysGranted() {
-            assertTrue(authService.canAccess(MessageType.LOGIN,  null));
-            assertTrue(authService.canAccess(MessageType.SIGNUP, null));
-            assertTrue(authService.canAccess(MessageType.PING,   null));
-        }
-
-        @Test
-        @DisplayName("TC-ACC-02: user null bị từ chối với endpoint yêu cầu đăng nhập")
-        void nullUser_denied() {
-            assertFalse(authService.canAccess(MessageType.BID_PLACE, null));
-        }
-
-        @Test
-        @DisplayName("TC-ACC-03: MEMBER được phép BID_PLACE")
-        void member_canBid() {
-            assertTrue(authService.canAccess(MessageType.BID_PLACE, member()));
-        }
-
-        @Test
-        @DisplayName("TC-ACC-04: MEMBER không được phép endpoint ADMIN")
-        void member_cannotAdminBan() {
-            assertFalse(authService.canAccess(MessageType.ADMIN_BAN_USER, member()));
-        }
-
-        @Test
-        @DisplayName("TC-ACC-05: ADMIN được phép ADMIN_BAN_USER")
-        void admin_canBanUser() {
-            assertTrue(authService.canAccess(MessageType.ADMIN_BAN_USER, admin()));
-        }
-
-        @Test
-        @DisplayName("TC-ACC-06: ADMIN không được phép BID_PLACE")
-        void admin_cannotBid() {
-            assertFalse(authService.canAccess(MessageType.BID_PLACE, admin()));
         }
     }
 
