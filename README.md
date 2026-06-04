@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Java](https://img.shields.io/badge/Java-25-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+![Java](https://img.shields.io/badge/Java-21--LTS-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 ![JavaFX](https://img.shields.io/badge/JavaFX-21.0.6-FF0000?style=for-the-badge&logo=java&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-9.5.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
 ![Maven](https://img.shields.io/badge/Maven-3.9+-C71A22?style=for-the-badge&logo=apachemaven&logoColor=white)
@@ -12,7 +12,7 @@
 
 ## 📖 Overview (Tổng quan dự án)
 
-Dự án Hệ thống đấu giá trực tuyến (Bidding System) được thiết kế và xây dựng theo kiến trúc **Client-Server** nguyên bản, vận hành thông qua kết nối mạng **Socket (TCP/IP)** và định dạng dữ liệu **JSON**. Dự án sử dụng ngôn ngữ **Java 25** kết hợp với **JavaFX 21.0.6** cho giao diện đồ họa. Phía Server được phát triển bằng **Java Core** xử lý đa luồng (Multi-threading) và tương tác với cơ sở dữ liệu **MySQL** thông qua JDBC và HikariCP.
+Dự án Hệ thống đấu giá trực tuyến (Bidding System) được thiết kế và xây dựng theo kiến trúc **Client-Server** nguyên bản, vận hành thông qua kết nối mạng **Socket (TCP/IP)** và định dạng dữ liệu **JSON**. Dự án sử dụng ngôn ngữ **Java 21 LTS** kết hợp với **JavaFX 21.0.6** cho giao diện đồ họa. Phía Server được phát triển bằng **Java Core** xử lý đa luồng (Multi-threading) và tương tác với cơ sở dữ liệu **MySQL** thông qua JDBC và HikariCP.
 
 Hệ thống nhằm mang lại một nền tảng đấu giá thời gian thực (real-time) minh bạch, an toàn và công bằng. Các tính năng nổi bật bao gồm chống bắn tỉa (Anti-sniping), đấu giá tự động (Auto-bidding) và xử lý tương tranh (Concurrency Bidding) hiệu quả.
 
@@ -23,6 +23,10 @@ Hệ thống nhằm mang lại một nền tảng đấu giá thời gian thực
 Để tìm hiểu chi tiết về thiết kế kiến trúc, sơ đồ cơ sở dữ liệu (ERD), sơ đồ luồng (Sequence Diagrams) và các Use Case, vui lòng truy cập trung tâm tài liệu:
 
 👉 **[Bidding System Documentation Center](./docs/README.md)**
+
+Các tài liệu quan trọng khác:
+- 📄 **[Báo cáo Bài tập lớn](./docs/BaoCaoHeThongDauGia_Nhom16.pdf)**
+- 🎥 **[Video Demo Hệ Thống (Drive)](LINK_VIDEO_HERE)**
 
 ---
 
@@ -43,7 +47,7 @@ Giao diện người dùng đồ họa (GUI) xây dựng bằng JavaFX theo mô 
 
 ## 🚀 Tech Stack (Công nghệ sử dụng)
 
-- **Ngôn ngữ:** Java 25 (LTS).
+- **Ngôn ngữ:** Java 21 LTS (LTS).
 - **Giao diện (Frontend):** JavaFX 21.0.6, ControlsFX, BootstrapFX.
 - **Máy chủ (Backend):** Java Core Socket (Multi-threading), JDBC, HikariCP Connection Pool, BCrypt (Bảo mật mật khẩu).
 - **Cơ sở dữ liệu:** MySQL 9.5.0 (Cấu hình qua Docker Compose).
@@ -66,30 +70,38 @@ Toàn bộ dữ liệu qua lại giữa Client và Server được trừu tượ
 ## 🛠️ Setup & Run Instructions (Hướng dẫn chạy dự án)
 
 ### 1. Yêu cầu hệ thống:
-- **JDK 25** đã được cài đặt và cấu hình biến môi trường (`JAVA_HOME`).
+- **JDK 21 LTS** đã được cài đặt và cấu hình biến môi trường (`JAVA_HOME`).
 - **Maven 3.9+**.
 - **Docker** và **Docker Compose** (Dành cho việc khởi tạo nhanh Database).
 
-### 2. Khởi chạy Database:
+### 2. Cấu hình môi trường (.env):
+Hệ thống sử dụng file `.env` để quản lý các biến môi trường (như tài khoản Cloudinary, thông tin DB).
+- Tại thư mục gốc, sao chép file `.env.example` thành `.env`:
+  ```bash
+  cp .env.example .env
+  ```
+- Mở file `.env` và điền các thông tin cần thiết (đặc biệt là Cloudinary để upload ảnh sản phẩm).
+
+### 3. Khởi chạy Database:
 Đảm bảo cổng `3306` đang rảnh. Mở Terminal tại thư mục gốc của dự án và chạy:
 ```bash
 docker-compose up -d
 ```
 Quá trình này sẽ tải MySQL, tạo database `bidding_db` và chạy các kịch bản `.sql` (nếu được mount) để tạo bảng dữ liệu mẫu.
 
-### 3. Biên dịch và tải thư viện:
+### 4. Biên dịch và tải thư viện:
 Biên dịch toàn bộ hệ thống để đảm bảo `common` được cài đặt cho `client` và `server`:
 ```bash
 mvn clean install
 ```
 
-### 4. Khởi chạy Server:
+### 5. Khởi chạy Server:
 Mở một Terminal mới tại thư mục dự án:
 ```bash
 mvn -pl server exec:java -Dexec.mainClass="org.example.server.ServerApp"
 ```
 
-### 5. Khởi chạy Client:
+### 6. Khởi chạy Client:
 Mở một Terminal mới (có thể mở nhiều Terminal nếu muốn test với nhiều người dùng) và khởi chạy ứng dụng JavaFX:
 ```bash
 mvn -pl client javafx:run

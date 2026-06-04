@@ -1,0 +1,210 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath, amsfonts, amssymb}
+\usepackage{graphicx}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{tikz}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usetikzlibrary{shapes.geometric, arrows, positioning, shadows}
+
+\geometry{margin=2.5cm}
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Báo cáo BTL: Hệ thống đấu giá trực tuyến}
+\lhead{UET.CS2043 - Lập trình nâng cao}
+\rfoot{Trang \thepage}
+
+\titleformat{\section}{\normalfont\Large\bfseries\color{blue!80!black}}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\large\bfseries\color{blue!60!black}}{\thesubsection}{1em}{}
+
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  breaklines=true,
+  frame=single,
+  backgroundcolor=\color{gray!5},
+  keywordstyle=\color{blue!80!black}\bfseries,
+  commentstyle=\color{green!50!black}\itshape,
+  stringstyle=\color{orange!80!black},
+  showstringspaces=false,
+  numbers=left,
+  numberstyle=\tiny\color{gray}
+}
+
+\begin{document}
+
+\begin{titlepage}
+    \begin{center}
+        \large ĐẠI HỌC QUỐC GIA HÀ NỘI \\
+        \textbf{TRƯỜNG ĐẠI HỌC CÔNG NGHỆ} \\
+        \vfill
+        \includegraphics[width=4cm]{image.png}
+        \vfill
+        \Large BÁO CÁO BÀI TẬP LỚN \\
+        \huge \textbf{PHÁT TRIỂN HỆ THỐNG ĐẤU GIÁ TRỰC TUYẾN THỜI GIAN THỰC (REAL-TIME BIDDING)} \\
+        \vspace{0.5cm}
+        \large Môn học: Lập trình nâng cao (UET.CS2043) \\
+        \large Mã học phần: CS2043 - Nhóm lớp: K70I-IT5 \\
+        \vfill
+        \begin{table}[h]
+            \centering
+            \renewcommand{\arraystretch}{1.5}
+            \begin{tabular}{lp{4.5cm}l}
+                \textbf{Họ và tên} & \textbf{Mã sinh viên} & \textbf{Vai trò chính} \\ \hline
+                Nguyễn Văn Hiếu & 25020156 & Phát triển Client (JavaFX) \& Common \\
+                Đỗ Hải Đăng & 25020112 & Phát triển Backend System \& Common \\
+                Nguyễn Hữu Hanh & 25020141 & Tester, Xử lý ngoại lệ \& Làm báo cáo \\
+                Lê Đình Minh Anh & 25020012 & Database, Thiết kế DAO \& Quay video \\
+            \end{tabular}
+        \end{table}
+        \vfill
+        \large Hà Nội, Tháng 06 năm 2026
+    \end{center}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\section{Giới thiệu mục tiêu và phạm vi thực hiện}
+
+\subsection{Mục tiêu và Bài toán thực tế}
+Đấu giá trực tuyến là một trong những ứng dụng khắc nghiệt nhất đối với các nhà phát triển phần mềm do tính chất "nhạy cảm" về thời gian và giá trị tài chính. Một hệ thống đấu giá chuyên nghiệp phải giải quyết được 3 thách thức lớn:
+\begin{enumerate}[label=\alph*)]
+    \item \textbf{Độ trễ (Latency)}: Thông tin giá phải được đồng bộ hóa tức thời tới hàng nghìn thiết bị.
+    \item \textbf{Tính nhất quán (Consistency)}: Tuyệt đối không để xảy ra tình trạng ghi đè giá (Race Condition) hoặc số dư tài khoản bị âm.
+    \item \textbf{Tính công bằng (Fairness)}: Ngăn chặn các hành vi trục lợi như bắn tỉa giây cuối (Sniping) hoặc thao túng giá.
+\end{enumerate}
+
+\subsection{Phạm vi thực hiện và Công nghệ}
+Hệ thống được phát triển bám sát mô hình Desktop App hiện đại:
+\begin{itemize}
+    \item \textbf{Ngôn ngữ}: Java 21 (LTS) - Tận dụng các tính năng mới nhất về hiệu năng.
+    \item \textbf{Frontend}: JavaFX 21 + FXML + CSS - Đảm bảo giao diện mượt mà, responsive.
+    \item \textbf{Backend}: Java Core Socket (Multi-threading), NIO Selector.
+    \item \textbf{Persistence}: MySQL 9.0 + HikariCP Connection Pool.
+    \item \textbf{Security}: BCrypt (hashing), Pessimistic Locking (CSDL).
+\end{itemize}
+
+\section{Kiến trúc tổng thể hệ thống (Architecture)}
+
+\subsection{Mô hình Multi-Module và Separation of Concerns}
+Hệ thống được module hóa triệt để nhằm tối ưu khả năng bảo trì:
+\begin{itemize}
+    \item \textbf{Module common}: Chứa toàn bộ các Class thực thể (Entity), hằng số và DTO. Việc sử dụng chung module này đảm bảo tính thống nhất trong serialization/deserialization JSON.
+    \item \textbf{Module server}: Một máy chủ TCP hướng sự kiện, chịu trách nhiệm thực thi toàn bộ logic nghiệp vụ và quản lý trạng thái phiên.
+    \item \textbf{Module client}: Ứng dụng GUI vận hành độc lập, giao tiếp với server qua kết nối Socket duy nhất được duy trì (Persistent Connection).
+\end{itemize}
+
+\subsection{Luồng xử lý yêu cầu (Request Flow)}
+Hệ thống áp dụng \textbf{Command Pattern} kết hợp với \textbf{Reactor Pattern} ở tầng mạng:
+
+\begin{figure}[h]
+    \centering
+    \begin{tikzpicture}[node distance=1.5cm and 2.2cm, auto]
+        \tikzstyle{block} = [rectangle, draw=blue!60, fill=blue!5, text width=8em, text centered, rounded corners, minimum height=3.5em, drop shadow, thick]
+        \tikzstyle{line} = [draw, -latex', thick, blue!80!black]
+
+        \node [block] (client) {Client UI};
+        \node [block, right=of client] (selector) {NIO Selector\\(Dispatcher)};
+        \node [block, right=of selector] (command) {Command Registry};
+
+        \node [block, below=of command] (service) {Business Service};
+        \node [block, below=of selector] (db) {MySQL DB};
+        \node [block, below=of client] (notify) {Async Broadcaster};
+
+        \path [line] (client) -- node[above] {JSON} (selector);
+        \path [line] (selector) -- (command);
+        \path [line] (command) -- (service);
+        \path [line] (service) -- (db);
+        \path [line] (service.south) -- ++(0,-0.6) -| (notify.south);
+        \path [line] (notify) -- node[left] {Event} (client);
+    \end{tikzpicture}
+    \caption{Luồng xử lý Command-Based thời gian thực}
+\end{figure}
+
+\section{Xử lý Concurrency chuyên sâu}
+
+\subsection{Race Condition và Pessimistic Locking}
+Trong hệ thống đấu giá, Race Condition xảy ra khi 2 người dùng cùng đặt giá cho một phiên tại cùng một thời điểm micro-giây. Nếu xử lý thông thường, giá trị cuối cùng có thể bị sai lệch.
+\textbf{Giải pháp}: Sử dụng \textbf{Pessimistic Locking} ở tầng CSDL.
+\begin{lstlisting}[language=Java]
+txManager.execute(conn -> {
+    Auction auction = auctionDao.getAuctionForUpdate(conn, auctionId);
+    if (amount <= auction.getCurrentPrice()) throw new ValidationException("Gia thap!");
+
+    User bidder = userDao.findByAccountnameForUpdate(conn, bidderName);
+    return result;
+});
+\end{lstlisting}
+
+\subsection{Deadlock Prevention (Chống khóa chết)}
+Deadlock xảy ra khi Luồng A giữ khóa User 1 và đợi User 2, trong khi Luồng B giữ User 2 và đợi User 1.
+\textbf{Giải pháp}: \textbf{Lock Ordering Rule}.
+Hệ thống luôn sắp xếp danh sách tài khoản cần khóa theo thứ tự bảng chữ cái trước khi thực hiện truy vấn.
+\begin{lstlisting}[language=Java]
+List<String> accountsToLock = Arrays.asList(bidderName, sellerName, prevWinner);
+Collections.sort(accountsToLock);
+for (String acc : accountsToLock) {
+    userDao.findByAccountnameForUpdate(conn, acc);
+}
+\end{lstlisting}
+
+\section{Logic nghiệp vụ và Thuật toán nâng cao}
+
+\subsection{Thuật toán Auto-Bidding (Đấu giá tự động)}
+Hệ thống hỗ trợ cơ chế ủy thác đặt giá. Thuật toán hoạt động theo nguyên tắc \textit{Vickrey-style modification}:
+\begin{enumerate}
+    \item Server nhận lệnh đặt giá thủ công của User A.
+    \item Trong cùng một Transaction, Server duyệt danh sách các lệnh \texttt{AutoBid} đã cài đặt trước đó.
+    \item Nếu có AutoBid (User B) với \texttt{maxBid} cao hơn mức giá hiện tại, Server tự động thực hiện lệnh đặt giá cho User B với bước giá tối thiểu cần thiết để dẫn đầu.
+    \item Quá trình này lặp lại cho đến khi không còn AutoBid nào có thể vượt qua mức giá hiện tại hoặc ngân sách của họ đã cạn.
+\end{enumerate}
+
+\subsection{Anti-sniping (Chống bắn tỉa)}
+Bắn tỉa là hành vi đợi đến giây cuối cùng để đặt giá khiến người khác không kịp phản ứng. Hệ thống giải quyết bằng \textbf{Dynamic Time Extension}:
+\begin{itemize}
+    \item \textbf{Window}: 30 giây cuối cùng của phiên.
+    \item \textbf{Action}: Nếu có bất kỳ lượt đặt giá hợp lệ nào trong Window này, \texttt{endTime} của phiên tự động được cộng thêm 60 giây.
+    \item \textbf{Implementation}: Sử dụng \texttt{AuctionMonitor} tích hợp \texttt{ScheduledExecutorService} để tự động hủy task kết thúc cũ và tái lập lịch task mới một cách chính xác.
+\end{itemize}
+
+\section{Thiết kế Cơ sở dữ liệu và Toàn vẹn dữ liệu}
+
+\subsection{Schema Design (ERD)}
+Cơ sở dữ liệu được thiết kế chuẩn hóa mức 3 (3NF) để tránh dư thừa dữ liệu:
+\begin{itemize}
+    \item \textbf{Table \texttt{users}}: Lưu trữ \texttt{balance} (tổng tiền) và \texttt{blocked\_balance} (tiền đang dùng để giữ chỗ đấu giá).
+    \item \textbf{Table \texttt{auctions}}: Lưu \texttt{current\_price}, \texttt{winner\_accountname} và \texttt{version} (cho Optimistic Locking).
+    \item \textbf{Table \texttt{transactions}}: Lưu mọi biến động dòng tiền phục vụ đối soát.
+\end{itemize}
+
+\subsection{Data Integrity at DB Tier}
+Sử dụng các ràng buộc (Constraints) mạnh để bảo vệ dữ liệu khỏi lỗi logic ứng dụng:
+\begin{lstlisting}[language=SQL]
+ALTER TABLE users ADD CONSTRAINT chk_funds CHECK (balance >= 0);
+ALTER TABLE auctions ADD CONSTRAINT chk_time CHECK (end_time > start_time);
+ALTER TABLE bids ADD CONSTRAINT chk_bid_val CHECK (bid_amount > 0);
+\end{lstlisting}
+
+\section{Phân chia công việc và Quy trình phát triển}
+
+\subsection{Phân chia vai trò (Team Contributions)}
+Dự án được triển khai dựa trên sự phân cấp trách nhiệm rõ ràng, đảm bảo tính bổ trợ và phối hợp hiệu quả giữa các cấu phần:
+\begin{itemize}
+    \item \textbf{Nguyễn Văn Hiếu}: Chịu trách nhiệm chính trong việc phát triển ứng dụng Client sử dụng JavaFX; xây dựng hệ thống giao diện trực quan và cơ chế non-blocking UI giúp giao tiếp mạng thời gian thực diễn ra mượt mà; đồng thời phối hợp thiết kế module \texttt{common} để định nghĩa cấu trúc dữ liệu dùng chung cho hệ thống.
+    \item \textbf{Đỗ Hải Đăng}: Chịu trách nhiệm thiết kế và hiện thực lõi máy chủ Backend System; tối ưu cấu trúc đa luồng, kiểm soát tương tranh và an toàn giao dịch tài chính tầng nghiệp vụ; đồng thời phối hợp tổ chức module \texttt{common} nhằm chuẩn hóa giao thức payload JSON giữa hai đầu hệ thống.
+    \item \textbf{Nguyễn Hữu Hanh}: Đảm nhiệm vai trò kỹ sư đảm bảo chất lượng (Tester); xây dựng kịch bản unit test toàn diện cho các dịch vụ cốt lõi, kiểm soát hệ thống bọc lỗi và xử lý ngoại lệ đồng bộ; đồng thời chịu trách nhiệm tổng hợp tiến độ, biên tập dữ liệu kỹ thuật để hoàn thiện báo cáo đồ án.
+    \item \textbf{Lê Đình Minh Anh}: Phụ trách thiết kế lược đồ cơ sở dữ liệu MySQL bảo đảm tính toàn vẹn dữ liệu; hiện thực các mẫu thiết kế DAO (Data Access Object) phục vụ việc đọc ghi và khóa bản ghi tối ưu; đồng thời chịu trách nhiệm sản xuất và biên tập video thực tế mô phỏng toàn bộ kịch bản luồng hoạt động của hệ thống.
+\end{itemize}
+
+\subsection{Kết luận và Đánh giá}
+Hệ thống đã đạt được mục tiêu đề ra với khả năng xử lý tương tranh chuyên nghiệp, đảm bảo an toàn tài chính cho người dùng. Các tính năng nâng cao như Anti-sniping và Auto-bidding đã hoạt động ổn định trong môi trường mô phỏng đa luồng. Đây là minh chứng cho việc áp dụng đúng đắn các kiến thức về Lập trình nâng cao, Cấu trúc dữ liệu và Hệ điều hành vào thực tiễn.
+
+\end{document}

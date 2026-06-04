@@ -11,18 +11,12 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Map;
-import java.util.Properties;
 
 /**
  * Uploads images to Cloudinary using an <b>unsigned upload preset</b>.
  *
- * <p>Configuration is read from {@code /cloudinary.properties} on the
- * classpath (located in {@code client/src/main/resources/}). The file must
- * contain two keys:
- * <pre>
- *   cloudinary.cloud_name=your_cloud_name
- *   cloudinary.upload_preset=your_unsigned_preset_name
- * </pre>
+ * <p>Configuration is read from the centralized {@link org.example.util.Config}
+ * (backed by {@code .env}).
  *
  * <p>Why unsigned? Putting an API secret inside a desktop client would let
  * anyone decompile the JAR and steal it. Unsigned upload presets are the
@@ -129,32 +123,19 @@ public final class CloudinaryUploader {
         if (local != null) return local;
         synchronized (CloudinaryUploader.class) {
             if (config == null) {
-                Properties p = new Properties();
-                try (InputStream in = CloudinaryUploader.class
-                        .getResourceAsStream("/cloudinary.properties")) {
-                    if (in == null) {
-                        throw new IOException(
-                                "Missing /cloudinary.properties on classpath. "
-                              + "Copy cloudinary.properties to "
-                              + "client/src/main/resources/cloudinary.properties "
-                              + "and fill in your cloud_name + upload_preset.");
-                    }
-                    p.load(in);
-                }
-                String cloudName    = trim(p.getProperty("cloudinary.cloud_name"));
-                String uploadPreset = trim(p.getProperty("cloudinary.upload_preset"));
-                if (cloudName.isEmpty() || uploadPreset.isEmpty()) {
+                String cloudName = org.example.util.Config.get("CLOUDINARY_CLOUD_NAME");
+                String uploadPreset = org.example.util.Config.get("CLOUDINARY_UPLOAD_PRESET");
+
+                if (cloudName == null || cloudName.isEmpty() || uploadPreset == null || uploadPreset.isEmpty()) {
                     throw new IOException(
-                            "cloudinary.properties is missing cloud_name "
-                          + "and/or upload_preset");
+                            "Cloudinary configuration is missing in .env. "
+                                    + "Please add CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET.");
                 }
                 config = new Config(cloudName, uploadPreset);
             }
             return config;
         }
     }
-
-    private static String trim(String s) { return s == null ? "" : s.trim(); }
 
     private static final class Config {
         final String cloudName;

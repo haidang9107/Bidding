@@ -32,6 +32,10 @@ public class Config {
         DEFAULTS.put("ANTI_SNIP_WINDOW_MS", "60000"); // 1 minute
         DEFAULTS.put("ANTI_SNIP_EXTENSION_MS", "300000"); // 5 minutes
 
+        // Cloudinary defaults
+        DEFAULTS.put("CLOUDINARY_CLOUD_NAME", "");
+        DEFAULTS.put("CLOUDINARY_UPLOAD_PRESET", "");
+
         // Logic to find the .env at project root
         String userDir = System.getProperty("user.dir");
         File envFile = findEnvFile(new File(userDir));
