@@ -469,22 +469,20 @@ public class MyProductsController {
         return s.isEmpty() ? fallback : s;
     }
 
-    /** Null-safe string: returns "" instead of null so it's safe to use in
-     *  dialog text and concatenation. */
-    private static String safe(String s) {
-        return s == null ? "" : s;
-    }
-
     private static String initials(User u) {
         String src = (u.getFullname() != null && !u.getFullname().isEmpty())
                 ? u.getFullname() : u.getAccountname();
         if (src == null || src.isEmpty()) return "?";
-        String[] parts = src.trim().split("\\s+");
+        String[] parts = src.trim().split("\s+");
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < parts.length && sb.length() < 2; i++) {
             if (!parts[i].isEmpty()) sb.append(Character.toUpperCase(parts[i].charAt(0)));
         }
         return sb.length() == 0 ? "?" : sb.toString();
+    }
+
+    private static String safe(String s) {
+        return s == null ? "" : s;
     }
 
     private enum StatusCat { STOCK, RUNNING, DONE }

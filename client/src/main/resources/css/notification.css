@@ -1,0 +1,76 @@
+/* ==================================================
+   Notification center (🔔) + shared notification styles
+   Palette matches dialog.css / app dark theme.
+   ================================================== */
+
+/* Dialog chrome — dark like the rest of the app */
+.notif-pane {
+    -fx-background-color: linear-gradient(to bottom right, #1a1a2e, #16213e);
+}
+.notif-pane .header-panel {
+    -fx-background-color: #1f1f33;
+}
+.notif-pane .header-panel .label {
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+.notif-pane .content {
+    -fx-background-color: transparent;
+}
+.notif-pane .button {
+    -fx-background-color: #2a2a3e;
+    -fx-text-fill: white;
+    -fx-background-radius: 8;
+}
+.notif-pane .button:hover {
+    -fx-background-color: #3a3a52;
+}
+
+/* Scroll area */
+.notif-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+.notif-scroll .viewport {
+    -fx-background-color: transparent;
+}
+
+/* One notification row */
+.notif-row {
+    -fx-background-color: #23233a;
+    -fx-background-radius: 10;
+    -fx-border-color: #34344e;
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+}
+.notif-row:hover {
+    -fx-background-color: #2a2a44;
+}
+
+/* Kind accents (left border) */
+.notif-win    { -fx-border-color: #67e8b1; }
+.notif-outbid { -fx-border-color: #ff8080; }
+.notif-error  { -fx-border-color: #ff6666; }
+
+.notif-icon {
+    -fx-font-size: 16px;
+}
+.notif-title {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+.notif-body {
+    -fx-text-fill: #b8b8cc;
+    -fx-font-size: 12px;
+    -fx-wrap-text: true;
+}
+.notif-time {
+    -fx-text-fill: #8a8aa0;
+    -fx-font-size: 11px;
+}
+.notif-empty {
+    -fx-text-fill: #8a8aa0;
+    -fx-font-size: 13px;
+}

@@ -221,11 +221,6 @@ public class UserDashboardController {
     }
 
     @FXML
-    private void handleGoAuctionList(MouseEvent ev) {
-        handleGoAuctionList();
-    }
-
-    @FXML
     private void handleGoSellerDashboard() {
         cleanup();
         // "Sản phẩm của tôi" / "Mở quản lý sản phẩm" navigates to the
@@ -236,8 +231,8 @@ public class UserDashboardController {
     }
 
     @FXML
-    private void handleGoSellerDashboard(MouseEvent ev) {
-        handleGoSellerDashboard();
+    private void handleOpenNotifications() {
+        org.example.client.dialog.NotificationCenterDialog.show();
     }
 
     @FXML

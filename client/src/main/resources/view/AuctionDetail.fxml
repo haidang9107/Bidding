@@ -64,6 +64,13 @@
                     <Label fx:id="leaderLabel" styleClass="leader-label" text="(Chưa có)"/>
                 </VBox>
 
+                <Separator orientation="VERTICAL"/>
+
+                <VBox spacing="4">
+                    <Label styleClass="muted-label" text="Ví của bạn"/>
+                    <Label fx:id="balanceLabel" styleClass="wallet-label" text=""/>
+                </VBox>
+
                 <Region HBox.hgrow="ALWAYS"/>
 
                 <VBox spacing="4" alignment="CENTER_RIGHT">

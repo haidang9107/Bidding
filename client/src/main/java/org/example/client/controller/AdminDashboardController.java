@@ -106,6 +106,26 @@ public class AdminDashboardController {
      *  acks (the server uses a generic SUCCESS envelope for all of them). */
     private boolean awaitingUserList = false;
 
+    // ===== Pagination (Users tab) =====
+    @FXML private Label userPageLabel;
+    @FXML private Button userFirstBtn;
+    @FXML private Button userPrevBtn;
+    @FXML private Button userNextBtn;
+    @FXML private Button userLastBtn;
+    private int userPage = 1;
+    private int userTotalPages = 1;
+
+    // ===== Pagination (Auctions tab) =====
+    @FXML private Label aucPageLabel;
+    @FXML private Button aucFirstBtn;
+    @FXML private Button aucPrevBtn;
+    @FXML private Button aucNextBtn;
+    @FXML private Button aucLastBtn;
+    private int aucPage = 1;
+    private int aucTotalPages = 1;
+
+    private static final int ADMIN_PAGE_SIZE = 20;
+
     private final ObservableList<UserRow> usersData = FXCollections.observableArrayList();
     private final ObservableList<AuctionRow> auctionsData = FXCollections.observableArrayList();
     private final ObservableList<ProductRow> productsData = FXCollections.observableArrayList();
@@ -308,17 +328,57 @@ public class AdminDashboardController {
     }
 
     private void loadUsers() {
-        PaginationRequest pr = new PaginationRequest(1, 500);
+        loadUserPage(userPage);
+    }
+
+    /** Request one page of users. Server caps results server-side; paging
+     *  through lets the admin reach ALL users, not just the first window. */
+    private void loadUserPage(int page) {
+        if (page < 1) page = 1;
+        userPage = page;
         awaitingUserList = true;
-        client.send(new Request(MessageType.ADMIN_GET_ALL_USERS, pr));
+        client.send(new Request(MessageType.ADMIN_GET_ALL_USERS,
+                new PaginationRequest(page, ADMIN_PAGE_SIZE)));
         userSummaryLabel.setText("Đang tải...");
     }
 
+    @FXML private void handleUserFirstPage() { if (userPage != 1) loadUserPage(1); }
+    @FXML private void handleUserPrevPage()  { if (userPage > 1) loadUserPage(userPage - 1); }
+    @FXML private void handleUserNextPage()  { if (userPage < userTotalPages) loadUserPage(userPage + 1); }
+    @FXML private void handleUserLastPage()  { if (userPage != userTotalPages) loadUserPage(userTotalPages); }
+
+    private void updateUserPageControls() {
+        if (userPageLabel != null) userPageLabel.setText("Trang " + userPage + "/" + Math.max(1, userTotalPages));
+        if (userFirstBtn != null) userFirstBtn.setDisable(userPage <= 1);
+        if (userPrevBtn  != null) userPrevBtn.setDisable(userPage <= 1);
+        if (userNextBtn  != null) userNextBtn.setDisable(userPage >= userTotalPages);
+        if (userLastBtn  != null) userLastBtn.setDisable(userPage >= userTotalPages);
+    }
+
     private void loadAuctions() {
-        PaginationRequest pr = new PaginationRequest(1, 500);
-        client.send(new Request(MessageType.PRODUCT_LIST, pr));
+        loadAuctionPage(aucPage);
+    }
+
+    private void loadAuctionPage(int page) {
+        if (page < 1) page = 1;
+        aucPage = page;
+        client.send(new Request(MessageType.PRODUCT_LIST,
+                new PaginationRequest(page, ADMIN_PAGE_SIZE)));
         auctionSummaryLabel.setText("Đang tải...");
         productSummaryLabel.setText("Đang tải...");
+    }
+
+    @FXML private void handleAucFirstPage() { if (aucPage != 1) loadAuctionPage(1); }
+    @FXML private void handleAucPrevPage()  { if (aucPage > 1) loadAuctionPage(aucPage - 1); }
+    @FXML private void handleAucNextPage()  { if (aucPage < aucTotalPages) loadAuctionPage(aucPage + 1); }
+    @FXML private void handleAucLastPage()  { if (aucPage != aucTotalPages) loadAuctionPage(aucTotalPages); }
+
+    private void updateAucPageControls() {
+        if (aucPageLabel != null) aucPageLabel.setText("Trang " + aucPage + "/" + Math.max(1, aucTotalPages));
+        if (aucFirstBtn != null) aucFirstBtn.setDisable(aucPage <= 1);
+        if (aucPrevBtn  != null) aucPrevBtn.setDisable(aucPage <= 1);
+        if (aucNextBtn  != null) aucNextBtn.setDisable(aucPage >= aucTotalPages);
+        if (aucLastBtn  != null) aucLastBtn.setDisable(aucPage >= aucTotalPages);
     }
 
     private void sendBan(String accountname, int newStatus) {
@@ -367,6 +427,11 @@ public class AdminDashboardController {
         }
         String raw = JsonConverter.toJson(resp.getData());
         List<Map<String, Object>> items = extractItems(raw);
+        // Sync pagination from the PagedResponse wrapper.
+        int[] pg = extractPaging(raw);
+        if (pg[0] > 0) userPage = pg[0];
+        userTotalPages = Math.max(1, pg[1]);
+        updateUserPageControls();
 
         allUsers.clear();
         for (Map<String, Object> m : items) {
@@ -384,6 +449,10 @@ public class AdminDashboardController {
         }
         String raw = JsonConverter.toJson(resp.getData());
         List<Map<String, Object>> items = extractItems(raw);
+        int[] apg = extractPaging(raw);
+        if (apg[0] > 0) aucPage = apg[0];
+        aucTotalPages = Math.max(1, apg[1]);
+        updateAucPageControls();
 
         allAuctions.clear();
         Map<Integer, ProductRow> productsByPid = new HashMap<>();
@@ -587,6 +656,21 @@ public class AdminDashboardController {
     // Helpers
     // ============================================================
     @SuppressWarnings("unchecked")
+    /** Reads {currentPage,totalPages} from a PagedResponse JSON; returns
+     *  {0,1} when the shape is a plain list (no wrapper). */
+    private int[] extractPaging(String raw) {
+        try {
+            Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
+            Map<String, Object> paged = new Gson().fromJson(raw, mapType);
+            if (paged != null && paged.get("items") instanceof List<?>) {
+                int cur = readInt(paged.get("currentPage"));
+                int tot = readInt(paged.get("totalPages"));
+                return new int[]{cur, tot};
+            }
+        } catch (Exception ignored) {}
+        return new int[]{0, 1};
+    }
+
     private List<Map<String, Object>> extractItems(String raw) {
         try {
             Type mapType = new TypeToken<Map<String, Object>>(){}.getType();

@@ -49,6 +49,9 @@
                 <Button onAction="#handleGoMyProducts" styleClass="ghost-btn"
                         text="Sản phẩm của tôi"/>
 
+                <Button fx:id="notifBtn" onAction="#handleOpenNotifications"
+                        styleClass="ghost-btn" text="🔔"/>
+
                 <Button fx:id="avatarBtn" onAction="#handleOpenProfile"
                         styleClass="avatar-btn" text="?"/>
 
