@@ -28,6 +28,8 @@ import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 
 /**
@@ -121,15 +123,24 @@ public class AuctionDetailController {
     public void setAuctionId(int auctionId, boolean viewOnly) {
         this.auctionId = auctionId;
         this.viewOnly = viewOnly;
-        if (!viewOnly) {
-            // Join the room so the server pushes BID_UPDATE / TIMER_TICK /
-            // AUCTION_END to us.
-            client.send(new Request(MessageType.JOIN_AUCTION_ROOM,
-                    new org.example.dto.request.AuctionRoomRequest(auctionId)));
-        }
-        // Always fetch the initial snapshot.
+        // Always JOIN the room — even in view-only mode. The server only
+        // broadcasts BID_UPDATE / TIMER_TICK / AUCTION_END to clients that
+        // are in the room (RoomManager). If a watcher didn't join, the price
+        // chart would never update live, defeating the purpose of "Xem phòng".
+        // For a watcher we simply disable the bidding controls below; joining
+        // a room is read-only on the server side (it doesn't place any bid).
+        client.send(new Request(MessageType.JOIN_AUCTION_ROOM,
+                new org.example.dto.request.AuctionRoomRequest(auctionId)));
+        // Fetch the initial snapshot.
         client.send(new Request(MessageType.PRODUCT_DETAIL,
                 new org.example.dto.request.AuctionRoomRequest(auctionId)));
+
+        // Fetch the FULL bid history so the chart can replay every past bid,
+        // not just the bids that happen while we're watching. Server stores
+        // every bid in the `bids` table and returns it via BID_HISTORY as a
+        // PagedResponse<Bid>. We ask for a large page to get them all at once.
+        client.send(new Request(MessageType.BID_HISTORY,
+                new org.example.dto.request.BidHistoryRequest(auctionId, 1, 1000)));
 
         if (viewOnly) {
             // Disable bidding controls — best-effort, only if the fields exist.
@@ -257,6 +268,7 @@ public class AuctionDetailController {
         switch (t) {
             case PRODUCT_DETAIL -> Platform.runLater(() -> applyProductData(resp, false));
             case BID_UPDATE     -> Platform.runLater(() -> applyBidUpdate(resp));
+            case BID_HISTORY    -> Platform.runLater(() -> applyBidHistory(resp));
             case TIMER_TICK     -> Platform.runLater(() -> applyTimerTick(resp));
             case NOTIFICATION   -> Platform.runLater(() -> {
                 String body = resp.getMessage() == null ? "Thông báo" : resp.getMessage();
@@ -486,6 +498,74 @@ public class AuctionDetailController {
         long base = startEpoch > 0 ? startEpoch : System.currentTimeMillis();
         long elapsed = (System.currentTimeMillis() - base) / 1000;
         series.getData().add(new XYChart.Data<>(elapsed, price));
+    }
+
+    /** Plot a historical bid at its real timestamp (seconds since auction
+     *  start) rather than "now". */
+    private void addHistoricChartPoint(long price, long bidEpochMs) {
+        long base = startEpoch > 0 ? startEpoch : bidEpochMs;
+        long elapsed = Math.max(0, (bidEpochMs - base) / 1000);
+        series.getData().add(new XYChart.Data<>(elapsed, price));
+    }
+
+    /**
+     * Replays the full bid history into the chart and the history list when we
+     * enter a room. Server returns a PagedResponse&lt;Bid&gt; where each Bid is
+     * { auctionId, bidderAccountname, bidAmount, bidTime }. Without this, the
+     * chart only showed the single current price plus whatever bids arrived
+     * live — so a user joining late saw an almost-empty chart even though the
+     * auction had many past bids.
+     */
+    @SuppressWarnings("unchecked")
+    private void applyBidHistory(Response resp) {
+        if (!resp.isSuccess() || resp.getData() == null) return;
+        try {
+            String raw = JsonConverter.toJson(resp.getData());
+            Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
+            Map<String, Object> wrapper = new Gson().fromJson(raw, mapType);
+            if (wrapper == null) return;
+
+            List<Map<String, Object>> items = new ArrayList<>();
+            if (wrapper.get("items") instanceof List<?> list) {
+                for (Object o : list) {
+                    if (o instanceof Map<?, ?> mm) items.add((Map<String, Object>) mm);
+                }
+            }
+            if (items.isEmpty()) return;
+
+            // Sort oldest -> newest by bidTime so the chart reads left to right.
+            items.sort((a, b) -> Long.compare(readBidTime(a.get("bidTime")),
+                                              readBidTime(b.get("bidTime"))));
+
+            // Rebuild chart + history list from scratch.
+            series.getData().clear();
+            historyData.clear();
+            for (Map<String, Object> m : items) {
+                long amount = readLong(m.get("bidAmount"));
+                String bidder = readStr(m.get("bidderAccountname"));
+                long ts = readBidTime(m.get("bidTime"));
+                addHistoricChartPoint(amount, ts);
+                String when = ts > 0 ? displayFmt.format(new Date(ts)) : "";
+                historyData.add(String.format("[%s] %s đặt: %s",
+                        when, bidder == null ? "?" : bidder, formatPrice(amount)));
+            }
+            // Newest first in the list view.
+            java.util.Collections.reverse(historyData);
+        } catch (Exception ignored) {
+            // History is best-effort; failing to draw it shouldn't break the room.
+        }
+    }
+
+    /** Bid time may arrive as epoch millis (number) or a "yyyy-MM-dd HH:mm:ss"
+     *  string depending on serialization — handle both. */
+    private long readBidTime(Object o) {
+        if (o == null) return 0L;
+        if (o instanceof Number n) return n.longValue();
+        String s = o.toString().trim();
+        if (s.isEmpty()) return 0L;
+        try { return Long.parseLong(s); } catch (Exception ignored) {}
+        try { return timestampInFmt.parse(s).getTime(); } catch (Exception ignored) {}
+        return 0L;
     }
 
     private void startCountdownIfNeeded() {

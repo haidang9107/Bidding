@@ -7,6 +7,7 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
@@ -466,6 +467,12 @@ public class MyProductsController {
         if (o == null) return fallback;
         String s = o.toString();
         return s.isEmpty() ? fallback : s;
+    }
+
+    /** Null-safe string: returns "" instead of null so it's safe to use in
+     *  dialog text and concatenation. */
+    private static String safe(String s) {
+        return s == null ? "" : s;
     }
 
     private static String initials(User u) {
