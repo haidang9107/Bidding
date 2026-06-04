@@ -20,7 +20,7 @@ public class Config {
         DEFAULTS.put("DB_HOST", "localhost");
         DEFAULTS.put("DB_PORT", "3306");
         DEFAULTS.put("DB_NAME", "bidding_db");
-        DEFAULTS.put("DB_URL", "jdbc:mysql://localhost:3306/bidding_db?createDatabaseIfNotExist=true");
+        DEFAULTS.put("DB_URL", "jdbc:mysql://localhost:3306/bidding_db?createDatabaseIfNotExist=true&useUnicode=yes&characterEncoding=UTF-8&serverTimezone=UTC");
         DEFAULTS.put("DB_DRIVER", "com.mysql.cj.jdbc.Driver");
         DEFAULTS.put("DB_USER", "root");
         DEFAULTS.put("DB_PASSWORD", "root");

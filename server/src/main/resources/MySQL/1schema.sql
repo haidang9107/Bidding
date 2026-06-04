@@ -1,3 +1,5 @@
+SET NAMES utf8mb4;
+
 CREATE TABLE IF NOT EXISTS users (
     accountname VARCHAR(255) PRIMARY KEY,
     fullname VARCHAR(255) NOT NULL,
@@ -9,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     role INT NOT NULL,
     status INT DEFAULT 0,
     CHECK (balance >= blocked_balance)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS products (
     product_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -28,7 +30,7 @@ CREATE TABLE IF NOT EXISTS products (
     model VARCHAR(255),
     manufacture_year INT,
     FOREIGN KEY (owner_accountname) REFERENCES users(accountname) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS auctions (
     auction_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -47,7 +49,7 @@ CREATE TABLE IF NOT EXISTS auctions (
     FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
     FOREIGN KEY (seller_accountname) REFERENCES users(accountname) ON DELETE CASCADE,
     FOREIGN KEY (winner_accountname) REFERENCES users(accountname) ON DELETE SET NULL
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS bids (
     bid_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -58,7 +60,7 @@ CREATE TABLE IF NOT EXISTS bids (
     is_auto_bid BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (auction_id) REFERENCES auctions(auction_id) ON DELETE CASCADE,
     FOREIGN KEY (bidder_accountname) REFERENCES users(accountname) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS auto_bids (
     auto_bid_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -72,7 +74,7 @@ CREATE TABLE IF NOT EXISTS auto_bids (
     UNIQUE KEY uq_auto_bid_auction_bidder (auction_id, bidder_accountname),
     FOREIGN KEY (auction_id) REFERENCES auctions(auction_id) ON DELETE CASCADE,
     FOREIGN KEY (bidder_accountname) REFERENCES users(accountname) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS transactions (
     transaction_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -88,16 +90,16 @@ CREATE TABLE IF NOT EXISTS transactions (
     FOREIGN KEY (receiver_accountname) REFERENCES users(accountname) ON DELETE SET NULL,
     FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE SET NULL,
     FOREIGN KEY (auction_id) REFERENCES auctions(auction_id) ON DELETE SET NULL
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS watchlist (
-                                         user_accountname VARCHAR(255) NOT NULL,
+    user_accountname VARCHAR(255) NOT NULL,
     product_id INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_accountname, product_id),
     FOREIGN KEY (user_accountname) REFERENCES users(accountname) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE
-    );
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE INDEX idx_products_owner ON products(owner_accountname);
 CREATE INDEX idx_products_auction ON products(is_in_auction);
@@ -110,4 +112,3 @@ CREATE INDEX idx_transactions_receiver ON transactions(receiver_accountname);
 CREATE INDEX idx_transactions_auction ON transactions(auction_id);
 CREATE INDEX idx_watchlist_user ON watchlist(user_accountname);
 CREATE INDEX idx_watchlist_product ON watchlist(product_id);
-

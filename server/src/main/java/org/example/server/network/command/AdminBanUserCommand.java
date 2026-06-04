@@ -4,6 +4,7 @@ import org.example.server.annotation.RequiresRole;
 import org.example.model.enums.UserRole;
 import org.example.model.enums.MessageType;
 import org.example.dto.request.AdminUserControlRequest;
+import org.example.model.user.User;
 import org.example.payload.Request;
 import org.example.payload.Response;
 import org.example.server.controller.AdminController;
@@ -46,6 +47,14 @@ public class AdminBanUserCommand implements Command {
     @Override
     public Response<?> execute(Request request, SocketChannel channel) {
         AdminUserControlRequest adminReq = JsonConverter.convert(request.getPayload(), AdminUserControlRequest.class);
+        
+        if (adminReq != null) {
+            User currentUser = SessionManager.getUser(channel);
+            if (currentUser != null && currentUser.getAccountname().equals(adminReq.getTargetAccountname())) {
+                return new Response<>(MessageType.ERROR, false, "Bạn không thể tự khóa tài khoản của chính mình!", null);
+            }
+        }
+
         Response<?> response = adminController.handleBanUser(adminReq);
 
         // If user was successfully banned (status = 1), kick them out immediately

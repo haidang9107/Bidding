@@ -10,6 +10,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- Sellers (INSERT IGNORE để không phá user sẵn có)
 INSERT IGNORE INTO users (accountname,fullname,password,email,avt,balance,blocked_balance,role,status) VALUES
 ('apple_store','Apple Store Vietnam','$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52','apple_store@bidding.vn',NULL,200000000,0,1,0),
+('haidang91','Admin','$2a$12$vBBS0rGIBNdJx/E0BTx9W.zOxw0cqjJlxlvtWMvyLFBU3iMGGtzlS','haidang91@gmail.com',NULL,0,0,0,0),
 ('nam_member','Nguyen Van Nam','$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52','nam_member@bidding.vn',NULL,200000000,0,1,0),
 ('huong_member','Bui Thu Huong','$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52','huong_member@bidding.vn',NULL,200000000,0,1,0),
 ('tech_world','Tech World JSC','$2a$12$PRsYuZXgIuYP3SlwPdci8..uOTEVtI72.f.romyqYpk0BUDevkz52','tech_world@bidding.vn',NULL,200000000,0,1,0),
