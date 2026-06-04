@@ -19,7 +19,7 @@ This directory is the definitive technical reference for the Bidding System. Eve
 
 | Concern | Technology                          |
 |---|-------------------------------------|
-| Language | Java 25                             |
+| Language | Java 21 LTS                             |
 | Networking | Java NIO (non-blocking TCP sockets) |
 | GUI | JavaFX + FXML                       |
 | Database | MySQL 9                             |
