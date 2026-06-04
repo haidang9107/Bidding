@@ -8,6 +8,7 @@ import org.example.model.Bid;
 import org.example.model.enums.AuctionStatus;
 import org.example.model.user.Member;
 import org.example.model.user.User;
+import org.example.server.event.BalanceChangedEvent;
 import org.example.server.event.EventPublisher;
 import org.example.server.event.NewBidPlacedEvent;
 import org.example.server.exception.BaseAppException;
@@ -29,7 +30,9 @@ import org.example.util.FileLogger;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Service for safe manual and automatic bid placement on auction sessions.
@@ -70,7 +73,9 @@ public class BidService {
         if (auctionId <= 0) throw new ValidationException("Invalid Auction ID");
         if (bidAmount <= 0) throw new ValidationException("Bid amount must be positive");
 
-        return txManager.execute(connection -> {
+        java.util.Map<String, BalanceChangedEvent> balanceEvents = new HashMap<>();
+
+        BidResult result = txManager.execute(connection -> {
             Auction auction = loadActiveAuction(connection, auctionId);
             if (auction == null) {
                 throw new NotFoundException("Auction not found or not active");
@@ -78,8 +83,8 @@ public class BidService {
 
             String oldWinnerBeforeSequence = auction.getWinnerAccountname();
 
-            applyBid(connection, auction, bidderAccountname, bidAmount, false);
-            boolean autoBidApplied = runAutoBidding(connection, auction);
+            applyBid(connection, auction, bidderAccountname, bidAmount, false, balanceEvents);
+            boolean autoBidApplied = runAutoBidding(connection, auction, balanceEvents);
 
             FileLogger.info("Bid sequence completed: Auction " + auctionId
                     + ", winner " + auction.getWinnerAccountname()
@@ -95,6 +100,10 @@ public class BidService {
             return new BidResult(auctionId, auction.getWinnerAccountname(),
                     auction.getCurrentPrice(), autoBidApplied, auction.getEndTime());
         });
+
+        // Publish all balance change events captured during the transaction
+        balanceEvents.values().forEach(eventPublisher::publish);
+        return result;
     }
 
     /**
@@ -109,6 +118,8 @@ public class BidService {
         if (auctionId <= 0) throw new ValidationException("Auction ID is required.");
         if (maxBid <= 0) throw new ValidationException("Max bid must be greater than 0.");
         if (incrementAmount <= 0) throw new ValidationException("Increment amount must be greater than 0.");
+
+        java.util.Map<String, BalanceChangedEvent> balanceEvents = new HashMap<>();
 
         txManager.run(connection -> {
             Auction auction = loadActiveAuction(connection, auctionId);
@@ -146,7 +157,7 @@ public class BidService {
             autoBidDao.upsertAutoBid(connection, auctionId, bidderAccountname, maxBid, incrementAmount);
 
             String oldWinnerBeforeSequence = auction.getWinnerAccountname();
-            boolean autoBidApplied = runAutoBidding(connection, auction);
+            boolean autoBidApplied = runAutoBidding(connection, auction, balanceEvents);
 
             FileLogger.info("Auto bid configured: User " + bidderAccountname
                     + " on Auction " + auctionId + " max " + maxBid);
@@ -157,7 +168,9 @@ public class BidService {
                         auctionId, auction.getWinnerAccountname(), oldWinnerBeforeSequence,
                         auction.getCurrentPrice(), true, auction.getEndTime()));
             }
-            });
+        });
+
+        balanceEvents.values().forEach(eventPublisher::publish);
     }
 
     /**
@@ -203,7 +216,8 @@ public class BidService {
     }
 
     private void applyBid(Connection connection, Auction auction, String bidderAccountname,
-                          long bidAmount, boolean autoBid) throws SQLException {
+                          long bidAmount, boolean autoBid,
+                          java.util.Map<String, BalanceChangedEvent> balanceEvents) throws SQLException {
         String oldWinnerAccount = auction.getWinnerAccountname();
         User bidder = lockBidderAndPreviousWinner(connection, bidderAccountname, oldWinnerAccount);
         if (bidder == null) throw new NotFoundException("User not found.");
@@ -218,11 +232,10 @@ public class BidService {
             throw new ValidationException("Bid amount is too low. Minimum required: " + minimumBid);
         }
 
-        // Buy Now Logic: Clamp the bid amount to the Buy Now price if it's met or exceeded
+        // Buy Now Logic: If bid amount meets or exceeds Buy Now price, trigger Buy Now strategy
         long finalBidAmount = bidAmount;
         BidStrategy strategy;
         if (auction.getBuyNowPrice() != null && bidAmount >= auction.getBuyNowPrice()) {
-            finalBidAmount = auction.getBuyNowPrice();
             strategy = new BuyNowBidStrategy(auctionDao);
         } else {
             strategy = new NormalBidStrategy(auctionDao);
@@ -238,8 +251,11 @@ public class BidService {
 
         if (oldWinnerAccount != null && !oldWinnerAccount.equals(bidderAccountname)) {
             userDao.addBlockedBalance(connection, oldWinnerAccount, -auction.getCurrentPrice());
+            captureBalanceEvent(connection, oldWinnerAccount, balanceEvents);
         }
         userDao.addBlockedBalance(connection, bidderAccountname, extraBlocked);
+        captureBalanceEvent(connection, bidderAccountname, balanceEvents);
+
         auctionDao.updateBidLocked(connection, auction.getAuctionId(), finalBidAmount, bidderAccountname);
         bidDao.insertBid(connection, auction.getAuctionId(), bidderAccountname, finalBidAmount, autoBid);
 
@@ -249,7 +265,17 @@ public class BidService {
         strategy.execute(connection, auction, bidderAccountname, finalBidAmount);
     }
 
-    private boolean runAutoBidding(Connection connection, Auction auction) throws SQLException {
+    private void captureBalanceEvent(Connection conn, String accountname,
+                                     Map<String, BalanceChangedEvent> balanceEvents) throws SQLException {
+        User u = userDao.findByAccountname(conn, accountname);
+        if (u instanceof Member m) {
+            balanceEvents.put(accountname, new BalanceChangedEvent(
+                    accountname, m.getBalance(), m.getBlockedBalance()));
+        }
+    }
+
+    private boolean runAutoBidding(Connection connection, Auction auction,
+                                   Map<String, BalanceChangedEvent> balanceEvents) throws SQLException {
         boolean appliedAtLeastOnce = false;
 
         List<AutoBid> activeBids = autoBidDao.findAllActiveForAuction(connection, auction.getAuctionId());
@@ -291,7 +317,7 @@ public class BidService {
             }
 
             try {
-                applyBid(connection, auction, highest.getBidderAccountname(), targetPrice, true);
+                applyBid(connection, auction, highest.getBidderAccountname(), targetPrice, true, balanceEvents);
                 appliedAtLeastOnce = true;
                 break;
             } catch (BaseAppException e) {

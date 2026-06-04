@@ -92,7 +92,7 @@ graph LR
 | **View Auction Detail** | See full product information, current price, bid history, and time remaining. |
 | **Join Auction Room** | Subscribe to realtime bid updates for a specific auction via the socket room mechanism. |
 | **Place a Bid** | Submit a manual bid above the current price by at least one `stepPrice`. Funds equal to the bid amount are frozen in escrow immediately. The previous leader's escrow is released. |
-| **Buy Now** | Submit a bid that meets or exceeds the `buyNowPrice`. The auction ends immediately at that price. |
+| **Buy Now** | Submit a bid that meets or exceeds the `buyNowPrice`. The auction ends immediately at the submitted bid amount. |
 | **Configure Auto-Bid** | Set a `maxBid` ceiling and `incrementAmount`. The server will automatically outbid competitors on the user's behalf up to their ceiling. |
 | **Cancel Auto-Bid** | Deactivate an active auto-bid configuration. |
 | **Manage Wallet** | Deposit funds into the account or withdraw available (non-escrowed) funds. |

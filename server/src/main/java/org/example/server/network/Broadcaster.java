@@ -8,8 +8,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -17,6 +18,14 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 public class Broadcaster {
     private static final List<SocketChannel> clients = new CopyOnWriteArrayList<>();
+    private static DisconnectionHandler disconnectionHandler;
+
+    /**
+     * Sets the disconnection handler to be used when a dead channel is detected.
+     */
+    public static void setDisconnectionHandler(DisconnectionHandler handler) {
+        disconnectionHandler = handler;
+    }
 
     /**
      * Adds a client channel to the broadcast list.
@@ -70,34 +79,52 @@ public class Broadcaster {
     }
 
     private static void writeToChannels(Collection<SocketChannel> channels, Response<?> response) {
+        if (channels == null || channels.isEmpty()) {
+            return;
+        }
+
         String jsonMessage = JsonConverter.toJson(response) + "\n";
         byte[] messageBytes = jsonMessage.getBytes(StandardCharsets.UTF_8);
+        ByteBuffer buffer = ByteBuffer.wrap(messageBytes);
+        List<SocketChannel> brokenChannels = new ArrayList<>();
 
         for (SocketChannel channel : channels) {
             if (!channel.isOpen()) {
-                clients.remove(channel);
-                RoomManager.removeChannel(channel);
+                brokenChannels.add(channel);
                 continue;
             }
 
             try {
                 // Synchronize on the channel to prevent interleaved writes from different threads
                 synchronized (channel) {
-                    ByteBuffer buffer = ByteBuffer.wrap(messageBytes);
+                    buffer.rewind();
                     while (buffer.hasRemaining()) {
                         channel.write(buffer);
                     }
                 }
             } catch (IOException e) {
                 FileLogger.error("Failed to send broadcast to channel: " + channel, e);
-                clients.remove(channel);
-                RoomManager.removeChannel(channel);
-                try {
-                    channel.close();
-                } catch (IOException ex) {
-                    FileLogger.debug("Error closing channel after broadcast failure: " + ex.getMessage());
-                }
+                brokenChannels.add(channel);
             }
+        }
+
+        if (!brokenChannels.isEmpty()) {
+            for (SocketChannel badChannel : brokenChannels) {
+                handleDisconnection(badChannel);
+            }
+        }
+    }
+
+    private static void handleDisconnection(SocketChannel channel) {
+        if (disconnectionHandler != null) {
+            disconnectionHandler.handle(channel);
+        } else {
+            // Fallback basic cleanup if handler is not injected
+            clients.remove(channel);
+            RoomManager.removeChannel(channel);
+            try {
+                channel.close();
+            } catch (IOException ignored) {}
         }
     }
 }

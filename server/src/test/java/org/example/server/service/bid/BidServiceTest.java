@@ -233,6 +233,26 @@ class BidServiceTest {
         }
 
         @Test
+        @DisplayName("TC-BID-NEW: Đặt giá cao hơn Buy Now – chấp nhận giá cao hơn và kết thúc ngay")
+        void higherThanBuyNow_acceptsHigherAmount() throws Exception {
+            Auction a = runningAuction(1, "seller", 1_000L, 100L);
+            a.setBuyNowPrice(2_000L);
+            Member m = member("alice", 10_000L, 0L);
+
+            when(auctionDao.getAuctionForUpdate(connection, 1)).thenReturn(a);
+            when(userDao.findByAccountnameForUpdate(connection, "alice")).thenReturn(m);
+            when(autoBidDao.findAllActiveForAuction(connection, 1)).thenReturn(Collections.emptyList());
+
+            // Đặt 3000 khi Buy Now là 2000
+            BidResult result = bidService.placeBid(1, "alice", 3_000L);
+
+            assertEquals(3_000L, result.getCurrentPrice());
+            verify(auctionDao).updateAuctionEndTime(eq(connection), eq(1), any(Timestamp.class));
+            verify(auctionDao).updateBidLocked(eq(connection), eq(1), eq(3_000L), eq("alice"));
+            verify(bidDao).insertBid(eq(connection), eq(1), eq("alice"), eq(3_000L), eq(false));
+        }
+
+        @Test
         @DisplayName("TC-BID-11: winner hiện tại đặt lại – chỉ block phần chênh lệch")
         void currentWinnerRebids_blocksOnlyDelta() throws Exception {
             Auction a = runningAuction(1, "seller", 1_000L, 100L);

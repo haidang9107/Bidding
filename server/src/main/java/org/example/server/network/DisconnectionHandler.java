@@ -52,12 +52,13 @@ public class DisconnectionHandler {
 
     private void cleanResources(SocketChannel channel) {
         try {
+            SessionManager.logout(channel);
             Broadcaster.removeClient(channel);
             RoomManager.removeChannel(channel);
-            SessionManager.logout(channel);
             HeartbeatRegistry.remove(channel);
-            
-            if (channel.isOpen()) {
+
+            if (channel != null && channel.isOpen()) {
+                FileLogger.debug("Closing socket channel for disconnected client: " + channel.getRemoteAddress());
                 channel.close();
             }
         } catch (IOException e) {

@@ -236,4 +236,18 @@ public class UserDao {
             return pstmt.executeUpdate() > 0;
         }
     }
+
+    /**
+     * Atomically adds or subtracts from both balance and blocked balance.
+     * Use this when settling payments to avoid "balance < blocked_balance" constraint violations.
+     */
+    public boolean addBalances(Connection connection, String accountname, long balanceDelta, long blockedDelta) throws SQLException {
+        String sql = "UPDATE users SET balance = balance + ?, blocked_balance = blocked_balance + ? WHERE accountname = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setLong(1, balanceDelta);
+            pstmt.setLong(2, blockedDelta);
+            pstmt.setString(3, accountname);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
 }

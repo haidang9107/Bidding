@@ -1,15 +1,15 @@
 package org.example.server.service.auction;
 
 import org.example.dto.request.ProductAddRequest;
+import org.example.dto.request.ProductSearchRequest;
 import org.example.dto.response.PagedResponse;
 import org.example.model.Auction;
 import org.example.model.enums.AuctionStatus;
 import org.example.model.enums.TransactionType;
 import org.example.model.product.Product;
-import org.example.server.event.AuctionCreatedEvent;
-import org.example.server.event.AuctionEndedEvent;
-import org.example.server.event.AuctionStartedEvent;
-import org.example.server.event.EventPublisher;
+import org.example.model.user.Member;
+import org.example.model.user.User;
+import org.example.server.event.*;
 import org.example.server.exception.AuctionException;
 import org.example.server.exception.ValidationException;
 import org.example.server.repository.AuctionDao;
@@ -21,8 +21,12 @@ import org.example.server.service.product.ProductService;
 import org.example.util.FileLogger;
 import org.example.util.JsonConverter;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Service handling the auction session lifecycle: creating, starting,
@@ -92,7 +96,7 @@ public class AuctionService {
      * @param req The search criteria.
      * @return A paged response of auctions.
      */
-    public PagedResponse<Auction> searchAuctions(org.example.dto.request.ProductSearchRequest req) {
+    public PagedResponse<Auction> searchAuctions(ProductSearchRequest req) {
         return txManager.query(conn -> auctionDao.searchAuctions(conn, req));
     }
 
@@ -275,6 +279,8 @@ public class AuctionService {
      * @param auctionId The auction ID.
      */
     public void finishAuction(int auctionId) {
+        Map<String, BalanceChangedEvent> balanceEvents = new HashMap<>();
+
         txManager.run(conn -> {
             Auction auction = auctionDao.getAuctionForUpdate(conn, auctionId);
             if (auction == null || auction.getStatus() != AuctionStatus.RUNNING) return;
@@ -287,14 +293,16 @@ public class AuctionService {
 
             boolean success = auctionDao.updateStatus(conn, auctionId, AuctionStatus.FINISHED);
             if (success && winner != null) {
-                userDao.addBalance(conn, winner, -finalPrice);
-                userDao.addBlockedBalance(conn, winner, -finalPrice);
+                userDao.addBalances(conn, winner, -finalPrice, -finalPrice);
                 userDao.addBalance(conn, seller, finalPrice);
                 productService.transferOwnership(conn, productId, winner);
 
                 transactionDao.insertTransaction(conn, winner, seller,
                         TransactionType.AUCTION_PAYMENT, productId, finalPrice,
                         auctionId, "Payment for auction win: " + productName);
+
+                captureBalanceEvent(conn, winner, balanceEvents);
+                captureBalanceEvent(conn, seller, balanceEvents);
             } else if (success) {
                 // No winner: just release the product from "in-auction"
                 productDao.updateProductAuctionFlag(conn, productId, false);
@@ -307,6 +315,8 @@ public class AuctionService {
                         auctionId, productName, winner, finalPrice, false));
             }
         });
+
+        balanceEvents.values().forEach(eventPublisher::publish);
     }
 
     /**
@@ -315,7 +325,9 @@ public class AuctionService {
      * @return True if the auction was successfully cancelled.
      */
     public boolean cancelAuction(int auctionId) {
-        return txManager.execute(conn -> {
+        Map<String, BalanceChangedEvent> balanceEvents = new HashMap<>();
+
+        boolean result = txManager.execute(conn -> {
             Auction auction = auctionDao.getAuctionForUpdate(conn, auctionId);
             if (auction == null
                     || auction.getStatus() == AuctionStatus.FINISHED
@@ -329,6 +341,7 @@ public class AuctionService {
                 if (auction.getWinnerAccountname() != null) {
                     userDao.addBlockedBalance(conn, auction.getWinnerAccountname(),
                             -auction.getCurrentPrice());
+                    captureBalanceEvent(conn, auction.getWinnerAccountname(), balanceEvents);
                 }
                 FileLogger.info("Admin action: Auction " + auctionId + " has been CANCELED.");
                 String productName = auction.getProduct() != null ? auction.getProduct().getName() : "";
@@ -338,5 +351,17 @@ public class AuctionService {
             }
             return success;
         });
+
+        balanceEvents.values().forEach(eventPublisher::publish);
+        return result;
+    }
+
+    private void captureBalanceEvent(Connection conn, String accountname,
+                                     Map<String, BalanceChangedEvent> balanceEvents) throws SQLException {
+        User u = userDao.findByAccountname(conn, accountname);
+        if (u instanceof Member m) {
+            balanceEvents.put(accountname, new BalanceChangedEvent(
+                    accountname, m.getBalance(), m.getBlockedBalance()));
+        }
     }
 }

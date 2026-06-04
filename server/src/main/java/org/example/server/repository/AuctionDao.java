@@ -439,4 +439,49 @@ public class AuctionDao {
         }
         return 0;
     }
+
+    /**
+     * Finds all RUNNING auctions where the specified user is the current winner.
+     * @param connection  The database connection.
+     * @param accountname The user's account name.
+     * @return A list of auctions.
+     * @throws SQLException If a database error occurs.
+     */
+    public List<Auction> findAuctionsByWinner(Connection connection, String accountname) throws SQLException {
+        List<Auction> auctions = new ArrayList<>();
+        String sql = AUCTION_SELECT_SQL + "WHERE winner_accountname = ? AND status = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, accountname);
+            ps.setInt(2, AuctionStatus.RUNNING.getValue());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    // Use a simple mapper since we only need core auction fields
+                    auctions.add(new Auction(
+                        rs.getInt("auction_id"), rs.getInt("product_id"), rs.getString("seller_accountname"),
+                        rs.getString("winner_accountname"), rs.getLong("start_price"), rs.getLong("current_price"),
+                        rs.getLong("step_price"), (Long) rs.getObject("buy_now_price"), rs.getTimestamp("start_time"),
+                        rs.getTimestamp("end_time"), AuctionStatus.fromInt(rs.getInt("status")), rs.getInt("version")
+                    ));
+                }
+            }
+        }
+        return auctions;
+    }
+
+    /**
+     * Updates the winner of an auction.
+     * @param connection The database connection.
+     * @param auctionId  The auction ID.
+     * @param newWinner  The new winner accountname (can be null).
+     * @return True if successful.
+     * @throws SQLException If a database error occurs.
+     */
+    public boolean updateWinner(Connection connection, int auctionId, String newWinner) throws SQLException {
+        String sql = "UPDATE auctions SET winner_accountname = ? WHERE auction_id = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, newWinner);
+            ps.setInt(2, auctionId);
+            return ps.executeUpdate() > 0;
+        }
+    }
 }

@@ -57,6 +57,10 @@ public class TransferService {
             if (fromUser == null) throw new FinanceException("Sender not found");
             if (toUser == null) throw new FinanceException("Recipient not found");
             
+            if (toUser.getStatus() != 0) {
+                throw new FinanceException("Recipient account is banned and cannot receive funds");
+            }
+
             if (!(fromUser instanceof Member fromMember)) throw new FinanceException("Sender is not a member");
             if (!(toUser instanceof Member toMember)) throw new FinanceException("Recipient is not a member");
 
