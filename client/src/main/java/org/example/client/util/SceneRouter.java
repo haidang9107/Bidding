@@ -75,8 +75,21 @@ public final class SceneRouter {
             if (wasMaximized && !primaryStage.isMaximized()) {
                 primaryStage.setMaximized(true);
             }
-        } catch (IOException e) {
-            throw new RuntimeException("Không load được FXML: " + fxmlPath, e);
+        } catch (Exception e) {
+            // Một lỗi load FXML (thiếu handler, controller cũ, file thiếu...)
+            // nếu chỉ ném RuntimeException sẽ bị JavaFX nuốt trong event
+            // handler — nút bấm trông như "chết" mà không ai biết vì sao.
+            // Hiện Alert để người dùng/dev thấy ngay nguyên nhân.
+            e.printStackTrace();
+            try {
+                javafx.scene.control.Alert a = new javafx.scene.control.Alert(
+                        javafx.scene.control.Alert.AlertType.ERROR);
+                a.setTitle("Lỗi giao diện");
+                a.setHeaderText("Không mở được màn hình: " + fxmlPath);
+                Throwable cause = e.getCause() != null ? e.getCause() : e;
+                a.setContentText(String.valueOf(cause));
+                a.showAndWait();
+            } catch (Exception ignored) {}
         }
     }
 }

@@ -47,18 +47,6 @@ public class LoginController {
         loginBtn.setDisable(true);
         statusLabel.setText("Đang kết nối tới hệ thống...");
 
-        // Sau khi bị kick/ban, server đã đóng socket (connected=false). Đảm bảo
-        // kết nối lại trước khi gửi LOGIN, nếu không send() sẽ âm thầm bỏ qua.
-        if (!client.isConnected()) {
-            try {
-                client.reconnect();
-            } catch (Exception e) {
-                loginBtn.setDisable(false);
-                statusLabel.setText("Không kết nối được máy chủ. Thử lại.");
-                return;
-            }
-        }
-
         LoginRequest lr = new LoginRequest(username, password);
         Request req = new Request(MessageType.LOGIN, lr);
         client.send(req);

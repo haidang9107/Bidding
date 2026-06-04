@@ -469,12 +469,6 @@ public class MyProductsController {
         return s.isEmpty() ? fallback : s;
     }
 
-    /** Null-safe string: returns "" instead of null so it's safe to use in
-     *  dialog text and concatenation. */
-    private static String safe(String s) {
-        return s == null ? "" : s;
-    }
-
     private static String initials(User u) {
         String src = (u.getFullname() != null && !u.getFullname().isEmpty())
                 ? u.getFullname() : u.getAccountname();

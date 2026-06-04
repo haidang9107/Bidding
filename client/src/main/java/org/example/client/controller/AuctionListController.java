@@ -173,6 +173,8 @@ public class AuctionListController {
         loadAuctions();
         // Load my watchlist from the server (authoritative).
         WatchlistManager.getInstance().refreshFromServer();
+        // Local expiry watcher so status tags flip to FINISHED in realtime.
+        startExpiryTicker();
     }
 
     // ============================================================
@@ -189,6 +191,11 @@ public class AuctionListController {
         Session.getInstance().logout();
         cleanup();
         SceneRouter.go("/view/Login.fxml", "Đăng nhập");
+    }
+
+    @FXML
+    private void handleOpenNotifications() {
+        org.example.client.dialog.NotificationCenterDialog.show();
     }
 
     @FXML
@@ -314,14 +321,6 @@ public class AuctionListController {
             case PRODUCT_LIST -> Platform.runLater(() -> onProductList(resp));
             case BID_UPDATE   -> Platform.runLater(() -> onBidUpdate(resp));
             case AUCTION_END  -> Platform.runLater(() -> onAuctionEnd(resp));
-            case AUCTION_START -> Platform.runLater(() -> {
-                // Server pushes this when an auction goes live. Refresh the
-                // grid so it shows up, and toast it (useful for watchers).
-                String body = resp.getMessage() == null
-                        ? "Một phiên đấu giá vừa bắt đầu." : resp.getMessage();
-                NotificationService.getInstance().info("Phiên đấu giá bắt đầu", body);
-                loadPage(currentPage);
-            });
             case WATCHLIST_GET -> Platform.runLater(() -> onWatchlistGet(resp));
             case NOTIFICATION -> Platform.runLater(() -> {
                 String body = resp.getMessage() == null ? "Thông báo" : resp.getMessage();
@@ -633,6 +632,39 @@ public class AuctionListController {
         client.removeListener(listener);
         if (watchSub != null) WatchlistManager.getInstance().unsubscribe(watchSub);
         if (mybidsSub != null) MyBidsManager.getInstance().unsubscribe(mybidsSub);
+        if (expiryTicker != null) { expiryTicker.stop(); expiryTicker = null; }
+    }
+
+    /** 1-second local ticker. The server only broadcasts AUCTION_END to
+     *  clients INSIDE the room, so the list screen would never hear about
+     *  expirations. Each row carries its endEpoch; when the clock passes it,
+     *  flip the tag to FINISHED and re-render — realtime from the user's
+     *  point of view, no refresh needed. */
+    private javafx.animation.Timeline expiryTicker;
+
+    private void startExpiryTicker() {
+        if (expiryTicker != null) return;
+        expiryTicker = new javafx.animation.Timeline(new javafx.animation.KeyFrame(
+                javafx.util.Duration.seconds(1), e -> {
+            long now = System.currentTimeMillis();
+            boolean changed = false;
+            for (ProductRow r : products) {
+                if (r.endEpoch > 0 && now >= r.endEpoch
+                        && r.status != null
+                        && !"FINISHED".equalsIgnoreCase(r.status)
+                        && !"CANCELED".equalsIgnoreCase(r.status)
+                        && !"PAID".equalsIgnoreCase(r.status)) {
+                    r.status = "FINISHED";
+                    changed = true;
+                }
+            }
+            if (changed) {
+                renderAll();
+                renderWatch();
+            }
+        }));
+        expiryTicker.setCycleCount(javafx.animation.Animation.INDEFINITE);
+        expiryTicker.play();
     }
 
     // ============================================================
@@ -682,6 +714,10 @@ public class AuctionListController {
         long currentPrice;
         String status;
         String endTime;
+        /** End time as epoch millis (0 if unknown) — lets the list flip the
+         *  status tag to FINISHED locally the second the auction expires,
+         *  since the server only broadcasts AUCTION_END to room members. */
+        long endEpoch;
         String currentLeader;
         String imageUrl;
 
@@ -704,9 +740,13 @@ public class AuctionListController {
                         SimpleDateFormat in = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                         Date d = in.parse(s);
                         r.endTime = fmt.format(d);
+                        r.endEpoch = d.getTime();
                     } catch (Exception ex) {
                         r.endTime = s;
                     }
+                } else if (end instanceof Number n) {
+                    r.endEpoch = n.longValue();
+                    r.endTime = fmt.format(new Date(r.endEpoch));
                 } else {
                     r.endTime = end.toString();
                 }

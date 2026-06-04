@@ -193,3 +193,10 @@
 .history-list .list-cell:filled:hover {
     -fx-background-color: #24243a;
 }
+
+/* ==== Ví của bạn (khả dụng / đang khóa) trong phòng đấu giá ==== */
+.wallet-label {
+    -fx-text-fill: #67e8b1;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}

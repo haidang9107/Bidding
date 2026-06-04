@@ -139,7 +139,7 @@
 }
 
 /* Navigation tiles */
-.nav-tile {
+.nav-tile-btn {
     -fx-background-color: #1f1f33;
     -fx-background-radius: 10;
     -fx-cursor: hand;
@@ -147,11 +147,17 @@
     -fx-border-color: #2a2a3e;
     -fx-border-radius: 10;
     -fx-border-width: 1;
+    -fx-alignment: TOP_LEFT;
+    -fx-text-alignment: LEFT;
 }
 
-.nav-tile:hover {
+.nav-tile-btn:hover {
     -fx-background-color: #2a2a4e;
     -fx-border-color: #5a8dee;
+}
+
+.nav-tile-btn:pressed {
+    -fx-background-color: #1a1a2e;
 }
 
 .nav-tile-title {

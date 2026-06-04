@@ -28,8 +28,6 @@ import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
-import java.util.ArrayList;
 import java.util.Map;
 
 /**
@@ -58,6 +56,8 @@ public class AuctionDetailController {
     @FXML private Label currentPriceLabel;
     @FXML private Label leaderLabel;
     @FXML private Label messageLabel;
+    /** "Khả dụng • Đang khóa" — updated live via BALANCE_UPDATE. */
+    @FXML private Label balanceLabel;
     @FXML private LineChart<Number, Number> priceChart;
 
     @FXML private TextField bidAmountField;
@@ -104,6 +104,9 @@ public class AuctionDetailController {
 
         listener = this::handleResponse;
         client.addListener(listener);
+        // Show the user's wallet (available/blocked) immediately on entry;
+        // it then updates live via BALANCE_UPDATE.
+        refreshBalanceLabel();
     }
 
     /** When true the user is only viewing (watching) the room, not
@@ -123,22 +126,16 @@ public class AuctionDetailController {
     public void setAuctionId(int auctionId, boolean viewOnly) {
         this.auctionId = auctionId;
         this.viewOnly = viewOnly;
-        // Always JOIN the room — even in view-only mode. The server only
-        // broadcasts BID_UPDATE / TIMER_TICK / AUCTION_END to clients that
-        // are in the room (RoomManager). If a watcher didn't join, the price
-        // chart would never update live, defeating the purpose of "Xem phòng".
-        // For a watcher we simply disable the bidding controls below; joining
-        // a room is read-only on the server side (it doesn't place any bid).
+        // Always JOIN — server only broadcasts BID_UPDATE/AUCTION_END to room
+        // members, so even a watcher must join to see live updates. Bidding
+        // controls are disabled below for view-only.
         client.send(new Request(MessageType.JOIN_AUCTION_ROOM,
                 new org.example.dto.request.AuctionRoomRequest(auctionId)));
-        // Fetch the initial snapshot.
+        // Always fetch the initial snapshot.
         client.send(new Request(MessageType.PRODUCT_DETAIL,
                 new org.example.dto.request.AuctionRoomRequest(auctionId)));
-
-        // Fetch the FULL bid history so the chart can replay every past bid,
-        // not just the bids that happen while we're watching. Server stores
-        // every bid in the `bids` table and returns it via BID_HISTORY as a
-        // PagedResponse<Bid>. We ask for a large page to get them all at once.
+        // Fetch FULL bid history so the history table + price chart replay all
+        // past bids (server stores every bid; returns PagedResponse<Bid>).
         client.send(new Request(MessageType.BID_HISTORY,
                 new org.example.dto.request.BidHistoryRequest(auctionId, 1, 1000)));
 
@@ -269,6 +266,7 @@ public class AuctionDetailController {
             case PRODUCT_DETAIL -> Platform.runLater(() -> applyProductData(resp, false));
             case BID_UPDATE     -> Platform.runLater(() -> applyBidUpdate(resp));
             case BID_HISTORY    -> Platform.runLater(() -> applyBidHistory(resp));
+            case BALANCE_UPDATE -> Platform.runLater(() -> applyBalanceUpdate(resp));
             case TIMER_TICK     -> Platform.runLater(() -> applyTimerTick(resp));
             case NOTIFICATION   -> Platform.runLater(() -> {
                 String body = resp.getMessage() == null ? "Thông báo" : resp.getMessage();
@@ -500,8 +498,7 @@ public class AuctionDetailController {
         series.getData().add(new XYChart.Data<>(elapsed, price));
     }
 
-    /** Plot a historical bid at its real timestamp (seconds since auction
-     *  start) rather than "now". */
+    /** Plot a historical bid at its real timestamp (seconds since auction start). */
     private void addHistoricChartPoint(long price, long bidEpochMs) {
         long base = startEpoch > 0 ? startEpoch : bidEpochMs;
         long elapsed = Math.max(0, (bidEpochMs - base) / 1000);
@@ -509,12 +506,11 @@ public class AuctionDetailController {
     }
 
     /**
-     * Replays the full bid history into the chart and the history list when we
-     * enter a room. Server returns a PagedResponse&lt;Bid&gt; where each Bid is
-     * { auctionId, bidderAccountname, bidAmount, bidTime }. Without this, the
-     * chart only showed the single current price plus whatever bids arrived
-     * live — so a user joining late saw an almost-empty chart even though the
-     * auction had many past bids.
+     * Replays the FULL bid history into the history table and the price chart
+     * when entering a room. Server returns PagedResponse&lt;Bid&gt; where each
+     * Bid is { auctionId, bidderAccountname, bidAmount, bidTime }. Without
+     * this, a user joining late saw an empty history list and a chart with
+     * only the current price.
      */
     @SuppressWarnings("unchecked")
     private void applyBidHistory(Response resp) {
@@ -525,19 +521,18 @@ public class AuctionDetailController {
             Map<String, Object> wrapper = new Gson().fromJson(raw, mapType);
             if (wrapper == null) return;
 
-            List<Map<String, Object>> items = new ArrayList<>();
-            if (wrapper.get("items") instanceof List<?> list) {
+            java.util.List<Map<String, Object>> items = new java.util.ArrayList<>();
+            if (wrapper.get("items") instanceof java.util.List<?> list) {
                 for (Object o : list) {
                     if (o instanceof Map<?, ?> mm) items.add((Map<String, Object>) mm);
                 }
             }
             if (items.isEmpty()) return;
 
-            // Sort oldest -> newest by bidTime so the chart reads left to right.
+            // Oldest -> newest so the chart reads left to right.
             items.sort((a, b) -> Long.compare(readBidTime(a.get("bidTime")),
                                               readBidTime(b.get("bidTime"))));
 
-            // Rebuild chart + history list from scratch.
             series.getData().clear();
             historyData.clear();
             for (Map<String, Object> m : items) {
@@ -549,15 +544,14 @@ public class AuctionDetailController {
                 historyData.add(String.format("[%s] %s đặt: %s",
                         when, bidder == null ? "?" : bidder, formatPrice(amount)));
             }
-            // Newest first in the list view.
+            // Newest first in the visible list.
             java.util.Collections.reverse(historyData);
         } catch (Exception ignored) {
-            // History is best-effort; failing to draw it shouldn't break the room.
+            // Best-effort: a history failure must not break the room.
         }
     }
 
-    /** Bid time may arrive as epoch millis (number) or a "yyyy-MM-dd HH:mm:ss"
-     *  string depending on serialization — handle both. */
+    /** Bid time may arrive as epoch millis or "yyyy-MM-dd HH:mm:ss". */
     private long readBidTime(Object o) {
         if (o == null) return 0L;
         if (o instanceof Number n) return n.longValue();
@@ -566,6 +560,45 @@ public class AuctionDetailController {
         try { return Long.parseLong(s); } catch (Exception ignored) {}
         try { return timestampInFmt.parse(s).getTime(); } catch (Exception ignored) {}
         return 0L;
+    }
+
+    /**
+     * Realtime BALANCE_UPDATE while bidding — server pushes BalanceResponse
+     * {accountname, newBalance, blockedBalance} whenever our money is locked/
+     * unlocked by a bid. Update the Session's Member and the on-screen
+     * available/blocked label so the user immediately sees the effect of
+     * their (or a competitor's) bid on their wallet.
+     */
+    @SuppressWarnings("unchecked")
+    private void applyBalanceUpdate(Response resp) {
+        if (resp.getData() == null) return;
+        try {
+            String raw = JsonConverter.toJson(resp.getData());
+            Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
+            Map<String, Object> m = new Gson().fromJson(raw, mapType);
+            if (m == null) return;
+            long newBalance = readLong(m.get("newBalance"));
+            long blocked    = readLong(m.get("blockedBalance"));
+            User u = Session.getInstance().getCurrentUser();
+            if (u instanceof org.example.model.user.Member member) {
+                member.setBalance(newBalance);
+                member.setBlockedBalance(blocked);
+            }
+            refreshBalanceLabel();
+        } catch (Exception ignored) {}
+    }
+
+    /** Renders "Khả dụng • Đang khóa" from the Session's Member. */
+    private void refreshBalanceLabel() {
+        if (balanceLabel == null) return;
+        User u = Session.getInstance().getCurrentUser();
+        if (u instanceof org.example.model.user.Member m) {
+            long available = m.getBalance() - m.getBlockedBalance();
+            balanceLabel.setText("Khả dụng: " + formatPrice(available)
+                    + "   •   Đang khóa: " + formatPrice(m.getBlockedBalance()));
+        } else {
+            balanceLabel.setText("");
+        }
     }
 
     private void startCountdownIfNeeded() {
