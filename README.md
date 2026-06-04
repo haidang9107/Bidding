@@ -26,7 +26,7 @@ Hệ thống nhằm mang lại một nền tảng đấu giá thời gian thực
 
 Các tài liệu quan trọng khác:
 - 📄 **[Báo cáo Bài tập lớn](./docs/BaoCaoHeThongDauGia_Nhom16.pdf)**
-- 🎥 **[Video Demo Hệ Thống (Drive)](LINK_VIDEO_HERE)**
+- 🎥 **[Video Demo Hệ Thống (Drive)](https://drive.google.com/drive/folders/1sZlB2uVs7Br4eJ3b-fTCqjWCtNf3f3Pp?usp=sharing)**
 
 ---
 
@@ -77,9 +77,9 @@ Toàn bộ dữ liệu qua lại giữa Client và Server được trừu tượ
 ### 2. Cấu hình môi trường (.env):
 Hệ thống sử dụng file `.env` để quản lý các biến môi trường (như tài khoản Cloudinary, thông tin DB).
 - Tại thư mục gốc, sao chép file `.env.example` thành `.env`:
-  ```bash
-  cp .env.example .env
-  ```
+```bash
+cp .env.example .env
+```
 - Mở file `.env` và điền các thông tin cần thiết (đặc biệt là Cloudinary để upload ảnh sản phẩm).
 
 ### 3. Khởi chạy Database:

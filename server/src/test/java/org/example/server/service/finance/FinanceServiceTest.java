@@ -38,7 +38,7 @@ class FinanceServiceTest {
         // Use a real TransactionManager with a mocked pool/connection
         // This avoids Mockito 5's "Could not modify all classes" error on Java 25
         txManager = new TransactionManager(pool);
-        when(pool.getConnection()).thenReturn(connection);
+        org.mockito.Mockito.lenient().when(pool.getConnection()).thenReturn(connection);
     }
 
     private Member member(String acct, long balance, long blocked) {
@@ -171,7 +171,7 @@ class FinanceServiceTest {
 
             BalanceResponse resp = transferService.transfer("alice", "bob", 500L);
             assertEquals(1_500L, resp.getNewBalance());
-            verify(eventPublisher).publish(any());
+            org.mockito.Mockito.verify(eventPublisher, org.mockito.Mockito.times(2)).publish(org.mockito.ArgumentMatchers.any());
         }
 
         @Test

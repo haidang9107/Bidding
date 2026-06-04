@@ -144,8 +144,7 @@ class AuctionServiceTest {
 
             auctionService.finishAuction(1);
 
-            verify(userDao).addBalance(connection, "alice", -1_000L);
-            verify(userDao).addBlockedBalance(connection, "alice", -1_000L);
+            verify(userDao).addBalances(connection, "alice", -1_000L, -1_000L);
             verify(userDao).addBalance(connection, "seller", 1_000L);
             verify(productService).transferOwnership(connection, 10, "alice");
             verify(transactionDao).insertTransaction(any(), eq("alice"), eq("seller"), any(), eq(10), eq(1_000L), eq(1), anyString());
