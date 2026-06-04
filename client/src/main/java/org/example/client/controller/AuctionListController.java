@@ -314,6 +314,14 @@ public class AuctionListController {
             case PRODUCT_LIST -> Platform.runLater(() -> onProductList(resp));
             case BID_UPDATE   -> Platform.runLater(() -> onBidUpdate(resp));
             case AUCTION_END  -> Platform.runLater(() -> onAuctionEnd(resp));
+            case AUCTION_START -> Platform.runLater(() -> {
+                // Server pushes this when an auction goes live. Refresh the
+                // grid so it shows up, and toast it (useful for watchers).
+                String body = resp.getMessage() == null
+                        ? "Một phiên đấu giá vừa bắt đầu." : resp.getMessage();
+                NotificationService.getInstance().info("Phiên đấu giá bắt đầu", body);
+                loadPage(currentPage);
+            });
             case WATCHLIST_GET -> Platform.runLater(() -> onWatchlistGet(resp));
             case NOTIFICATION -> Platform.runLater(() -> {
                 String body = resp.getMessage() == null ? "Thông báo" : resp.getMessage();

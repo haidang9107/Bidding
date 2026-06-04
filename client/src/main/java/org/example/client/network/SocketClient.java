@@ -40,6 +40,11 @@ public class SocketClient {
     private volatile boolean connected = false;
     private Thread heartbeatThread;
 
+    // Ghi nhớ host/port đã connect để có thể tự kết nối lại sau khi bị
+    // server đóng socket (vd bị ban / đăng nhập nơi khác).
+    private String lastHost;
+    private int lastPort;
+
     private final CopyOnWriteArrayList<ServerListener> listeners =
             new CopyOnWriteArrayList<>();
 
@@ -51,6 +56,8 @@ public class SocketClient {
     // =================================================================
     public synchronized void connect(String host, int port) throws IOException {
         if (connected) return;
+        this.lastHost = host;
+        this.lastPort = port;
 
         socket = new Socket(host, port);
         reader = new BufferedReader(new InputStreamReader(
@@ -72,6 +79,16 @@ public class SocketClient {
         heartbeatThread = new Thread(this::heartbeatLoop, "client-heartbeat");
         heartbeatThread.setDaemon(true);
         heartbeatThread.start();
+    }
+
+    /**
+     * Kết nối lại tới máy chủ đã connect lần gần nhất. Dùng sau khi socket bị
+     * đóng (bị ban / đăng nhập nơi khác) để người dùng có thể đăng nhập lại.
+     */
+    public synchronized void reconnect() throws IOException {
+        if (connected) return;
+        if (lastHost == null) throw new IOException("Chưa từng kết nối trước đó");
+        connect(lastHost, lastPort);
     }
 
     /**
@@ -171,6 +188,20 @@ public class SocketClient {
     private void dispatchToListeners(Response response) {
         // Mọi callback đều chạy trên JavaFX thread cho an toàn UI
         Platform.runLater(() -> {
+            // --- Xử lý tập trung khi server đẩy client ra (ban / đăng nhập nơi khác) ---
+            // Server gửi Response(ERROR, false, "<lý do>", data="KICKED_OUT" hoặc
+            // "ACCOUNT_BANNED") rồi đóng kết nối. Bất kể đang ở màn hình nào,
+            // client phải đăng xuất và quay về màn đăng nhập, không để treo.
+            if (response != null
+                    && response.getType() == org.example.model.enums.MessageType.ERROR
+                    && response.getData() != null) {
+                String code = String.valueOf(response.getData());
+                if ("KICKED_OUT".equals(code) || "ACCOUNT_BANNED".equals(code)) {
+                    handleForcedLogout(response.getMessage(), code);
+                    return; // không phát tiếp cho listener khác
+                }
+            }
+
             for (ServerListener l : listeners) {
                 try {
                     l.onMessage(response);
@@ -180,5 +211,37 @@ public class SocketClient {
                 }
             }
         });
+    }
+
+    /**
+     * Đăng xuất bắt buộc do server khởi xướng (bị ban hoặc bị đăng nhập từ
+     * thiết bị khác). Xóa session, dọn listener, hiện thông báo rồi đưa người
+     * dùng về màn đăng nhập. Gọi trên JavaFX thread.
+     */
+    private void handleForcedLogout(String message, String code) {
+        try {
+            org.example.client.session.Session.getInstance().logout();
+        } catch (Exception ignored) {}
+        // Gỡ mọi listener của màn hiện tại để chúng không xử lý gì thêm.
+        listeners.clear();
+
+        String title = "ACCOUNT_BANNED".equals(code)
+                ? "Tài khoản bị khóa" : "Phiên đăng nhập kết thúc";
+        String body = (message == null || message.isEmpty())
+                ? ("ACCOUNT_BANNED".equals(code)
+                    ? "Tài khoản của bạn đã bị quản trị viên khóa."
+                    : "Tài khoản của bạn vừa đăng nhập ở nơi khác.")
+                : message;
+        try {
+            org.example.client.notification.NotificationService.getInstance()
+                    .error(title, body);
+        } catch (Exception ignored) {}
+
+        // Quay về màn đăng nhập.
+        try {
+            org.example.client.util.SceneRouter.go("/view/Login.fxml", "Đăng nhập");
+        } catch (Exception e) {
+            System.err.println(">>> Không thể quay về màn đăng nhập: " + e.getMessage());
+        }
     }
 }
