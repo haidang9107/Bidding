@@ -71,7 +71,7 @@ public class ServerApp {
         UserService userService = new UserService(txManager);
         WatchlistService watchlistService = new WatchlistService(txManager);
         auctionMonitor.setWatchlistService(watchlistService);
-        AdminService adminService = new AdminService(txManager, auctionService);
+        AdminService adminService = new AdminService(txManager, auctionService, eventPublisher);
         DepositService depositService = new DepositService(txManager, eventPublisher);
         WithdrawService withdrawService = new WithdrawService(txManager, eventPublisher);
         TransferService transferService = new TransferService(txManager, eventPublisher);

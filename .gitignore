@@ -45,3 +45,11 @@ GEMINI.md
 
 # private
 .env
+
+# >>> Glyph Git Sync >>>
+.glyph/
+*
+!*/
+!*.md
+!.gitignore
+# <<< Glyph Git Sync <<<
