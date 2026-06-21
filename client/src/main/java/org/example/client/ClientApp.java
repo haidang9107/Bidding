@@ -5,7 +5,10 @@ import javafx.application.Platform;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import org.example.client.network.SocketClient;
+import org.example.client.session.Session;
 import org.example.client.util.SceneRouter;
+import org.example.model.enums.MessageType;
+import org.example.util.Config;
 
 /**
  * Entry point của Client.
@@ -20,8 +23,8 @@ import org.example.client.util.SceneRouter;
  */
 public class ClientApp extends Application {
 
-    private static final String SERVER_HOST = "192.168.35.37";
-    private static final int SERVER_PORT = 9997;
+    private static final String SERVER_HOST = Config.get("SERVER_HOST");
+    private static final int SERVER_PORT = Config.getInt("SERVER_PORT");
 
     @Override
     public void start(Stage stage) {
@@ -45,7 +48,35 @@ public class ClientApp extends Application {
             SceneRouter.init(stage);
             SceneRouter.go("/view/Login.fxml", "Đăng nhập");
 
-            // 4) Xử lý đóng app: chạy disconnect trên background thread để
+            // 4) Global Logout & Kick Listener: Tự động về Login nếu bị Logout hoặc Ban từ server
+            SocketClient.getInstance().addListener(resp -> {
+                MessageType type = resp.getType();
+                if (type == MessageType.LOGOUT ||
+                    (type == MessageType.SUCCESS && "Logout successful".equals(resp.getMessage())) ||
+                    (type == MessageType.ERROR && "ACCOUNT_BANNED".equals(resp.getData()))) {
+
+                    Platform.runLater(() -> {
+                        // Nếu đang ở màn hình Login rồi thì không cần redirect nữa
+                        if ("/view/Login.fxml".equals(SceneRouter.getCurrentFxml())) {
+                            return;
+                        }
+
+                        Session.getInstance().logout();
+                        SceneRouter.go("/view/Login.fxml", "Đăng nhập");
+
+                        if (type == MessageType.ERROR && "ACCOUNT_BANNED".equals(resp.getData())) {
+                            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
+                                    javafx.scene.control.Alert.AlertType.WARNING);
+                            alert.setTitle("Tài khoản bị khoá");
+                            alert.setHeaderText(null);
+                            alert.setContentText(resp.getMessage());
+                            alert.show();
+                        }
+                    });
+                }
+            });
+
+            // 5) Xử lý đóng app: chạy disconnect trên background thread để
             //    UI không bị block (socket.close() có thể chờ đến vài giây
             //    nếu server không phản hồi). Halt() đảm bảo JVM dừng ngay,
             //    không chờ daemon threads.

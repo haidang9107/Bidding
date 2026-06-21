@@ -19,6 +19,7 @@ import java.util.function.Consumer;
 public final class SceneRouter {
 
     private static Stage primaryStage;
+    private static String currentFxml;
 
     private SceneRouter() {
     }
@@ -29,6 +30,10 @@ public final class SceneRouter {
 
     public static Stage getPrimaryStage() {
         return primaryStage;
+    }
+
+    public static String getCurrentFxml() {
+        return currentFxml;
     }
 
     /** Chuyển scene cơ bản. */
@@ -51,6 +56,7 @@ public final class SceneRouter {
             FXMLLoader loader = new FXMLLoader(
                     SceneRouter.class.getResource(fxmlPath));
             Parent root = loader.load();
+            currentFxml = fxmlPath;
 
             if (controllerInit != null) {
                 T controller = loader.getController();

@@ -21,6 +21,6 @@ public class LogoutCommand implements Command {
     @Override
     public Response<?> execute(Request request, SocketChannel channel) {
         SessionManager.logout(channel);
-        return new Response<>(MessageType.SUCCESS, true, "Logout successful", null);
+        return new Response<>(MessageType.LOGOUT, true, "Logout successful", null);
     }
 }
