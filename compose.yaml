@@ -24,7 +24,6 @@ services:
       - MYSQL_USER=${DB_USER:-root}
       - MYSQL_PASSWORD=${DB_PASSWORD:-root}
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root}
-    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes:
       - ./server/src/main/resources/MySQL/1schema.sql:/docker-entrypoint-initdb.d/1schema.sql
       - ./server/src/main/resources/MySQL/2data.sql:/docker-entrypoint-initdb.d/2data.sql

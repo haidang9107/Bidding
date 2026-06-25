@@ -1,4 +1,5 @@
 -- 500 sản phẩm đa dạng + phiên đấu giá. category 0=OTHER,1=ELEC,2=ART,3=VEHICLE
+SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE transactions;
 TRUNCATE TABLE auto_bids;
