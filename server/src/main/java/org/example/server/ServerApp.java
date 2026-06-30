@@ -184,3 +184,5 @@ public class ServerApp {
         registry.register(MessageType.TRANSACTION_HISTORY, new TransactionHistoryCommand(finance));
     }
 }
+
+//Haidang dz vl
